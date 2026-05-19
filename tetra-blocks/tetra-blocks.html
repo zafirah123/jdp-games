@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PBot Blitz Time Attack</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Orbitron & Inter Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020403;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        .neon-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* PBot Cyber Green Glow Effects */
+        .neon-border-green {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.45), inset 0 0 10px rgba(34, 197, 94, 0.2);
+            border: 2px solid rgba(34, 197, 94, 0.9);
+        }
+        .neon-border-cyan {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), inset 0 0 10px rgba(6, 182, 212, 0.25);
+            border: 2px solid rgba(6, 182, 212, 0.95);
+        }
+        .neon-text-green {
+            text-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+        }
+        .neon-text-cyan {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.9);
+        }
+        .neon-text-mint {
+            text-shadow: 0 0 10px rgba(167, 243, 208, 0.8);
+        }
+        /* Mobile Touch-Action fixes */
+        .touch-btn {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center p-3 sm:p-6 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950 via-slate-950 to-black">
+
+    <!-- Top Navigation / Header -->
+    <header class="w-full max-w-lg flex justify-end items-center mb-2 px-2">
+        <!-- Sound FX System Toggle -->
+        <button id="audioToggle" class="bg-slate-900 border border-slate-700 text-slate-400 hover:text-emerald-400 p-2.5 rounded-xl transition-all focus:outline-none flex items-center justify-center">
+            <svg id="soundOnIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75V5.25L7.75 9.5H4.5v5h3.25L12 18.75z"/></svg>
+            <svg id="soundOffIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+        </button>
+    </header>
+
+    <!-- Main Game Section -->
+    <main class="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8 flex-grow">
+        
+        <!-- Stats & Countdown HUD Panel (PBot Green-themed) -->
+        <div class="flex lg:flex-col justify-between items-center gap-3 w-full max-w-md lg:w-44">
+            <!-- Game Time Countdown Card -->
+            <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 flex-1 lg:w-full neon-border-green text-center">
+                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Time Remaining</div>
+                <div id="timerDisplay" class="text-2xl sm:text-3xl font-black neon-font neon-text-green mt-1">03:00</div>
+            </div>
+
+            <!-- Arcade Scoreboard Card -->
+            <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 flex-1 lg:w-full border border-emerald-900/60 text-center flex flex-row lg:flex-col gap-2 justify-around">
+                <div class="w-full">
+                    <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Score</div>
+                    <div id="scoreDisplay" class="text-2xl sm:text-3xl font-bold neon-font text-cyan-400 mt-1">000000</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Arcade Gameboard Enclosure (Minty cyan-green outline) -->
+        <div class="relative bg-slate-950/90 rounded-2xl p-2 sm:p-4 neon-border-cyan flex items-center justify-center">
+            <!-- Primary Tetris Canvas -->
+            <canvas id="gameCanvas" width="300" height="600" class="bg-slate-950 rounded-lg max-w-full h-[450px] sm:h-[550px] aspect-[1/2] cursor-crosshair"></canvas>
+
+            <!-- Start Game Menu Screen Overlay (PBot Green overlay) -->
+            <div id="startScreen" class="absolute inset-0 bg-black/90 rounded-2xl flex flex-col items-center justify-center text-center p-6 transition-opacity duration-300 z-10">
+                <!-- Glowing PBot Head Indicator -->
+                <div class="w-16 h-16 rounded-2xl flex items-center justify-center border-2 border-emerald-400 neon-border-green text-emerald-400 mb-4 animate-pulse bg-emerald-950/40">
+                    <svg viewBox="0 0 120 90" class="w-11 h-11">
+                        <rect x="22" y="15" width="76" height="58" rx="16" fill="#22C55E"/>
+                        <rect x="32" y="24" width="56" height="38" rx="8" fill="#1E293B"/>
+                        <circle cx="46" cy="43" r="4" fill="#00f0f0"/>
+                        <circle cx="74" cy="43" r="4" fill="#00f0f0"/>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-black neon-font neon-text-green mb-2">PBOT'S BLITZ</h2>
+                <p class="text-xs text-slate-400 max-w-xs mb-6 leading-relaxed">Guide PBot blocks down and score maximum points in 3 minutes. Game ends immediately on Grid-Lock or when the timer hits zero!</p>
+                <button id="startButton" class="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm rounded-lg shadow-lg hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">
+                    Start Challenge
+                </button>
+            </div>
+
+            <!-- Game Over / Victory Screen Overlay -->
+            <div id="gameOverScreen" class="absolute inset-0 bg-black/95 rounded-2xl flex flex-col items-center justify-center text-center p-6 hidden z-10">
+                <div class="text-emerald-500 mb-3" id="gameOverIcon">
+                    <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <h2 id="gameOverTitle" class="text-2xl font-black neon-font neon-text-green mb-1">TIME'S UP!</h2>
+                <p id="gameOverSubtitle" class="text-xs text-slate-400 mb-6">Excellent effort! Here is your blitz card.</p>
+
+                <!-- Stats Dashboard -->
+                <div class="w-full max-w-xs bg-slate-900/80 border border-slate-800 rounded-xl p-4 mb-6">
+                    <div class="flex justify-between items-center text-base py-1">
+                        <span class="text-slate-400 font-medium">Final Score</span>
+                        <span id="finalScore" class="font-black text-xl text-emerald-400 neon-font">0</span>
+                    </div>
+                </div>
+
+                <button id="restartButton" class="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm rounded-lg shadow-lg hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Side Panel: Queue Next Block & Mascot -->
+        <div class="flex lg:flex-col justify-center items-center gap-3 w-full max-w-md lg:w-44">
+            <!-- Next Block Preview -->
+            <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 w-full max-w-[150px] lg:max-w-none border border-emerald-900/60 text-center">
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Next Block</div>
+                <div class="flex justify-center items-center">
+                    <canvas id="nextCanvas" width="100" height="100" class="bg-slate-950/50 rounded-lg border border-slate-900 w-20 h-20"></canvas>
+                </div>
+            </div>
+
+            <!-- PBot Assistant Mascot Widget (Themed Emerald green) -->
+            <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 w-full max-w-[180px] lg:max-w-none border neon-border-green text-center flex flex-col items-center justify-center gap-1.5">
+                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Coach PBot</div>
+                <div id="pbotContainer" class="w-20 h-16 flex items-center justify-center relative">
+                    <!-- Inline Vector PBot SVG -->
+                    <svg id="pbotSvg" viewBox="0 0 120 90" class="w-full h-full">
+                        <defs>
+                            <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="1.5" result="blur"/>
+                                <feMerge>
+                                    <feMergeNode in="blur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <!-- PBot Ears -->
+                        <circle cx="16" cy="45" r="9" fill="#22C55E" />
+                        <circle cx="104" cy="45" r="9" fill="#22C55E" />
+                        <rect x="12" y="41" width="12" height="8" fill="#22C55E" rx="2"/>
+                        <rect x="96" y="41" width="12" height="8" fill="#22C55E" rx="2"/>
+                        
+                        <!-- Main Green Head Shell -->
+                        <rect x="22" y="15" width="76" height="58" rx="20" fill="#22C55E" stroke="#15803D" stroke-width="2.5"/>
+                        
+                        <!-- Face Screen -->
+                        <rect x="32" y="24" width="56" height="38" rx="12" fill="#1E293B" stroke="#0F172A" stroke-width="2"/>
+                        
+                        <!-- Eyes -->
+                        <g id="pbotEyes" filter="url(#neonGlow)">
+                            <path id="eyeLeft" d="M 40 43 C 43 38, 47 38, 50 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
+                            <path id="eyeRight" d="M 70 43 C 73 38, 77 38, 80 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        </g>
+                        
+                        <!-- Little blushing spots -->
+                        <circle cx="36" cy="49" r="2.5" fill="#EC4899" opacity="0.6"/>
+                        <circle cx="84" cy="49" r="2.5" fill="#EC4899" opacity="0.6"/>
+                    </svg>
+                </div>
+                <!-- Speech Bubble -->
+                <div id="pbotSpeech" class="text-[10px] text-slate-300 font-medium tracking-wide leading-tight px-1 min-h-[24px] flex items-center justify-center italic">
+                    "Ready to Blitz?"
+                </div>
+            </div>
+
+            <!-- Desktop Keyboard Help Guide -->
+            <div class="hidden lg:block bg-black/40 rounded-xl p-3 border border-slate-900 w-full text-xs text-slate-400 space-y-1">
+                <div class="font-bold text-slate-300 mb-2">Controls:</div>
+                <div class="space-y-1 text-[11px]">
+                    <p class="font-bold text-emerald-400">Mouse Controls:</p>
+                    <p>• Move Mouse : Slide Block</p>
+                    <p>• Left Click : Rotate Block</p>
+                    <p>• Right Click : Hard Drop</p>
+                    <div class="h-1 my-1 border-t border-slate-800"></div>
+                    <p class="font-bold text-emerald-400">Keyboard Controls:</p>
+                    <p>• <span class="text-slate-300">← / →</span> : Move Grid</p>
+                    <p>• <span class="text-slate-300">↑</span> : Rotate Piece</p>
+                    <p>• <span class="text-slate-300">↓</span> : Soft Drop</p>
+                    <p>• <span class="text-slate-300">Space</span> : Hard Drop</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Touch Control Interface Layer for Mobile / Tablets -->
+    <div class="w-full max-w-md mx-auto grid grid-cols-5 gap-2 mt-4 px-2 md:hidden">
+        <!-- Rotate -->
+        <button id="touchRotate" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 4H15v3"/></svg>
+            <span class="text-[8px] font-bold mt-0.5">ROTATE</span>
+        </button>
+        <!-- Left -->
+        <button id="touchLeft" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <span class="text-[8px] font-bold mt-0.5">LEFT</span>
+        </button>
+        <!-- Soft Drop -->
+        <button id="touchDown" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 13l-7 7-7-7m14-6l-7 7-7-7"/></svg>
+            <span class="text-[8px] font-bold mt-0.5">SOFT</span>
+        </button>
+        <!-- Right -->
+        <button id="touchRight" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            <span class="text-[8px] font-bold mt-0.5">RIGHT</span>
+        </button>
+        <!-- Hard Drop -->
+        <button id="touchDrop" class="touch-btn h-12 bg-gradient-to-b from-emerald-900/50 to-emerald-950/70 border border-emerald-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-emerald-300 active:text-emerald-400 transition-all select-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8"/></svg>
+            <span class="text-[8px] font-bold mt-0.5">DROP</span>
+        </button>
+    </div>
+
+    <!-- Synthesized Web Audio Soundscape and Game Logic Engine -->
+    <script>
+        /*=========================================
+          SFX SYNTHESIZER ENGINE (Web Audio API)
+        =========================================*/
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.enabled = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playMove() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(130, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playRotate() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(260, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(390, this.ctx.currentTime + 0.1);
+
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playClear() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                // Cyberpunk synthesizer power discharge clear
+                [0, 0.05, 0.1].forEach((delay, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300 + (idx * 150), now + delay);
+                    osc.frequency.exponentialRampToValueAtTime(900, now + delay + 0.18);
+
+                    gain.gain.setValueAtTime(0.08, now + delay);
+                    gain.gain.linearRampToValueAtTime(0.001, now + delay + 0.18);
+
+                    osc.start(now + delay);
+                    osc.stop(now + delay + 0.18);
+                });
+            }
+
+            playGameOver(isWin) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const tempo = 0.14;
+
+                const notes = isWin 
+                    ? [523, 659, 783, 1046]  // Success major scale progression
+                    : [293, 277, 261, 220];  // Loss descending chromatic minor scale
+
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.type = isWin ? 'triangle' : 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + (idx * tempo));
+                    
+                    gain.gain.setValueAtTime(0.12, now + (idx * tempo));
+                    gain.gain.linearRampToValueAtTime(0.001, now + (idx * tempo) + 0.35);
+
+                    osc.start(now + (idx * tempo));
+                    osc.stop(now + (idx * tempo) + 0.35);
+                });
+            }
+        }
+
+        const sfx = new SoundEffects();
+
+        // Audio Toggle Action Linker
+        const audioToggleBtn = document.getElementById('audioToggle');
+        const soundOnIcon = document.getElementById('soundOnIcon');
+        const soundOffIcon = document.getElementById('soundOffIcon');
+
+        audioToggleBtn.addEventListener('click', () => {
+            sfx.init();
+            sfx.enabled = !sfx.enabled;
+            if (sfx.enabled) {
+                soundOnIcon.classList.remove('hidden');
+                soundOffIcon.classList.add('hidden');
+            } else {
+                soundOnIcon.classList.add('hidden');
+                soundOffIcon.classList.remove('hidden');
+            }
+        });
+
+
+        /*=========================================
+          TETRIS CORE GAME ENGINE
+        =========================================*/
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('nextCanvas');
+        const nextCtx = nextCanvas.getContext('2d');
+
+        const COLS = 10;
+        const ROWS = 20;
+        
+        let grid = createGrid();
+        let score = 0;
+        let gameTime = 180; // 3 minutes strictly
+        let gameTimerInterval = null;
+        let isPlaying = false;
+        let isGameOver = false;
+
+        // Custom Mint & Emerald PBot Themed Colors
+        const COLORS = {
+            'I': { main: '#4ade80', shadow: 'rgba(74,222,128,0.5)', grid: '#15803d', face: '•‿•' },
+            'O': { main: '#22c55e', shadow: 'rgba(34,195,94,0.5)', grid: '#166534', face: '◕‿◕' },
+            'T': { main: '#a7f3d0', shadow: 'rgba(167,243,208,0.5)', grid: '#047857', face: '•_•' },
+            'S': { main: '#059669', shadow: 'rgba(5,150,105,0.5)', grid: '#064e3b', face: '•‿•' },
+            'Z': { main: '#10b981', shadow: 'rgba(16,185,129,0.5)', grid: '#065f46', face: '◕‿◕' },
+            'J': { main: '#06b6d4', shadow: 'rgba(6,182,212,0.5)', grid: '#0891b2', face: '•_•' },
+            'L': { main: '#34d399', shadow: 'rgba(52,211,153,0.5)', grid: '#0f766e', face: '•‿•' }
+        };
+
+        const PIECES = {
+            'I': [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+            'J': [[1,0,0],[1,1,1],[0,0,0]],
+            'L': [[0,0,1],[1,1,1],[0,0,0]],
+            'O': [[1,1],[1,1]],
+            'S': [[0,1,1],[1,1,0],[0,0,0]],
+            'T': [[0,1,0],[1,1,1],[0,0,0]],
+            'Z': [[1,1,0],[0,1,1],[0,0,0]]
+        };
+
+        const player = {
+            pos: { x: 0, y: 0 },
+            matrix: null,
+            type: null
+        };
+
+        let nextPieceType = null;
+        let particles = [];
+
+        function createGrid() {
+            const matrix = [];
+            while (ROWS > matrix.length) {
+                matrix.push(new Array(COLS).fill(0));
+            }
+            return matrix;
+        }
+
+        // Particle System for row clear animations
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 6;
+                this.vy = (Math.random() - 0.5) * 6;
+                this.size = Math.random() * 3.5 + 1.5;
+                this.alpha = 1.0;
+                this.color = color;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= 0.04;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 5;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        /*=========================================
+          PBOT MASCOT CONTROLLER (STUDY COMPANION)
+        =========================================*/
+        const pbotSpeechEl = document.getElementById('pbotSpeech');
+        const pbotEyesEl = document.getElementById('pbotEyes');
+        let pbotMoodTimer = null;
+
+        const PBOT_IDLE_PHRASES = [
+            "You got this!",
+            "Stay focused!",
+            "Excellent speed!",
+            "PBot believes in you!",
+            "Let's clear some lines!",
+            "Make every drop count!",
+            "Nice puzzle solving!",
+            "Aim for that high score!"
+        ];
+
+        function setPbotMood(mood) {
+            let eyesHtml = '';
+            let speechText = '';
+
+            switch (mood) {
+                case 'happy':
+                    eyesHtml = `
+                        <path d="M 38 45 C 41 35, 47 35, 50 45" stroke="#00f0f0" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                        <path d="M 68 45 C 71 35, 77 35, 80 45" stroke="#00f0f0" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                    `;
+                    const happyPhrases = [
+                        "Hooray! +100!",
+                        "Spectacular!",
+                        "Excellent move!",
+                        "We cleared it!",
+                        "Amazing work!",
+                        "Awesome score!"
+                    ];
+                    speechText = happyPhrases[Math.floor(Math.random() * happyPhrases.length)];
+                    break;
+
+                case 'worried':
+                    eyesHtml = `
+                        <circle cx="44" cy="40" r="5" fill="#00f0f0" />
+                        <circle cx="74" cy="40" r="5" fill="#00f0f0" />
+                    `;
+                    speechText = "Whoa! Blocks are getting high!";
+                    break;
+
+                case 'dizzy':
+                    eyesHtml = `
+                        <path d="M 39 36 L 49 44 M 49 36 L 39 44" stroke="#00f0f0" stroke-width="3" stroke-linecap="round" />
+                        <path d="M 69 36 L 79 44 M 79 36 L 69 44" stroke="#00f0f0" stroke-width="3" stroke-linecap="round" />
+                    `;
+                    speechText = "Ouch! Grid Lock!";
+                    break;
+
+                case 'grad':
+                    eyesHtml = `
+                        <path d="M 40 43 C 43 38, 47 38, 50 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <path d="M 70 43 C 73 38, 77 38, 80 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    `;
+                    speechText = "Fantastic! Great blitz run!";
+                    break;
+
+                case 'idle':
+                default:
+                    eyesHtml = `
+                        <path d="M 40 43 C 43 38, 47 38, 50 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <path d="M 70 43 C 73 38, 77 38, 80 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    `;
+                    speechText = PBOT_IDLE_PHRASES[Math.floor(Math.random() * PBOT_IDLE_PHRASES.length)];
+                    break;
+            }
+
+            pbotEyesEl.innerHTML = eyesHtml;
+            pbotSpeechEl.innerText = `"${speechText}"`;
+        }
+
+        function startPbotTalkCycle() {
+            if (pbotMoodTimer) clearInterval(pbotMoodTimer);
+            pbotMoodTimer = setInterval(() => {
+                if (isPlaying) {
+                    let isDanger = false;
+                    for (let r = 0; r < 7; r++) {
+                        if (grid[r].some(val => val !== 0)) {
+                            isDanger = true;
+                            break;
+                        }
+                    }
+                    if (isDanger) {
+                        setPbotMood('worried');
+                    } else {
+                        setPbotMood('idle');
+                    }
+                }
+            }, 5500);
+        }
+
+        /*=========================================
+          DRAWING METHODS
+        =========================================*/
+        function drawGridBackground() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const cellW = width / COLS;
+            const cellH = height / ROWS;
+
+            ctx.strokeStyle = '#052e16';
+            ctx.lineWidth = 1;
+
+            for (let x = 0; x <= COLS; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * cellW, 0);
+                ctx.lineTo(x * cellW, height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= ROWS; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * cellH);
+                ctx.lineTo(width, y * cellH);
+                ctx.stroke();
+            }
+        }
+
+        function drawBlock(ctx, x, y, type, size, isNext = false, isGhost = false) {
+            const colors = COLORS[type];
+            if (!colors) return;
+
+            ctx.save();
+            ctx.shadowBlur = isGhost ? 0 : 8;
+            ctx.shadowColor = colors.shadow;
+
+            if (isGhost) {
+                // Ghost alignment guide block (dashed green outline style)
+                ctx.strokeStyle = colors.main;
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(x * size + 2, y * size + 2, size - 4, size - 4);
+            } else {
+                // Gradient outer container (Green/Emerald tech shell)
+                const grad = ctx.createLinearGradient(x * size, y * size, (x + 1) * size, (y + 1) * size);
+                grad.addColorStop(0, colors.main);
+                grad.addColorStop(1, colors.grid);
+
+                ctx.fillStyle = grad;
+                ctx.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+
+                // Cute mini glowing robot display screen inside block
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(x * size + 3, y * size + 3, size - 6, size - 6);
+
+                // Draw digital eyes or little smiley inside block to represent mini PBot face
+                ctx.fillStyle = colors.main;
+                ctx.font = `bold ${size / 2.3}px 'Orbitron', monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(colors.face, x * size + (size / 2), y * size + (size / 2));
+            }
+            ctx.restore();
+        }
+
+        function drawArena() {
+            const cellW = canvas.width / COLS;
+            const cellH = canvas.height / ROWS;
+
+            // Draw Locked/Static Blocks
+            grid.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        drawBlock(ctx, c, r, value, cellW);
+                    }
+                });
+            });
+
+            // Draw falling block state
+            if (player.matrix) {
+                let ghostY = player.pos.y;
+                while (!collideGhost(ghostY + 1)) {
+                    ghostY++;
+                }
+
+                // Render Ghost Piece
+                player.matrix.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value !== 0) {
+                            drawBlock(ctx, c + player.pos.x, r + ghostY, player.type, cellW, false, true);
+                        }
+                    });
+                });
+
+                // Render Solid block piece
+                player.matrix.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value !== 0) {
+                            drawBlock(ctx, c + player.pos.x, r + player.pos.y, player.type, cellW);
+                        }
+                    });
+                });
+            }
+        }
+
+        function drawNextPreview() {
+            nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+            
+            // Faint PBot green preview backdrop grids
+            nextCtx.strokeStyle = '#022c22';
+            nextCtx.lineWidth = 1;
+            const gridCells = 4;
+            const cellSize = nextCanvas.width / gridCells;
+            for (let i = 0; i <= gridCells; i++) {
+                nextCtx.beginPath();
+                nextCtx.moveTo(i * cellSize, 0);
+                nextCtx.lineTo(i * cellSize, nextCanvas.height);
+                nextCtx.stroke();
+                nextCtx.beginPath();
+                nextCtx.moveTo(0, i * cellSize);
+                nextCtx.lineTo(nextCanvas.width, i * cellSize);
+                nextCtx.stroke();
+            }
+
+            if (!nextPieceType) return;
+            const matrix = PIECES[nextPieceType];
+            
+            const size = 18;
+            const offsetX = (nextCanvas.width - (matrix[0].length * size)) / 2;
+            const offsetY = (nextCanvas.height - (matrix.length * size)) / 2;
+
+            matrix.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        drawBlock(nextCtx, (c * size + offsetX) / size, (r * size + offsetY) / size, nextPieceType, size, true);
+                    }
+                });
+            });
+        }
+
+        function triggerLineParticles(row) {
+            const cellW = canvas.width / COLS;
+            const cellH = canvas.height / ROWS;
+            const centerY = row * cellH + (cellH / 2);
+            for (let c = 0; c < COLS; c++) {
+                const centerX = c * cellW + (cellW / 2);
+                for (let i = 0; i < 4; i++) {
+                    particles.push(new Particle(centerX, centerY, '#22c55e'));
+                }
+            }
+        }
+
+        /*=========================================
+          ENGINE MECHANICS
+        =========================================*/
+        function collide(arena, player) {
+            const m = player.matrix;
+            const o = player.pos;
+            for (let r = 0; r < m.length; ++r) {
+                for (let c = 0; c < m[r].length; ++c) {
+                    if (m[r][c] !== 0 &&
+                       (arena[r + o.y] &&
+                        arena[r + o.y][c + o.x]) !== 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function collideGhost(testY) {
+            const m = player.matrix;
+            const o = player.pos;
+            for (let r = 0; r < m.length; ++r) {
+                for (let c = 0; c < m[r].length; ++c) {
+                    if (m[r][c] !== 0 &&
+                       (grid[r + testY] &&
+                        grid[r + testY][c + o.x]) !== 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge(arena, player) {
+            player.matrix.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        arena[r + player.pos.y][c + player.pos.x] = player.type;
+                    }
+                });
+            });
+        }
+
+        function rotate(matrix, dir) {
+            for (let y = 0; y < matrix.length; ++y) {
+                for (let x = 0; x < y; ++x) {
+                    [
+                        matrix[x][y],
+                        matrix[y][x],
+                    ] = [
+                        matrix[y][x],
+                        matrix[x][y],
+                    ];
+                }
+            }
+            if (dir > 0) {
+                matrix.forEach(row => row.reverse());
+            } else {
+                matrix.reverse();
+            }
+        }
+
+        function playerReset() {
+            const pieces = 'TJLOSZI';
+            if (nextPieceType === null) {
+                nextPieceType = pieces[pieces.length * Math.random() | 0];
+            }
+            player.type = nextPieceType;
+            player.matrix = PIECES[player.type].map(row => [...row]);
+            nextPieceType = pieces[pieces.length * Math.random() | 0];
+            
+            player.pos.y = 0;
+            player.pos.x = (grid[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+
+            if (collide(grid, player)) {
+                endGame(false);
+            }
+            drawNextPreview();
+        }
+
+        function playerDrop() {
+            player.pos.y++;
+            if (collide(grid, player)) {
+                player.pos.y--;
+                merge(grid, player);
+                playerReset();
+                arenaSweep();
+            }
+            dropCounter = 0;
+        }
+
+        function playerInstantDrop() {
+            if (!isPlaying) return;
+            let droppedDistance = 0;
+            while (!collide(grid, player)) {
+                player.pos.y++;
+                droppedDistance++;
+            }
+            player.pos.y--;
+            merge(grid, player);
+            playerReset();
+            arenaSweep();
+            sfx.playMove();
+            dropCounter = 0;
+        }
+
+        function playerMove(offset) {
+            player.pos.x += offset;
+            if (collide(grid, player)) {
+                player.pos.x -= offset;
+            } else {
+                sfx.playMove();
+            }
+        }
+
+        function playerRotate(dir) {
+            const pos = player.pos.x;
+            let offset = 1;
+            rotate(player.matrix, dir);
+            while (collide(grid, player)) {
+                player.pos.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (offset > player.matrix[0].length) {
+                    rotate(player.matrix, -dir);
+                    player.pos.x = pos;
+                    return;
+                }
+            }
+            sfx.playRotate();
+        }
+
+        function arenaSweep() {
+            let clearedCount = 0;
+            outer: for (let r = grid.length - 1; r >= 0; --r) {
+                for (let c = 0; c < grid[r].length; ++c) {
+                    if (grid[r][c] === 0) {
+                        continue outer;
+                    }
+                }
+                
+                const row = grid.splice(r, 1)[0].fill(0);
+                grid.unshift(row);
+                ++r;
+                clearedCount++;
+                triggerLineParticles(r);
+                
+                score += 100;
+            }
+
+            if (clearedCount > 0) {
+                sfx.playClear();
+                document.getElementById('scoreDisplay').innerText = String(score).padStart(6, '0');
+                
+                // Update PBot mascot reactions
+                setPbotMood('happy');
+                setTimeout(() => {
+                    if (isPlaying && !isGameOver) {
+                        setPbotMood('idle');
+                    }
+                }, 1800);
+            }
+        }
+
+        /*=========================================
+          GAME TIMING & LOOP CONTROL
+        =========================================*/
+        let lastTime = 0;
+        let dropCounter = 0;
+        let dropInterval = 850;
+
+        function update(time = 0) {
+            if (!isPlaying) return;
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) {
+                playerDrop();
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGridBackground();
+            drawArena();
+
+            // Particles system updates
+            particles.forEach((p, idx) => {
+                p.update();
+                p.draw(ctx);
+                if (p.alpha <= 0) particles.splice(idx, 1);
+            });
+
+            requestAnimationFrame(update);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = gameTime % 60;
+            document.getElementById('timerDisplay').innerText = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+            clearInterval(gameTimerInterval);
+            gameTimerInterval = setInterval(() => {
+                if (!isPlaying) return;
+                gameTime--;
+                updateTimerDisplay();
+
+                if (gameTime <= 0) {
+                    endGame(true);
+                }
+            }, 1000);
+        }
+
+        /*=========================================
+          RUNTIME STATE MANAGEMENT
+        =========================================*/
+        function startGame() {
+            sfx.init();
+            grid = createGrid();
+            score = 0;
+            gameTime = 180; // Reset 3 Minutes
+            isPlaying = true;
+            isGameOver = false;
+
+            document.getElementById('scoreDisplay').innerText = "000000";
+            updateTimerDisplay();
+
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+
+            playerReset();
+            startTimer();
+            lastTime = performance.now();
+            requestAnimationFrame(update);
+            
+            setPbotMood('idle');
+            startPbotTalkCycle();
+        }
+
+        function endGame(timedOut) {
+            isPlaying = false;
+            isGameOver = true;
+            clearInterval(gameTimerInterval);
+            sfx.playGameOver(timedOut);
+
+            const titleEl = document.getElementById('gameOverTitle');
+            const iconEl = document.getElementById('gameOverIcon');
+
+            if (timedOut) {
+                titleEl.innerText = "TIME'S UP!";
+                titleEl.className = "text-2xl font-black neon-font neon-text-green mb-1";
+                iconEl.innerHTML = `
+                    <svg viewBox="0 0 120 90" class="w-16 h-16 mx-auto animate-bounce">
+                        <rect x="22" y="15" width="76" height="58" rx="20" fill="#22C55E"/>
+                        <rect x="32" y="24" width="56" height="38" rx="12" fill="#1E293B"/>
+                        <path d="M 38 45 C 41 35, 47 35, 50 45" stroke="#00f0f0" stroke-width="3.5" fill="none"/>
+                        <path d="M 68 45 C 71 35, 77 35, 80 45" stroke="#00f0f0" stroke-width="3.5" fill="none"/>
+                    </svg>
+                `;
+                setPbotMood('grad');
+            } else {
+                titleEl.innerText = "GRID LOCKED!";
+                titleEl.className = "text-2xl font-black neon-font neon-text-green mb-1";
+                iconEl.innerHTML = `
+                    <svg viewBox="0 0 120 90" class="w-16 h-16 mx-auto animate-pulse">
+                        <rect x="22" y="15" width="76" height="58" rx="20" fill="#22C55E"/>
+                        <rect x="32" y="24" width="56" height="38" rx="12" fill="#1E293B"/>
+                        <path d="M 39 36 L 49 44 M 49 36 L 39 44" stroke="#00f0f0" stroke-width="3" />
+                        <path d="M 69 36 L 79 44 M 79 36 L 69 44" stroke="#00f0f0" stroke-width="3" />
+                    </svg>
+                `;
+                setPbotMood('dizzy');
+            }
+
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        /*=========================================
+          EVENT HANDLERS & CONTROL INPUTS
+        =========================================*/
+        // Keyboard Controls
+        window.addEventListener('keydown', event => {
+            if (!isPlaying) return;
+
+            if ([32, 37, 38, 39, 40].includes(event.keyCode)) {
+                event.preventDefault();
+            }
+
+            switch (event.keyCode) {
+                case 37: // Left
+                    playerMove(-1);
+                    break;
+                case 39: // Right
+                    playerMove(1);
+                    break;
+                case 40: // Down
+                    playerDrop();
+                    break;
+                case 38: // Up (Rotate)
+                    playerRotate(1);
+                    break;
+                case 32: // Space (Hard drop)
+                    playerInstantDrop();
+                    break;
+            }
+        });
+
+        // Mouse Controls
+        canvas.addEventListener('mousemove', event => {
+            if (!isPlaying || !player.matrix) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            
+            const colWidth = rect.width / COLS;
+            const targetCol = Math.floor(mouseX / colWidth);
+            
+            const pieceWidth = player.matrix[0].length;
+            const targetX = Math.max(0, Math.min(COLS - pieceWidth, targetCol - Math.floor(pieceWidth / 2)));
+            
+            if (player.pos.x !== targetX) {
+                const originalX = player.pos.x;
+                player.pos.x = targetX;
+                
+                if (collide(grid, player)) {
+                    player.pos.x = originalX;
+                } else {
+                    sfx.playMove();
+                }
+            }
+        });
+
+        // Left-click to rotate block
+        canvas.addEventListener('click', event => {
+            if (!isPlaying) return;
+            event.preventDefault();
+            playerRotate(1);
+        });
+
+        // Right-click to hard drop block
+        canvas.addEventListener('contextmenu', event => {
+            if (!isPlaying) return;
+            event.preventDefault();
+            playerInstantDrop();
+        });
+
+        // Setup touch button action linkers
+        const initTouchButton = (elementId, callback) => {
+            const btn = document.getElementById(elementId);
+            
+            const trigger = (e) => {
+                e.preventDefault();
+                sfx.init();
+                if (isPlaying) {
+                    callback();
+                }
+            };
+
+            btn.addEventListener('touchstart', trigger, { passive: false });
+            btn.addEventListener('click', trigger);
+        };
+
+        initTouchButton('touchLeft', () => playerMove(-1));
+        initTouchButton('touchRight', () => playerMove(1));
+        initTouchButton('touchRotate', () => playerRotate(1));
+        initTouchButton('touchDown', () => playerDrop());
+        initTouchButton('touchDrop', () => playerInstantDrop());
+
+        // Interface buttons
+        document.getElementById('startButton').addEventListener('click', startGame);
+        document.getElementById('restartButton').addEventListener('click', startGame);
+
+        // Fluid Scaling & Auto-Aspect Adjustment Handler
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            if (!container) return;
+
+            const isMobile = window.innerWidth < 640;
+            const targetHeight = isMobile ? 450 : 550;
+            const targetWidth = targetHeight / 2;
+
+            canvas.style.width = `${targetWidth}px`;
+            canvas.style.height = `${targetHeight}px`;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+</body>
+</html>

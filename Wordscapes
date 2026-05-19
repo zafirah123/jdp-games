@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juara Kata</title>
+    <!-- Tailwind CSS (Sebagai tambahan, jika disekat pun CSS fallback di bawah akan ambil alih) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gold: #FFD700;
+            --dark-gold: #B8860B;
+            --primary-red: #8B0000;
+            --dark-red: #4A0000;
+            --crimson-bg: #1a050d;
+        }
+        
+        /* GAYA ASAS KEBAL - Menjamin rupa paras tetap cantik walaupun tanpa Tailwind */
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--crimson-bg);
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            min-height: 100vh;
+            /* Membolehkan tatalan halaman secara semula jadi di iPad/peranti mudah alih */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .title-font {
+            font-family: 'Fredoka One', cursive;
+        }
+        
+        /* Latar belakang eksklusif: Gradien merah delima jika gambar tiada */
+        .bg-image {
+            background-color: var(--crimson-bg);
+            background-image: radial-gradient(circle, #5e0214 0%, #1a050d 100%), url('image_8a1837.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        .glass-panel {
+            background: rgba(74, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 215, 0, 0.45);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+        
+        .letter-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid var(--dark-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: transparent;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-transform: uppercase;
+        }
+        
+        @media (min-width: 380px) {
+            .letter-box { width: 48px; height: 48px; font-size: 1.5rem; }
+        }
+        
+        /* Gaya untuk huruf yang didedahkan melalui Petunjuk (Hint) */
+        .letter-box.hinted {
+            background: rgba(255, 215, 0, 0.15) !important;
+            color: var(--primary-gold) !important;
+            border-color: var(--primary-gold) !important;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+            box-shadow: inset 0 0 8px rgba(255, 215, 0, 0.3);
+        }
+        
+        /* Gaya huruf yang berjaya ditemui sepenuhnya */
+        .letter-box.found {
+            background: linear-gradient(135deg, var(--primary-gold), var(--dark-gold)) !important;
+            color: var(--primary-red) !important;
+            border-color: #FFF !important;
+            transform: scale(1.08);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.7) !important;
+            text-shadow: none !important;
+        }
+
+        /* Piring Roda Huruf yang Mengagumkan */
+        .wheel-plate {
+            background: radial-gradient(circle, rgba(65, 3, 15, 0.85) 0%, rgba(20, 2, 8, 0.95) 100%);
+            border: 4px solid var(--primary-gold);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), inset 0 0 25px rgba(255, 215, 0, 0.2), 0 0 15px rgba(255, 215, 0, 0.25);
+            border-radius: 50%;
+            /* Menyekat tatalan pelayar ketika meleret roda sahaja */
+            touch-action: none;
+        }
+        
+        .wheel-letter {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e60000, var(--dark-red));
+            border: 3px solid var(--primary-gold);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 6px 14px rgba(0,0,0,0.7), inset 0 3px 5px rgba(255,255,255,0.4);
+            transition: transform 0.1s, background-color 0.2s;
+            z-index: 20;
+            touch-action: none;
+        }
+        
+        .wheel-letter.selected {
+            background: linear-gradient(135deg, var(--primary-gold), #e6b800);
+            color: var(--primary-red);
+            border-color: #FFF;
+            transform: translate(-50%, -50%) scale(1.25);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.95), 0 8px 16px rgba(0,0,0,0.5);
+        }
+        
+        /* Custom Scrollbar untuk senarai jawapan tamat masa */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--primary-gold);
+            border-radius: 10px;
+        }
+        
+        /* Animations */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop { animation: pop 0.4s ease; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            50% { transform: translateX(8px); }
+            75% { transform: translateX(-8px); }
+        }
+        .animate-shake { animation: shake 0.4s ease; }
+
+        /* Mesej terapung dilaraskan perlahan selama tepat 3 saat */
+        @keyframes floatUp {
+            0% { opacity: 0; transform: translateY(20px) scale(0.9); }
+            10% { opacity: 1; transform: translateY(0) scale(1); }
+            85% { opacity: 1; transform: translateY(-40px) scale(1); }
+            100% { opacity: 0; transform: translateY(-100px) scale(1.3); }
+        }
+        .score-floater {
+            position: absolute;
+            font-weight: bold;
+            font-size: 1.85rem;
+            text-shadow: 0 3px 8px rgba(0,0,0,1);
+            pointer-events: none;
+            animation: floatUp 3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+            z-index: 50;
+        }
+
+        /* Tooltip Trigger */
+        .tooltip-container:hover .tooltip-box,
+        .tooltip-container:focus-within .tooltip-box {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        /* Flashing Timer */
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-flash {
+            animation: flash 1s infinite;
+        }
+    </style>
+</head>
+<body class="w-full">
+    <!-- Background Container -->
+    <div class="fixed inset-0 bg-image"></div>
+    <div class="fixed inset-0 bg-black/30 bg-gradient-to-t from-black/80 via-transparent to-black/50"></div>
+
+    <!-- Main Game Area (Menggunakan min-h-screen agar menyokong skrol jika kandungan panjang) -->
+    <div id="app" class="relative z-10 w-full min-h-screen flex flex-col items-center justify-between max-w-md mx-auto p-4 box-border">
+        
+        <!-- Header & Scores Panel (Mengekalkan saiz asli dengan shrink-0) -->
+        <div class="w-full flex flex-col gap-3 shrink-0">
+            <div class="w-full flex justify-between items-center">
+                <h1 class="text-2xl md:text-3xl title-font text-yellow-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wide shrink-0">
+                    JUARA KATA
+                </h1>
+                
+                <!-- Syarat & Peraturan Tooltip -->
+                <div class="flex items-center gap-2">
+                    <div class="relative tooltip-container">
+                        <button class="glass-panel px-3 py-1.5 rounded-xl text-xs font-bold text-yellow-400 flex items-center gap-1 active:scale-95 transition-transform shadow-md">
+                            <span>ⓘ Syarat</span>
+                        </button>
+                        <!-- Tooltip Box (Contains all system requirements) -->
+                        <div class="tooltip-box absolute right-[-50px] top-9 w-64 p-4 rounded-xl glass-panel text-xs text-white z-50 pointer-events-none opacity-0 transform translate-y-1 transition-all duration-300 shadow-2xl border-yellow-400/50">
+                            <p class="font-bold text-yellow-400 mb-2 border-b border-yellow-400/20 pb-1">📜 SYARAT & PERATURAN PERMAINAN</p>
+                            <ul class="space-y-1.5 text-gray-200">
+                                <li>⏱️ <strong>Had Masa:</strong> 3 Minit permainan sahaja.</li>
+                                <li>🎯 <strong>Target Skor:</strong> Lebih kurang 500 mata.</li>
+                                <li>💡 <strong>Petunjuk (Hint):</strong> Maksimum <span class="text-yellow-400 font-bold">3 KALI</span> setiap permainan (Kos 25 mata).</li>
+                                <li>📉 <strong>Denda Guna Petunjuk:</strong> Perkataan yang diselesaikan dengan bantuan petunjuk hanya mendapat <span class="text-orange-400 font-bold">+5 mata</span> (Berbanding +15 mata tanpa petunjuk).</li>
+                                <li>⚠️ <strong>Papan Baru:</strong> Denda <span class="text-red-400 font-bold">-30 mata</span> jika ditukar tanpa mencari jawapan pertama.</li>
+                                <li>☘️ <strong>Bonus Kata:</strong> +5 mata untuk perkataan alternatif.</li>
+                                <li>🏆 <strong>Selesai Papan:</strong> +50 mata bonus papan.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Regenerate Board Button -->
+                    <button id="regen-btn" class="glass-panel px-3 py-1.5 rounded-xl text-xs font-bold text-yellow-400 flex items-center gap-1 active:scale-95 transition-transform shadow-md" title="Mula Papan Baru (Denda -30 jika tiada jawapan)">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>Papan Baru</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Score Boxes (Split UI) -->
+            <div class="grid grid-cols-3 gap-2">
+                <!-- Board Score -->
+                <div class="glass-panel p-2 rounded-xl text-center border-yellow-500/30">
+                    <div class="text-[9px] md:text-[10px] text-yellow-300 font-bold uppercase tracking-wider">Skor Papan</div>
+                    <div class="text-xs md:text-sm font-black text-white" id="board-score-display">0</div>
+                </div>
+                <!-- Bonus Score -->
+                <div class="glass-panel p-2 rounded-xl text-center border-yellow-500/30">
+                    <div class="text-[9px] md:text-[10px] text-yellow-300 font-bold uppercase tracking-wider">Skor Bonus</div>
+                    <div class="text-xs md:text-sm font-black text-white" id="bonus-score-display">0</div>
+                </div>
+                <!-- Total Score -->
+                <div class="glass-panel p-2 rounded-xl text-center border-yellow-400 bg-yellow-950/40">
+                    <div class="text-[9px] md:text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Jumlah Skor</div>
+                    <div class="text-xs md:text-sm font-black text-yellow-400" id="total-score-display">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer Display Area (shrink-0) -->
+        <div class="w-full flex justify-center py-1 shrink-0">
+            <div id="timer-box" class="glass-panel px-6 py-2 rounded-full flex items-center gap-2 border-yellow-400/60 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span id="timer-display" class="text-xl font-mono font-bold text-white">03:00</span>
+            </div>
+        </div>
+
+        <!-- Board Area (Dibuang scroll sepenuhnya agar sentiasa kemas) -->
+        <div id="board" class="flex-1 w-full flex flex-col items-center justify-center gap-3 px-2 py-4 my-2">
+            <!-- Word rows generated by JS -->
+        </div>
+
+        <!-- Preview Area (shrink-0) -->
+        <div class="h-12 w-full flex items-center justify-center shrink-0">
+            <div id="word-preview" class="text-3xl title-font text-white tracking-widest drop-shadow-[0_0_10px_rgba(255,215,0,0.8)] opacity-0 transition-opacity">
+                <!-- Current typed word -->
+            </div>
+        </div>
+
+        <!-- Interactive Input Wheel & Control Panel Section (Ditetapkan shrink-0 supaya tidak termampat di iPad) -->
+        <div class="w-full flex flex-col items-center justify-center gap-4 mb-4 shrink-0">
+            
+            <!-- Beautiful Dedicated Wheel Dial Plate -->
+            <div class="relative w-full max-w-[240px] md:max-w-[270px] aspect-square flex items-center justify-center shrink-0">
+                <canvas id="line-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-10" style="touch-action: none;"></canvas>
+                <!-- circular glowing plate -->
+                <div id="wheel" class="absolute inset-0 w-full h-full z-20 wheel-plate">
+                    <!-- Letters dynamically positioned here by JS -->
+                </div>
+            </div>
+            
+            <!-- Ergonomic Control Bar (Mengekalkan butang di skrin yang menyenangkan mata) -->
+            <div class="flex justify-between items-center w-full max-w-[240px] md:max-w-[270px] px-2 shrink-0">
+                
+                <!-- Shuffle Button (Kiri) -->
+                <button id="shuffle-btn" class="w-16 h-16 rounded-full glass-panel flex flex-col items-center justify-center text-white active:scale-90 transition-transform shadow-lg border-yellow-500/40 hover:border-yellow-400" title="Acak Huruf">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span class="text-[8px] font-black text-yellow-400 uppercase tracking-widest mt-0.5">Acak</span>
+                </button>
+
+                <!-- Hint Button (Kanan - Petunjuk Mendedahkan Huruf) -->
+                <button id="hint-btn" class="w-16 h-16 rounded-full glass-panel flex flex-col items-center justify-center text-yellow-400 active:scale-90 transition-transform shadow-lg border-yellow-400/60 hover:border-yellow-300 relative" title="Petunjuk (Had: 3 kali, Kos: 25 Mata)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <span class="text-[8px] font-black text-yellow-400 uppercase tracking-widest mt-0.5">Petunjuk</span>
+                    <!-- Hint Badge Counter -->
+                    <span id="hint-counter-badge" class="absolute -top-1 -right-1 font-extrabold text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded-full border border-yellow-400/50 shadow-md">3/3</span>
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Alert / Bonus Modal -->
+    <div id="message-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 opacity-0 pointer-events-none">
+        <div class="glass-panel p-8 rounded-2xl flex flex-col items-center transform scale-90 transition-transform duration-300 mx-4" id="modal-content">
+            <h2 class="text-4xl title-font text-yellow-400 mb-2 drop-shadow-md">TAHNIAH!</h2>
+            <p class="text-white text-lg mb-4">Papan Selesai</p>
+            <div class="bg-yellow-400 text-red-900 font-bold text-3xl px-6 py-3 rounded-full mb-6 shadow-[0_0_15px_rgba(255,215,0,0.5)]">
+                +50 BONUS PAPAN
+            </div>
+            <button id="next-btn" class="bg-gradient-to-r from-red-600 to-red-800 text-white font-bold py-3 px-8 rounded-full border-2 border-yellow-400 shadow-lg active:scale-95 transition-all">
+                Teruskan
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Over / Time's Up Modal (Kini boleh discrol untuk menyemak jawapan penuh) -->
+    <div id="gameover-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="glass-panel p-6 rounded-2xl flex flex-col items-center transform scale-90 transition-transform duration-300 mx-4 w-full max-w-sm max-h-[90vh] overflow-y-auto custom-scrollbar" id="gameover-content">
+            <h2 class="text-3xl title-font text-red-500 mb-1 drop-shadow-md text-center">TAMAT MASA!</h2>
+            <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-4">Permainan Selesai</p>
+            
+            <!-- Result Breakdown -->
+            <div class="w-full flex flex-col gap-2 mb-4 bg-black/20 p-3 rounded-xl border border-yellow-500/10 text-xs">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300">Skor Papan</span>
+                    <span class="text-white font-bold" id="final-board-score">0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300">Skor Bonus</span>
+                    <span class="text-white font-bold" id="final-bonus-score">0</span>
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-yellow-500/20">
+                    <span class="text-yellow-400 font-black">JUMLAH SKOR</span>
+                    <span class="text-yellow-400 font-black text-xl" id="final-total-score">0</span>
+                </div>
+            </div>
+
+            <!-- Jawapan Penuh Section (Boleh Diskrol Secara Menarik) -->
+            <div class="w-full text-left mb-6">
+                <h3 class="text-yellow-400 font-bold text-sm mb-2 uppercase tracking-wide border-b border-yellow-500/20 pb-1">🔑 Senarai Jawapan Penuh</h3>
+                <div id="final-answers-list" class="max-h-48 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
+                    <!-- Dynamic content generated by JS will appear here -->
+                </div>
+            </div>
+            
+            <button id="restart-btn" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-red-950 font-black text-lg py-3 px-8 rounded-full border-2 border-white shadow-lg active:scale-95 transition-all">
+                MAIN SEMULA
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Kosa kata meluas bertema sekolah & nilai-nilai murni (Diperkukuh 100% sepadan huruf)
+        const levels = [
+            { 
+                letters: ['K','A','S','U','T'], 
+                words: ['KASUT', 'SUKA', 'SATU', 'KUAT', 'TUAS'],
+                bonusWords: ['SUKAT', 'UTAS', 'SAKU', 'TUA', 'AKU', 'KAU', 'TAS', 'KAS', 'SUT', 'SAUT', 'TUKAS', 'KUSTA']
+            },
+            { 
+                letters: ['B','A','T','U','K'], 
+                words: ['BATUK', 'BUAT', 'BATU', 'KUAT', 'TABU'],
+                bonusWords: ['BUTA', 'KABUT', 'BUKA', 'TUBA', 'ABU', 'BAU', 'AKU', 'KAU', 'TUA', 'BAK', 'TAB', 'AKUT', 'BAKUT']
+            },
+            { 
+                letters: ['M','A','S','A','K'], 
+                words: ['MASAK', 'MASA', 'SAMA', 'ASAM', 'MAKA'],
+                bonusWords: ['SAKA', 'KASA', 'KASAM', 'KAS', 'MAS', 'ASA', 'AMAK', 'KAMA']
+            },
+            { 
+                letters: ['T','A','M','A','N'], 
+                words: ['TAMAN', 'MANA', 'NAMA', 'AMAT', 'MATA'],
+                bonusWords: ['TANAM', 'AMAN', 'ANAM', 'MAN', 'TAN', 'MAT', 'ATMA', 'NATA']
+            },
+            { 
+                letters: ['S','U','R','A','T'], 
+                words: ['SURAT', 'SATU', 'ATUR', 'RUSA', 'TURA'],
+                bonusWords: ['RUSTA', 'SURA', 'SUAR', 'UTAR', 'UTAS', 'AUT', 'SAR', 'TAS', 'TUA', 'SUT', 'RAS', 'AUR', 'TAR']
+            },
+            { 
+                letters: ['P','I','N','T','A'],
+                words: ['PINTA', 'TIAP', 'TAPI', 'PITA', 'NAPI'],
+                bonusWords: ['API', 'IPA', 'PIN', 'TIP', 'ANI', 'PAN', 'TIN', 'PATI']
+            },
+            { 
+                letters: ['B','E','L','A','S'],
+                words: ['BELAS', 'BELA', 'SELA', 'LESA', 'BASE'],
+                bonusWords: ['ESA', 'SEL', 'BEL', 'SAB', 'BEAS', 'LAB']
+            },
+            { 
+                letters: ['D','A','M','A','I'],
+                words: ['DAMAI', 'DIAM', 'MADA', 'AMAI', 'MADI'],
+                bonusWords: ['ADA', 'DIA', 'MAI', 'MAD', 'IDAM', 'DIM']
+            },
+            { 
+                letters: ['S','E','N','A','M'],
+                words: ['SENAM', 'EMAS', 'SENA', 'MEAN', 'MESA'],
+                bonusWords: ['MAS', 'ESA', 'MAN', 'SEN', 'AMEN', 'NEAM']
+            },
+            { 
+                letters: ['K','E','R','A','S'],
+                words: ['KERAS', 'REKA', 'SERA', 'ERAS', 'RASE'],
+                bonusWords: ['KERA', 'RESA', 'SAK', 'RAK', 'ERA', 'SAR', 'KAS', 'SEK', 'REK']
+            },
+            { 
+                letters: ['B','E','S','A','R'],
+                words: ['BESAR', 'BERA', 'SERA', 'REBA', 'SABER'],
+                bonusWords: ['BEAR', 'BASE', 'REB', 'SAB', 'ERA', 'SAR', 'RAS']
+            },
+            { 
+                letters: ['P','A','G','A','R'],
+                words: ['PAGAR', 'RAGA', 'AGAR', 'PARA', 'PAGA'],
+                bonusWords: ['ARA', 'APA', 'RAP', 'GAR', 'AGA', 'PAG']
+            }
+        ];
+
+        // Game State
+        let levelPool = [];
+        let currentLevelIndex = 0;
+        let boardScore = 0;
+        let bonusScore = 0;
+        let totalScore = 0;
+        
+        let foundWords = [];
+        let foundBonusWords = [];
+        let currentLevel = null;
+        
+        // Timer State
+        let gameTime = 180; // 3 minit = 180 saat
+        let timerInterval = null;
+        let isGameOver = false;
+
+        // Hint Limit State
+        let hintsRemaining = 3; // Had 3 kali per game session
+
+        // Input State - Menggunakan PointerEvents yang disokong penuh oleh iPad & Desktop
+        let isDrawing = false;
+        let selectedNodes = [];
+        let letterNodes = []; // Array of { id, el, x, y, letter }
+        let currentPath = { x: 0, y: 0 };
+
+        // DOM Elements
+        const boardEl = document.getElementById('board');
+        const wheelEl = document.getElementById('wheel');
+        const canvas = document.getElementById('line-canvas');
+        const ctx = canvas.getContext('2d');
+        const previewEl = document.getElementById('word-preview');
+        
+        // Timer DOM
+        const timerDisplay = document.getElementById('timer-display');
+        const timerBox = document.getElementById('timer-box');
+        
+        // Scores DOM
+        const boardScoreEl = document.getElementById('board-score-display');
+        const bonusScoreEl = document.getElementById('bonus-score-display');
+        const totalScoreEl = document.getElementById('total-score-display');
+        const hintBadgeEl = document.getElementById('hint-counter-badge');
+        
+        // Modals DOM
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const hintBtn = document.getElementById('hint-btn');
+        const regenBtn = document.getElementById('regen-btn');
+        
+        const modal = document.getElementById('message-modal');
+        const modalContent = document.getElementById('modal-content');
+        const nextBtn = document.getElementById('next-btn');
+
+        const gameoverModal = document.getElementById('gameover-modal');
+        const gameoverContent = document.getElementById('gameover-content');
+        const restartBtn = document.getElementById('restart-btn');
+        const finalAnswersList = document.getElementById('final-answers-list');
+
+        // Check if word can be formed from available pool of letters (to prevent double letter count bug)
+        function canFormWord(word, availableLetters) {
+            const letterCount = {};
+            availableLetters.forEach(l => {
+                letterCount[l] = (letterCount[l] || 0) + 1;
+            });
+            for (let char of word) {
+                if (!letterCount[char]) return false;
+                letterCount[char]--;
+            }
+            return true;
+        }
+
+        // Initialization
+        function initGame() {
+            resetGlobalScores();
+            generateLevelPool();
+            loadNextLevelFromPool();
+            startTimer();
+            
+            // Resize canvas secara dinamik
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Kawalan Butang
+            shuffleBtn.addEventListener('click', shuffleLetters);
+            hintBtn.addEventListener('click', giveHint);
+            regenBtn.addEventListener('click', handleRegeneration);
+            nextBtn.addEventListener('click', () => {
+                hideModal();
+                loadNextLevelFromPool();
+            });
+            restartBtn.addEventListener('click', () => {
+                hideGameOverModal();
+                initGame();
+            });
+
+            // Pointer Events - Menyatukan Tetikus & Skrin Sentuh iPad dalam satu fungsi lancar!
+            wheelEl.addEventListener('pointerdown', startDraw);
+            window.addEventListener('pointermove', moveDraw);
+            window.addEventListener('pointerup', endDraw);
+            window.addEventListener('pointercancel', endDraw);
+        }
+
+        // Generate a shuffled level pool to prevent immediate repetition
+        function generateLevelPool() {
+            levelPool = [...Array(levels.length).keys()];
+            // Shuffle pool array
+            for (let i = levelPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [levelPool[i], levelPool[j]] = [levelPool[j], levelPool[i]];
+            }
+        }
+
+        function resetGlobalScores() {
+            boardScore = 0;
+            bonusScore = 0;
+            totalScore = 0;
+            hintsRemaining = 3; // Reset baki petunjuk ke 3 semula
+            isGameOver = false;
+            gameTime = 180; // Reset ke 3 Minit
+            updateScoresUI();
+            
+            // Reset visual timer
+            timerBox.classList.remove('border-red-500', 'animate-flash');
+            timerDisplay.classList.remove('text-red-500');
+            timerDisplay.innerText = "03:00";
+        }
+
+        // Start Countdown Timer
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (isGameOver) return;
+                gameTime--;
+                
+                // Format Waktu MM:SS
+                const minutes = Math.floor(gameTime / 60);
+                const seconds = gameTime % 60;
+                const formattedSeconds = seconds < 10 ? `0${seconds}` : seconds;
+                timerDisplay.innerText = `0${minutes}:${formattedSeconds}`;
+
+                // Warning jika tinggal kurang dari 30 saat
+                if (gameTime <= 30) {
+                    timerBox.classList.add('border-red-500', 'animate-flash');
+                    timerDisplay.classList.add('text-red-500');
+                }
+
+                if (gameTime <= 0) {
+                    endGameByTimeout();
+                }
+            }, 1000);
+        }
+
+        // Tamat Masa Game Over (Menjana Senarai Jawapan Penuh)
+        function endGameByTimeout() {
+            isGameOver = true;
+            clearInterval(timerInterval);
+            
+            // Set stats terakhir
+            document.getElementById('final-board-score').innerText = boardScore;
+            document.getElementById('final-bonus-score').innerText = bonusScore;
+            document.getElementById('final-total-score').innerText = totalScore;
+
+            // Membina Senarai Jawapan Penuh Dinamik dalam modal
+            finalAnswersList.innerHTML = '';
+
+            // 1. Kategori Perkataan Utama
+            const mainHeader = document.createElement('div');
+            mainHeader.className = 'text-yellow-400 font-bold text-[11px] uppercase tracking-wider mb-1 mt-1';
+            mainHeader.innerText = '🎯 Jawapan Utama Papan:';
+            finalAnswersList.appendChild(mainHeader);
+
+            currentLevel.words.forEach(word => {
+                const isFound = foundWords.includes(word);
+                const row = document.createElement('div');
+                row.className = `flex justify-between items-center px-2 py-1.5 rounded-lg bg-black/40 mb-1 border ${isFound ? 'border-green-500/20' : 'border-red-500/20'}`;
+                row.innerHTML = `
+                    <span class="font-bold tracking-wider uppercase ${isFound ? 'text-green-400' : 'text-gray-400 line-through'}">${word}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded font-black ${isFound ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}">
+                        ${isFound ? '✓ Ditemui' : '✗ Terlepas'}
+                    </span>
+                `;
+                finalAnswersList.appendChild(row);
+            });
+
+            // 2. Kategori Perkataan Bonus
+            const bonusHeader = document.createElement('div');
+            bonusHeader.className = 'text-green-400 font-bold text-[11px] uppercase tracking-wider mb-1 mt-3';
+            bonusHeader.innerText = '☘️ Perkataan Bonus Alternatif:';
+            finalAnswersList.appendChild(bonusHeader);
+
+            currentLevel.bonusWords.forEach(word => {
+                const isFound = foundBonusWords.includes(word);
+                const row = document.createElement('div');
+                row.className = `flex justify-between items-center px-2 py-1.5 rounded-lg bg-black/40 mb-1 border ${isFound ? 'border-green-500/20' : 'border-gray-800'}`;
+                row.innerHTML = `
+                    <span class="font-bold tracking-wider uppercase ${isFound ? 'text-green-400' : 'text-gray-500'}">${word}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded font-black ${isFound ? 'bg-green-500/10 text-green-400' : 'bg-gray-800 text-gray-500'}">
+                        ${isFound ? '✓ Ditemui (+5)' : 'Tidak Ditemui'}
+                    </span>
+                `;
+                finalAnswersList.appendChild(row);
+            });
+
+            // Papar modal Game Over
+            gameoverModal.classList.remove('pointer-events-none', 'opacity-0');
+            gameoverModal.classList.add('opacity-100');
+            gameoverContent.classList.remove('scale-90');
+            gameoverContent.classList.add('scale-100');
+        }
+
+        function hideGameOverModal() {
+            gameoverModal.classList.add('pointer-events-none', 'opacity-0');
+            gameoverModal.classList.remove('opacity-100');
+            gameoverContent.classList.add('scale-90');
+            gameoverContent.classList.remove('scale-100');
+        }
+
+        function loadNextLevelFromPool() {
+            if (levelPool.length === 0) {
+                generateLevelPool(); // Refill pool jika habis
+            }
+            currentLevelIndex = levelPool.pop();
+            loadLevel(currentLevelIndex);
+        }
+
+        function resizeCanvas() {
+            canvas.width = wheelEl.clientWidth;
+            canvas.height = wheelEl.clientHeight;
+            updateNodePositions();
+            drawLines();
+        }
+
+        function loadLevel(index) {
+            currentLevel = levels[index];
+            foundWords = [];
+            foundBonusWords = [];
+            boardEl.innerHTML = '';
+            
+            // 1. Shuffling Target Words order to prevent exactly identical layouts
+            const shuffledTargetWords = [...currentLevel.words];
+            for (let i = shuffledTargetWords.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledTargetWords[i], shuffledTargetWords[j]] = [shuffledTargetWords[j], shuffledTargetWords[i]];
+            }
+            
+            shuffledTargetWords.forEach(word => {
+                const row = document.createElement('div');
+                row.className = 'flex gap-1.5 md:gap-2';
+                row.dataset.word = word;
+                
+                for(let i=0; i<word.length; i++) {
+                    const box = document.createElement('div');
+                    box.className = 'letter-box';
+                    box.innerText = word[i];
+                    row.appendChild(box);
+                }
+                boardEl.appendChild(row);
+            });
+
+            // Randomize visual wheel start
+            const randomizedLetters = [...currentLevel.letters];
+            for (let i = randomizedLetters.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [randomizedLetters[i], randomizedLetters[j]] = [randomizedLetters[j], randomizedLetters[i]];
+            }
+
+            buildWheelLetters(randomizedLetters);
+        }
+
+        function buildWheelLetters(lettersArray) {
+            wheelEl.innerHTML = '';
+            letterNodes = [];
+            
+            const radius = wheelEl.clientWidth / 2 * 0.70; // 70% of radius to sit perfectly centered inside the dial plate
+            const centerX = wheelEl.clientWidth / 2;
+            const centerY = wheelEl.clientHeight / 2;
+            const angleStep = (Math.PI * 2) / lettersArray.length;
+
+            lettersArray.forEach((letter, index) => {
+                const node = document.createElement('div');
+                node.className = 'wheel-letter';
+                node.innerText = letter;
+                node.dataset.id = index;
+                node.dataset.letter = letter;
+                
+                wheelEl.appendChild(node);
+                
+                letterNodes.push({
+                    id: index,
+                    el: node,
+                    letter: letter,
+                    angle: index * angleStep
+                });
+            });
+
+            updateNodePositions();
+        }
+
+        function updateNodePositions() {
+            const radius = wheelEl.clientWidth / 2 * 0.70;
+            const centerX = wheelEl.clientWidth / 2;
+            const centerY = wheelEl.clientHeight / 2;
+
+            letterNodes.forEach(node => {
+                node.x = centerX + radius * Math.cos(node.angle);
+                node.y = centerY + radius * Math.sin(node.angle);
+                node.el.style.left = `${node.x}px`;
+                node.el.style.top = `${node.y}px`;
+            });
+        }
+
+        function shuffleLetters() {
+            const angles = letterNodes.map(n => n.angle);
+            for (let i = angles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [angles[i], angles[j]] = [angles[j], angles[i]];
+            }
+            letterNodes.forEach((node, i) => {
+                node.angle = angles[i];
+            });
+            updateNodePositions();
+            shuffleBtn.classList.add('animate-pop');
+            setTimeout(() => shuffleBtn.classList.remove('animate-pop'), 400);
+        }
+
+        // Fungsi Meminta Petunjuk (Hint) - Had 3 kali & Menggunakan 25 Mata
+        function giveHint() {
+            if (isGameOver) return;
+            
+            // 1. Periksa had baki petunjuk
+            if (hintsRemaining <= 0) {
+                showFloatingScore("Had Petunjuk Tamat (Max 3)!", "#EF4444");
+                hintBtn.classList.add('animate-shake');
+                setTimeout(() => hintBtn.classList.remove('animate-shake'), 400);
+                return;
+            }
+
+            // 2. Periksa jika mata mencukupi
+            if (totalScore < 25) {
+                showFloatingScore("Perlu 25 Mata!", "#EF4444");
+                
+                // Animasi getar pada jumlah skor
+                totalScoreEl.classList.add('animate-shake');
+                setTimeout(() => totalScoreEl.classList.remove('animate-shake'), 400);
+                return;
+            }
+
+            // Cari semua huruf di papan yang belum ditemui dan belum didedahkan oleh petunjuk
+            const unsolvedRows = Array.from(boardEl.querySelectorAll('[data-word]')).filter(row => {
+                return !foundWords.includes(row.dataset.word);
+            });
+
+            let targetBoxes = [];
+            unsolvedRows.forEach(row => {
+                const boxes = Array.from(row.querySelectorAll('.letter-box'));
+                boxes.forEach(box => {
+                    if (!box.classList.contains('found') && !box.classList.contains('hinted')) {
+                        targetBoxes.push(box);
+                    }
+                });
+            });
+
+            if (targetBoxes.length > 0) {
+                // Tolak baki penggunaan petunjuk
+                hintsRemaining--;
+                
+                // Tolak 25 mata kos petunjuk
+                totalScore -= 25;
+                updateScoresUI();
+                showFloatingScore("-25 Petunjuk", "#EF4444");
+
+                // Pilih satu kotak secara rawak
+                const randomBox = targetBoxes[Math.floor(Math.random() * targetBoxes.length)];
+                randomBox.classList.add('hinted');
+                randomBox.classList.add('animate-pop');
+                setTimeout(() => randomBox.classList.remove('animate-pop'), 400);
+            } else {
+                showFloatingScore("Tiada slot kosong!", "var(--primary-gold)");
+            }
+        }
+
+        // Tukar Papan Baru (Dengan Denda -30)
+        function handleRegeneration() {
+            if (isGameOver) return;
+            
+            if (foundWords.length === 0) {
+                totalScore = Math.max(0, totalScore - 30);
+                updateScoresUI();
+                showFloatingScore("-30 Penalti", "#EF4444");
+                
+                regenBtn.classList.add('animate-shake');
+                setTimeout(() => regenBtn.classList.remove('animate-shake'), 400);
+            } else {
+                showFloatingScore("Papan Baru!", "#34D399");
+            }
+
+            loadNextLevelFromPool();
+        }
+
+        // --- Kawalan Pointer Sentuhan Pintar ---
+        function getPointerPos(e) {
+            const rect = wheelEl.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // Memulakan lakaran sambungan
+        function startDraw(e) {
+            if (isGameOver) return;
+            e.preventDefault();
+            wheelEl.setPointerCapture(e.pointerId); // Mengunci pointer pada elemen roda
+            
+            const pos = getPointerPos(e);
+            const hitNode = getHitNode(pos.x, pos.y);
+            
+            if (hitNode) {
+                isDrawing = true;
+                selectedNodes = [hitNode];
+                currentPath = { x: pos.x, y: pos.y };
+                hitNode.el.classList.add('selected');
+                updatePreview();
+                drawLines();
+            }
+        }
+
+        // Melakar sambungan
+        function moveDraw(e) {
+            if (!isDrawing || isGameOver) return;
+            e.preventDefault();
+
+            const pos = getPointerPos(e);
+            currentPath = { x: pos.x, y: pos.y };
+            
+            const hitNode = getHitNode(pos.x, pos.y);
+            
+            if (hitNode) {
+                if (!selectedNodes.find(n => n.id === hitNode.id)) {
+                    selectedNodes.push(hitNode);
+                    hitNode.el.classList.add('selected');
+                    hitNode.el.classList.add('animate-pop');
+                    setTimeout(() => hitNode.el.classList.remove('animate-pop'), 300);
+                    updatePreview();
+                } 
+                else if (selectedNodes.length > 1 && selectedNodes[selectedNodes.length - 2].id === hitNode.id) {
+                    const removedNode = selectedNodes.pop();
+                    removedNode.el.classList.remove('selected');
+                    updatePreview();
+                }
+            }
+            drawLines();
+        }
+
+        // Menamatkan melukis sambungan huruf
+        function endDraw(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            try {
+                wheelEl.releasePointerCapture(e.pointerId);
+            } catch(err) {}
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const word = selectedNodes.map(n => n.letter).join('');
+            checkWord(word);
+            
+            selectedNodes.forEach(node => node.el.classList.remove('selected'));
+            selectedNodes = [];
+            previewEl.style.opacity = '0';
+        }
+
+        function getHitNode(x, y) {
+            const hitRadius = 38;
+            for (let node of letterNodes) {
+                const dist = Math.hypot(node.x - x, node.y - y);
+                if (dist < hitRadius) return node;
+            }
+            return null;
+        }
+
+        function drawLines() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (selectedNodes.length === 0) return;
+
+            ctx.beginPath();
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 12;
+            
+            ctx.moveTo(selectedNodes[0].x, selectedNodes[0].y);
+            for (let i = 1; i < selectedNodes.length; i++) {
+                ctx.lineTo(selectedNodes[i].x, selectedNodes[i].y);
+            }
+            
+            if (isDrawing) {
+                ctx.lineTo(currentPath.x, currentPath.y);
+            }
+            
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.65)';
+            ctx.stroke();
+            
+            // Core Line
+            ctx.beginPath();
+            ctx.lineWidth = 4;
+            ctx.moveTo(selectedNodes[0].x, selectedNodes[0].y);
+            for (let i = 1; i < selectedNodes.length; i++) {
+                ctx.lineTo(selectedNodes[i].x, selectedNodes[i].y);
+            }
+            if (isDrawing) {
+                ctx.lineTo(currentPath.x, currentPath.y);
+            }
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.stroke();
+        }
+
+        function updatePreview() {
+            if (selectedNodes.length > 0) {
+                previewEl.innerText = selectedNodes.map(n => n.letter).join('');
+                previewEl.style.opacity = '1';
+                previewEl.classList.remove('animate-shake');
+            } else {
+                previewEl.style.opacity = '0';
+            }
+        }
+
+        // --- Pengiraan Skor & Semakan Kata ---
+        function checkWord(word) {
+            if (word.length < 2 || isGameOver) return;
+
+            // Logik Pengesahan Utama: Pastikan perkataan yang dicuba hanya menggunakan huruf roda sedia ada
+            if (!canFormWord(word, currentLevel.letters)) {
+                previewEl.classList.add('animate-shake');
+                previewEl.style.opacity = '1';
+                // Dilaraskan kepada 3 saat (3000ms) untuk kemudahan membaca pelajar
+                setTimeout(() => { if(!isDrawing) previewEl.style.opacity = '0'; }, 3000);
+                return;
+            }
+
+            // 1. Perkataan Utama atas Papan
+            if (currentLevel.words.includes(word)) {
+                if (!foundWords.includes(word)) {
+                    foundWords.push(word);
+                    
+                    // Semak jika ada huruf perkataan ini yang menggunakan petunjuk (hinted)
+                    const row = boardEl.querySelector(`[data-word="${word}"]`);
+                    const usedHint = row ? row.querySelector('.letter-box.hinted') !== null : false;
+                    
+                    // Mengurangkan markah jika perkataan ditemui menggunakan petunjuk
+                    const scoreReward = usedHint ? 5 : 15;
+                    
+                    revealWord(word);
+                    
+                    boardScore += scoreReward;
+                    totalScore += scoreReward;
+                    updateScoresUI();
+                    
+                    if (usedHint) {
+                        showFloatingScore("+5 Papan (Guna Petunjuk)", "var(--primary-gold)");
+                    } else {
+                        showFloatingScore("+15 Papan", "var(--primary-gold)");
+                    }
+
+                    if (foundWords.length === currentLevel.words.length) {
+                        setTimeout(levelComplete, 650);
+                    }
+                } else {
+                    playAlreadyFoundShake();
+                }
+            } 
+            // 2. Perkataan Bonus (+5 Mata)
+            else if (currentLevel.bonusWords && currentLevel.bonusWords.includes(word)) {
+                if (!foundBonusWords.includes(word)) {
+                    foundBonusWords.push(word);
+                    
+                    bonusScore += 5;
+                    totalScore += 5;
+                    updateScoresUI();
+                    showFloatingScore(`+5 Bonus (${word})`, "#10B981");
+                } else {
+                    playAlreadyFoundShake();
+                }
+            } 
+            // 3. Salah bina
+            else {
+                previewEl.classList.add('animate-shake');
+                previewEl.style.opacity = '1';
+                // Dilaraskan kepada 3 saat (3000ms) untuk kemudahan membaca pelajar
+                setTimeout(() => { if(!isDrawing) previewEl.style.opacity = '0'; }, 3000);
+            }
+        }
+
+        function playAlreadyFoundShake() {
+            previewEl.innerText = "Sudah Ditemui";
+            previewEl.classList.add('animate-shake');
+            previewEl.style.opacity = '1';
+            // Dilaraskan kepada 3 saat (3000ms) untuk kemudahan membaca pelajar
+            setTimeout(() => { if(!isDrawing) previewEl.style.opacity = '0'; }, 3000);
+        }
+
+        function revealWord(word) {
+            const rows = boardEl.querySelectorAll(`[data-word="${word}"]`);
+            rows.forEach(row => {
+                const boxes = row.querySelectorAll('.letter-box');
+                boxes.forEach((box, i) => {
+                    setTimeout(() => {
+                        box.classList.remove('hinted'); // Hilangkan class hinted jika ada untuk diganti dengan found
+                        box.classList.add('found');
+                    }, i * 100);
+                });
+            });
+        }
+
+        function updateScoresUI() {
+            boardScoreEl.innerText = boardScore;
+            bonusScoreEl.innerText = bonusScore;
+            totalScoreEl.innerText = totalScore;
+            hintBadgeEl.innerText = `${hintsRemaining}/3`;
+            
+            totalScoreEl.classList.add('animate-pop');
+            setTimeout(() => totalScoreEl.classList.remove('animate-pop'), 200);
+        }
+
+        // Mesej terapung dilaraskan bertahan selama 3 saat
+        function showFloatingScore(text, color) {
+            const floater = document.createElement('div');
+            floater.className = 'score-floater';
+            floater.innerText = text;
+            floater.style.color = color;
+            floater.style.left = '50%';
+            floater.style.top = '35%';
+            floater.style.transform = 'translate(-50%, -50%)';
+            document.getElementById('app').appendChild(floater);
+            
+            // Dilaraskan kepada 3 saat (3000ms) untuk kemudahan membaca pelajar
+            setTimeout(() => floater.remove(), 3000);
+        }
+
+        function levelComplete() {
+            if (isGameOver) return;
+            // Bonus menyelesaikan papan (+50 Mata)
+            boardScore += 50;
+            totalScore += 50;
+            updateScoresUI();
+            
+            modal.classList.remove('pointer-events-none');
+            modal.classList.remove('opacity-0');
+            modal.classList.add('opacity-100');
+            
+            modalContent.classList.remove('scale-90');
+            modalContent.classList.add('scale-100');
+        }
+
+        function hideModal() {
+            modal.classList.add('pointer-events-none');
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+            
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-90');
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>

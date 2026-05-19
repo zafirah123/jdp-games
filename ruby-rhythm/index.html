@@ -1,22 +1,25 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Juara Digital: Ruby Rhythm</title>
     
-    <!-- Tailwind CSS (Akan digunakan jika ada internet) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Fallback CSS jika Tailwind disekat oleh HTML Viewer di iOS -->
     <style>
+        /* Force Poppins font globally on all elements for a clean, consistent design */
+        * {
+            font-family: 'Poppins', 'Inter', sans-serif !important;
+        }
+
         body {
-            font-family: 'Poppins', 'Inter', sans-serif;
             touch-action: none;
             overflow: hidden;
-            background: linear-gradient(135deg, #7f1d1d 0%, #1e3a8a 100%);
+            background: linear-gradient(135deg, #1f0610 0%, #0d122a 100%);
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -31,52 +34,56 @@
             max-width: 450px;
             height: 100vh;
             margin: 0 auto;
-            background: rgba(0, 0, 0, 0.65);
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(10, 10, 15, 0.85);
+            box-shadow: 0 0 40px rgba(244, 63, 94, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         canvas {
             display: block;
             width: 100%;
             height: 100%;
+            cursor: pointer;
         }
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.07);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
 
         .key-btn {
-            transition: all 0.1s ease;
+            transition: all 0.08s ease;
             -webkit-tap-highlight-color: transparent;
         }
         .key-btn.active {
-            transform: scale(0.9);
-            background: rgba(255, 255, 255, 0.4);
-            box-shadow: 0 0 15px white;
+            transform: scale(0.88);
+            background: rgba(244, 63, 94, 0.5) !important;
+            box-shadow: 0 0 20px rgba(244, 63, 94, 0.8) !important;
+            border-color: #f43f5e !important;
         }
 
         .combo-anim {
-            animation: pop 0.2s ease-out;
+            animation: pop 0.15s ease-out;
         }
         
         .bonus-anim {
-            animation: floatUp 1s ease-out forwards;
+            animation: floatUp 0.8s ease-out forwards;
         }
 
         @keyframes pop {
             0% { transform: scale(1); }
-            50% { transform: scale(1.3); }
+            50% { transform: scale(1.35); }
             100% { transform: scale(1); }
         }
 
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+            100% { transform: translateY(-60px) scale(1.4); opacity: 0; }
         }
 
         #ui-layer {
@@ -89,677 +96,1287 @@
         }
     </style>
 </head>
-<body class="text-white">
+<body class="text-white select-none">
 
     <div id="game-container">
-        <!-- Kanvas Permainan -->
+        <!-- Game Canvas -->
         <canvas id="gameCanvas"></canvas>
 
-        <!-- Lapisan UI (Atas dan Bawah) -->
+        <!-- UI Layer Overlay -->
         <div id="ui-layer" class="p-4 pb-6">
             
-            <!-- Top Bar: Markah, Pemasa, Tahap, Pause -->
+            <!-- Top Bar: Score, Time, Speed, Pause -->
             <div class="glass-panel rounded-xl p-3 flex justify-between items-center shadow-lg gap-2 pointer-events-auto">
-                <div class="text-center flex-1 border-r border-white/20">
-                    <p class="text-[10px] text-blue-300 font-bold uppercase tracking-wider" style="font-size: 10px; margin: 0;">Markah</p>
+                <div class="text-center flex-1 border-r border-white/10">
+                    <p class="text-[10px] text-rose-400 font-bold uppercase tracking-wider" style="margin: 0;">Score</p>
                     <p id="scoreDisplay" class="text-xl font-black text-white" style="margin: 0; font-weight: 900;">0</p>
                 </div>
-                <div class="text-center flex-1 border-r border-white/20">
-                    <p class="text-[10px] text-red-300 font-bold uppercase tracking-wider" style="font-size: 10px; margin: 0;">Masa</p>
+                <div class="text-center flex-1 border-r border-white/10">
+                    <p class="text-[10px] text-blue-300 font-bold uppercase tracking-wider" style="margin: 0;">Time</p>
                     <p id="timeDisplay" class="text-xl font-black text-white" style="margin: 0; font-weight: 900;">3:00</p>
                 </div>
                 <div class="text-center flex-1">
-                    <p class="text-[10px] text-purple-300 font-bold uppercase tracking-wider" style="font-size: 10px; margin: 0;">Kelajuan</p>
+                    <p class="text-[10px] text-purple-300 font-bold uppercase tracking-wider" style="margin: 0;">Speed</p>
                     <p id="levelDisplay" class="text-xl font-black text-white" style="margin: 0; font-weight: 900;">1</p>
                 </div>
-                <button id="pauseBtn" class="flex-none bg-white/10 hover:bg-white/30 p-2 rounded-lg transition border border-white/20 ml-1 pointer-events-auto">
+                <button id="pauseBtn" class="flex-none bg-white/5 hover:bg-white/15 p-2 rounded-lg transition border border-white/10 ml-1 pointer-events-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </button>
             </div>
 
-            <!-- Combo Display -->
-            <div id="comboDisplayContainer" class="mt-4 text-center hidden relative" style="text-align: center;">
-                <p class="text-lg text-yellow-300 font-black italic shadow-black drop-shadow-md combo-anim" style="margin: 0; font-weight: 900;">COMBO x<span id="comboDisplay">0</span></p>
-                <p id="bonusPopup" class="absolute left-0 right-0 text-2xl text-green-400 font-black hidden drop-shadow-lg" style="font-weight: 900;">+5 BONUS!</p>
+            <!-- Companion PBot Live Widget -->
+            <div id="gameplayPBot" class="flex justify-center items-center h-28 my-2 transition-all duration-200">
+                <!-- PBot dynamic SVG generated here -->
+            </div>
+
+            <!-- Combo & Rating Display -->
+            <div class="text-center">
+                <div id="comboDisplayContainer" class="hidden relative inline-block mx-auto">
+                    <p class="text-2xl text-yellow-300 font-black italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] combo-anim" style="margin: 0; font-weight: 900;">COMBO x<span id="comboDisplay">0</span></p>
+                    <p id="bonusPopup" class="absolute left-0 right-0 -top-8 text-lg text-green-400 font-black hidden drop-shadow-lg" style="font-weight: 900;">+5 BONUS!</p>
+                </div>
+                <!-- Hit Rating Feedback -->
+                <div id="ratingDisplay" class="text-2xl font-black tracking-widest mt-2 opacity-0 transition-opacity duration-100 italic" style="text-shadow: 0 0 10px rgba(255,255,255,0.5);"></div>
             </div>
 
             <div class="flex-grow"></div>
 
-            <!-- Penunjuk Kekunci Bawah -->
-            <div class="flex justify-between w-full px-2 opacity-70" style="display: flex; justify-content: space-between; width: 100%;">
-                <div id="key-0" class="key-btn w-12 h-12 rounded-full border-2 border-red-400 flex items-center justify-center font-bold text-xl bg-black/40" style="width: 48px; height: 48px; border-radius: 9999px; border: 2px solid #f87171; display: flex; align-items: center; justify-content: center; font-weight: bold;">A</div>
-                <div id="key-1" class="key-btn w-12 h-12 rounded-full border-2 border-red-400 flex items-center justify-center font-bold text-xl bg-black/40" style="width: 48px; height: 48px; border-radius: 9999px; border: 2px solid #f87171; display: flex; align-items: center; justify-content: center; font-weight: bold;">S</div>
-                <div id="key-2" class="key-btn w-12 h-12 rounded-full border-2 border-blue-400 flex items-center justify-center font-bold text-xl bg-black/40" style="width: 48px; height: 48px; border-radius: 9999px; border: 2px solid #60a5fa; display: flex; align-items: center; justify-content: center; font-weight: bold;">K</div>
-                <div id="key-3" class="key-btn w-12 h-12 rounded-full border-2 border-blue-400 flex items-center justify-center font-bold text-xl bg-black/40" style="width: 48px; height: 48px; border-radius: 9999px; border: 2px solid #60a5fa; display: flex; align-items: center; justify-content: center; font-weight: bold;">L</div>
+            <!-- Bottom Target Key Indicators -->
+            <div class="flex justify-between w-full px-2" style="display: flex; justify-content: space-between; width: 100%;">
+                <div id="key-0" class="key-btn w-14 h-14 rounded-full border-2 border-rose-500 flex items-center justify-center font-bold text-xl bg-black/60 shadow-[0_0_10px_rgba(244,63,94,0.3)]" style="width: 56px; height: 56px;">A</div>
+                <div id="key-1" class="key-btn w-14 h-14 rounded-full border-2 border-rose-400 flex items-center justify-center font-bold text-xl bg-black/60 shadow-[0_0_10px_rgba(251,113,133,0.3)]" style="width: 56px; height: 56px;">S</div>
+                <div id="key-2" class="key-btn w-14 h-14 rounded-full border-2 border-blue-400 flex items-center justify-center font-bold text-xl bg-black/60 shadow-[0_0_10px_rgba(96,165,250,0.3)]" style="width: 56px; height: 56px;">K</div>
+                <div id="key-3" class="key-btn w-14 h-14 rounded-full border-2 border-blue-500 flex items-center justify-center font-bold text-xl bg-black/60 shadow-[0_0_10px_rgba(59,130,246,0.3)]" style="width: 56px; height: 56px;">L</div>
             </div>
 
-            <!-- Info Lagu (Bawah Kekunci) -->
-            <div class="mt-4 text-center glass-panel rounded-full py-2 px-3 w-full shadow-md overflow-hidden pointer-events-auto" style="margin-top: 16px; text-align: center; border-radius: 9999px; padding: 8px 12px;">
-                <p id="songDisplay" class="text-sm font-semibold text-gray-200 truncate" style="margin: 0; font-size: 14px;">🎵 Sedia untuk mula...</p>
+            <!-- Song/Track Info -->
+            <div class="mt-4 text-center glass-panel rounded-full py-2 px-4 w-full shadow-md overflow-hidden pointer-events-auto" style="margin-top: 16px;">
+                <p id="songDisplay" class="text-xs font-semibold text-gray-200 truncate" style="margin: 0;">🎵 Ready to play...</p>
             </div>
         </div>
 
-        <!-- Skrin Jeda (Pause) -->
-        <div id="pauseScreen" class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center p-6 z-40 hidden backdrop-blur-sm" style="display: none; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.75); flex-direction: column; align-items: center; justify-content: center; z-index: 40;">
-            <h2 class="text-4xl font-black text-white mb-8 tracking-widest uppercase" style="font-weight: 900; letter-spacing: 0.1em; margin-bottom: 32px;">PAUSED</h2>
-            <button id="resumeBtn" class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-bold py-3 px-12 rounded-full text-xl shadow-lg transform transition hover:scale-105 pointer-events-auto" style="border-radius: 9999px; font-weight: bold; padding: 12px 48px; font-size: 20px; background: #10b981; border: none; color: white;">
-                Teruskan
-            </button>
-        </div>
-
-        <!-- Skrin Mula -->
-        <div id="startScreen" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-6 z-50 transition-opacity duration-300" style="position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; padding: 24px;">
-            <h1 class="text-4xl font-black text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-red-500 to-blue-500 uppercase" style="font-size: 36px; font-weight: 900; color: #ff3b30; text-align: center; margin: 0;">Juara Digital</h1>
-            <h2 class="text-2xl font-bold text-white mb-6" style="font-size: 24px; font-weight: bold; margin-bottom: 24px; margin-top: 4px;">Ruby Rhythm</h2>
-            <div class="glass-panel p-5 rounded-xl mb-8 text-sm text-gray-200 space-y-3 text-center max-w-sm" style="border-radius: 12px; padding: 20px; max-width: 380px; margin-bottom: 32px; font-size: 13px; line-height: 1.6;">
-                <p style="margin: 4px 0;">💻 PC / Laptop: Tekan kekunci [A], [S], [K], [L].</p>
-                <p style="margin: 4px 0;">📱 Telefon / Tablet: Sentuh terus pada lorong yang betul.</p>
-                <p style="margin: 4px 0;">💎 Markah: 1 Jubin = 1 Mata. Setiap 50 Kombo = +5 Mata! Setiap 100 Kombo = +10 Mata!</p>
-                <p class="text-red-300" style="color: #f87171; margin: 4px 0;">⚠️ Penalti: Terlepas atau salah tekan pada jarak jauh akan tolak 5 markah!</p>
-                <p class="text-blue-300 font-semibold" style="color: #93c5fd; font-weight: 600; margin: 4px 0;">🚀 Permainan akan semakin laju (8 Tahap Kelajuan)!</p>
-            </div>
-            <button id="startBtn" class="bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-bold py-4 px-12 rounded-full text-xl shadow-[0_0_20px_rgba(59,130,246,0.6)] transform transition hover:scale-105 pointer-events-auto" style="border-radius: 9999px; font-weight: bold; padding: 16px 48px; font-size: 20px; background: linear-gradient(90deg, #dc2626, #2563eb); border: none; color: white;">
-                Mula Bermain
-            </button>
-        </div>
-
-        <!-- Skrin Tamat -->
-        <div id="endScreen" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-6 z-50 hidden" style="display: none; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; z-index: 50; padding: 24px;">
-            <h1 class="text-4xl font-black text-center mb-2 text-white" style="font-size: 36px; font-weight: 900; margin: 0;">Masa Tamat!</h1>
-            <p class="text-lg text-gray-300 mb-6" style="font-size: 18px; color: #d1d5db; margin-bottom: 24px;">Tahniah Juara Digital!</p>
+        <!-- Pause Screen -->
+        <div id="pauseScreen" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center p-6 z-45 hidden backdrop-blur-md" style="display: none;">
+            <!-- PBot Sleep Illustration -->
+            <div id="pausePBot" class="w-24 h-24 mb-4 flex items-center justify-center"></div>
             
-            <div class="glass-panel p-6 rounded-2xl mb-8 text-center w-full max-w-xs" style="border-radius: 16px; padding: 24px; max-width: 320px; text-align: center; margin-bottom: 32px;">
-                <p class="text-sm text-gray-400 uppercase tracking-widest mb-1" style="font-size: 12px; color: #9ca3af; letter-spacing: 0.1em; margin: 0;">Markah Akhir</p>
-                <p id="finalScore" class="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-blue-400" style="font-size: 60px; font-weight: 900; color: #60a5fa; margin: 0;">0</p>
+            <h2 class="text-4xl font-black text-rose-500 mb-2 tracking-widest uppercase" style="font-weight: 900;">PAUSED</h2>
+            <p class="text-gray-400 mb-8 text-sm text-center font-medium">The game has been temporarily paused.</p>
+            
+            <div class="flex flex-col gap-3 w-full max-w-[260px]">
+                <button id="resumeBtn" class="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white font-bold py-3 px-12 rounded-full text-lg shadow-lg transform transition hover:scale-105 pointer-events-auto" style="font-weight: bold;">
+                    Resume
+                </button>
+                <button id="exitBtn" class="bg-white/5 hover:bg-white/15 border border-white/10 text-white font-bold py-3 px-12 rounded-full text-lg shadow-lg transform transition hover:scale-105 pointer-events-auto" style="font-weight: bold;">
+                    End Game
+                </button>
             </div>
+        </div>
 
-            <button id="restartBtn" class="bg-white text-gray-900 font-bold py-3 px-10 rounded-full text-lg shadow-[0_0_15px_white] transform transition hover:scale-105 pointer-events-auto" style="border-radius: 9999px; font-weight: bold; padding: 12px 40px; font-size: 18px; background: white; color: black; border: none;">
-                Main Lagi
+        <!-- Countdown Screen -->
+        <div id="countdownScreen" class="absolute inset-0 bg-black/60 flex items-center justify-center p-6 z-40 hidden" style="display: none; pointer-events: none;">
+            <div id="countdownText" class="text-9xl font-black text-yellow-400 transition-all duration-200 ease-out" style="text-shadow: 0 0 40px rgba(250,204,21,0.65);">3</div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="absolute inset-0 bg-black/95 flex flex-col items-center justify-center p-6 z-50 overflow-y-auto">
+            <!-- PBot Greeting Illustration -->
+            <div id="startPBot" class="w-24 h-24 mb-3 flex items-center justify-center flex-shrink-0"></div>
+            
+            <h1 class="text-3xl font-black text-center bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-rose-500 to-pink-500 uppercase tracking-tight" style="font-weight: 900; margin: 0;">Juara Digital</h1>
+            <h2 class="text-xl font-bold text-white mb-5 tracking-wide" style="font-weight: 700;">Ruby Rhythm</h2>
+            
+            <!-- How to Play Section -->
+            <div class="glass-panel p-5 rounded-xl mb-6 text-xs text-gray-300 space-y-4 w-full max-w-sm" style="line-height: 1.5;">
+                <p class="border-b border-white/10 pb-2 text-white font-bold text-center tracking-wider uppercase text-sm">⚙️ HOW TO PLAY</p>
+                
+                <!-- Desktop Controls -->
+                <div class="flex items-start gap-3">
+                    <span class="text-lg flex-shrink-0">💻</span>
+                    <div>
+                        <p class="font-semibold text-white">Computer / Laptop</p>
+                        <p class="text-gray-400 mt-1">Press the physical keys:</p>
+                        <div class="flex gap-1.5 mt-1">
+                            <kbd class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-bold">A</kbd>
+                            <kbd class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-bold">S</kbd>
+                            <kbd class="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded font-bold">K</kbd>
+                            <kbd class="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded font-bold">L</kbd>
+                        </div>
+                        <p class="text-gray-400 mt-1">Or <span class="text-blue-300 font-medium">click directly</span> on any track lane.</p>
+                    </div>
+                </div>
+
+                <!-- Mobile Controls -->
+                <div class="flex items-start gap-3 border-t border-white/5 pt-3">
+                    <span class="text-lg flex-shrink-0">📱</span>
+                    <div>
+                        <p class="font-semibold text-white">Phone / Tablet</p>
+                        <p class="text-gray-400 mt-0.5"><span class="text-blue-300 font-medium">Tap directly</span> on the track lanes on screen as the gems overlap the targets.</p>
+                    </div>
+                </div>
+
+                <!-- Scoring & Combo Guidelines -->
+                <div class="flex items-start gap-3 border-t border-white/5 pt-3">
+                    <span class="text-lg flex-shrink-0">⚡</span>
+                    <div>
+                        <p class="font-semibold text-white">Scoring & Combos</p>
+                        <p class="text-gray-400 mt-0.5">Perfect timing pays! Every <span class="text-yellow-400 font-bold">50 Combo</span> awards <span class="text-green-400 font-medium">+5 Bonus Points</span>, and every <span class="text-yellow-400 font-bold">100 Combo</span> awards <span class="text-green-400 font-medium">+10 Bonus Points!</span></p>
+                    </div>
+                </div>
+
+                <!-- Penalties -->
+                <div class="flex items-start gap-3 border-t border-white/5 pt-3 text-rose-300">
+                    <span class="text-lg flex-shrink-0">⚠️</span>
+                    <div>
+                        <p class="font-semibold text-rose-400">Miss Penalty</p>
+                        <p class="text-rose-400/80 mt-0.5">Letting a gem slide past or tapping empty lanes will <span class="font-bold">deduct 5 points</span>!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="startBtn" class="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white font-bold py-4 px-14 rounded-full text-lg shadow-[0_0_25px_rgba(244,63,94,0.4)] transform transition hover:scale-105 pointer-events-auto flex-shrink-0" style="font-weight: 800;">
+                START PLAYING
             </button>
+        </div>
+
+        <!-- End Screen (Final Score Only) -->
+        <div id="endScreen" class="absolute inset-0 bg-black/95 flex flex-col items-center justify-center p-6 z-50 hidden" style="display: none;">
+            <!-- PBot Game Over Illustration -->
+            <div id="endPBot" class="w-24 h-24 mb-4 flex items-center justify-center"></div>
+            
+            <h1 class="text-4xl font-black text-center text-white uppercase tracking-wider" style="font-weight: 900; margin: 0;">GAME OVER</h1>
+            <p id="endGameStatus" class="text-rose-400 font-semibold mt-1 mb-6 tracking-widest uppercase text-xs">GREAT PERFORMANCE!</p>
+            
+            <div class="glass-panel w-full max-w-sm rounded-xl p-6 mb-8 text-center space-y-2">
+                <span class="text-gray-400 uppercase tracking-widest text-xs font-bold">FINAL SCORE</span>
+                <div id="finalScore" class="text-6xl font-black text-yellow-400 drop-shadow-[0_4px_10px_rgba(250,204,21,0.4)]">0</div>
+                
+                <!-- Hidden elements kept to preserve original JS queries cleanly -->
+                <div class="hidden">
+                    <span id="maxCombo">0</span>
+                    <span id="hitAccuracy">0%</span>
+                    <span id="statPerfect">0</span>
+                    <span id="statGreat">0</span>
+                    <span id="statGood">0</span>
+                    <span id="statMiss">0</span>
+                </div>
+            </div>
+            
+            <div class="flex flex-col gap-3 w-full max-w-[260px]">
+                <button id="restartBtn" class="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white font-bold py-3.5 px-12 rounded-full text-lg shadow-[0_0_20px_rgba(244,63,94,0.3)] transform transition hover:scale-105 pointer-events-auto" style="font-weight: bold;">
+                    Play Again
+                </button>
+                <button id="menuBtn" class="bg-white/5 hover:bg-white/15 border border-white/10 text-white font-bold py-3 px-12 rounded-full text-base shadow-lg transform transition hover:scale-105 pointer-events-auto" style="font-weight: bold;">
+                    Main Menu
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Pautan Tone.js dari CDN (Jika disekat, ia akan beralih ke native API secara automatik) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-
+    <!-- Complete Procedural Audio Game Engine Logic -->
     <script>
+        // Setup Canvas Context
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('game-container');
 
-        let width, height, laneWidth;
+        // Dynamically resize canvas to fit parent element
         function resizeCanvas() {
-            width = container.clientWidth;
-            height = container.clientHeight;
-            canvas.width = width;
-            canvas.height = height;
-            laneWidth = width / 4;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        const colors = ['#3b82f6', '#ef4444', '#10b981', '#a855f7']; // Biru, Merah, Hijau, Ungu (25% each)
-        let score = 0, combo = 0, timeLeft = 180, speedLevel = 1;
-        let isPlaying = false, isPaused = false;
-        
-        let tiles = [];
-        let particles = [];
-        let floatingTexts = []; 
-        let lastTime = 0, timeAccumulator = 0, levelAccumulator = 0, spawnTimer = 0;
-
-        const songs = [
-            { name: "Mary Had a Little Lamb", notes: ["E4", "D4", "C4", "D4", "E4", "E4", "E4", "D4", "D4", "D4", "E4", "G4", "G4"] },
-            { name: "Kalau Rasa Gembira", notes: ["C4", "C4", "F4", "F4", "F4", "F4", "F4", "F4", "E4", "F4", "G4"] },
-            { name: "Twinkle Twinkle Little Star", notes: ["C4", "C4", "G4", "G4", "A4", "A4", "G4", "F4", "F4", "E4", "E4", "D4", "D4", "C4"] },
-            { name: "Bapaku Pulang", notes: ["C4", "E4", "G4", "G4", "G4", "A4", "G4", "F4", "E4", "D4", "D4", "D4", "F4", "F4", "F4", "G4", "F4", "E4", "D4", "C4"] },
-            { name: "Rasa Sayang", notes: ["G4", "E4", "G4", "C5", "A4", "G4", "E4", "C4", "D4", "E4", "F4", "A4", "G4"] },
-            { name: "Burung Kakak Tua", notes: ["G4", "G4", "C5", "E5", "D5", "C5", "B4", "A4", "G4"] },
-            { name: "Chan Mali Chan", notes: ["C4", "E4", "G4", "G4", "A4", "G4", "F4", "E4", "D4"] },
-            { name: "Jong Jong Inai", notes: ["C4", "C4", "D4", "E4", "E4", "F4", "E4", "D4", "C4"] },
-            { name: "Gelang Sipaku Gelang", notes: ["G4", "G4", "A4", "G4", "C5", "B4", "A4", "G4"] },
-            { name: "Happy Birthday", notes: ["G4", "G4", "A4", "G4", "C5", "B4", "G4", "G4", "A4", "G4", "D5", "C5", "G4", "G4", "G5", "E5", "C5", "B4", "A4", "F5", "F5", "E5", "C5", "D5", "C5"] },
-            { name: "Tepuk Amai Amai", notes: ["C4", "C4", "G4", "G4", "A4", "A4", "G4", "E4", "C4", "D4", "E4", "F4", "D4", "C4"] }
+        // Game Track Constants
+        const numLanes = 4;
+        const keys = ['a', 's', 'k', 'l'];
+        const keyMap = { 'a': 0, 's': 1, 'k': 2, 'l': 3 };
+        const laneColors = [
+            { main: '#f43f5e', glow: 'rgba(244, 63, 94, 0.4)' }, // Friendly Ruby Rose-Red
+            { main: '#fb7185', glow: 'rgba(251, 113, 133, 0.4)' }, // Warm Coral Rose-Pink
+            { main: '#60a5fa', glow: 'rgba(96, 165, 250, 0.4)' }, // Soft Blue
+            { main: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' }  // Dark Blue
         ];
 
-        let currentSong = null;
-        let currentNoteIdx = 0;
+        // Hit Receptor Zone positioning ratio
+        const hitZoneYPercent = 0.82; 
         
-        // --- DEKLARASI SISTEM AUDIO BERGANDA YANG SELAMAT ---
-        let nativeAudioCtx = null;
-        let toneSynth = null;
+        // Active Game States
+        let isPlaying = false;
+        let isPaused = false;
+        let isCountingDown = false; 
+        let score = 0;
+        let combo = 0;
+        let maxComboRecorded = 0;
+        let timeRemaining = 180; // 3 minutes standard play
+        let gameLevel = 1;
+        let notes = [];
+        let particles = [];
+        let keyPressEffect = [false, false, false, false];
+        let gameTimerInterval = null;
+        let lastSpawnTime = 0;
+        let spawnInterval = 1000; 
+        let noteSpeed = 5; 
+        let pbotTimeout = null;
+        
+        // Performance Stats
+        let stats = { perfect: 0, great: 0, good: 0, miss: 0, totalAttempts: 0 };
 
-        function initSynth() {
-            // Hanya aktifkan Tone.js jika perpustakaan berjaya dimuat turun dari CDN
-            if (typeof Tone !== 'undefined') {
-                try {
-                    toneSynth = new Tone.PolySynth(Tone.FMSynth, {
-                        envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 1.5 }
-                    }).toDestination();
-                    toneSynth.volume.value = -2;
-                    return;
-                } catch (e) {
-                    console.warn("Gagal membina Tone.js Synth, beralih ke Native Audio API.", e);
-                }
+        // DOM Element Cache
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const comboDisplay = document.getElementById('comboDisplay');
+        const comboDisplayContainer = document.getElementById('comboDisplayContainer');
+        const bonusPopup = document.getElementById('bonusPopup');
+        const ratingDisplay = document.getElementById('ratingDisplay');
+        const songDisplay = document.getElementById('songDisplay');
+
+        const startScreen = document.getElementById('startScreen');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const endScreen = document.getElementById('endScreen');
+        const countdownScreen = document.getElementById('countdownScreen');
+        const countdownText = document.getElementById('countdownText');
+
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const exitBtn = document.getElementById('exitBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const menuBtn = document.getElementById('menuBtn');
+
+        // PBOT VECTOR ILLUSTRATOR FUNCTION (Highly-detailed inline rendering)
+        function renderPBot(targetId, expression) {
+            const el = document.getElementById(targetId);
+            if (!el) return;
+            
+            let leftHand = `<circle cx="28" cy="90" r="7" fill="#10b981" />`;
+            let rightHand = `<circle cx="92" cy="90" r="7" fill="#10b981" />`;
+            let specialHeadpiece = "";
+            let expressionsGlow = "url(#neonGlow)";
+            
+            if (expression === 'hello') {
+                // Waving left hand pose
+                leftHand = `<path d="M 28 90 Q 15 72 20 64" fill="none" stroke="#10b981" stroke-width="6" stroke-linecap="round"/>`;
             }
             
-            // Sediakan Web Audio API asal iPhone sebagai pelan sandaran sekiranya offline/disekat
-            if (!nativeAudioCtx) {
-                try {
-                    nativeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {
-                    console.error("Web Audio tidak disokong pada peranti ini.", e);
-                }
+            let expressionSVG = "";
+            if (expression === 'hello') {
+                expressionSVG = `
+                    <!-- Happy Arched Eyes -->
+                    <path d="M 44 48 Q 50 42 56 48" fill="none" stroke="#67e8f9" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <path d="M 64 48 Q 70 42 76 48" fill="none" stroke="#67e8f9" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Cheerful Smile -->
+                    <path d="M 54 58 Q 60 63 66 58" fill="none" stroke="#67e8f9" stroke-width="2.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Rosy Cheeks -->
+                    <circle cx="40" cy="54" r="3" fill="#f43f5e" opacity="0.6" filter="${expressionsGlow}"/>
+                    <circle cx="80" cy="54" r="3" fill="#f43f5e" opacity="0.6" filter="${expressionsGlow}"/>
+                `;
+            } else if (expression === 'sleep') {
+                expressionSVG = `
+                    <!-- Closed Sleepy Slit Eyes -->
+                    <path d="M 42 48 L 52 48" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <path d="M 68 48 L 78 48" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Small Whistling Mouth -->
+                    <circle cx="60" cy="58" r="3.5" fill="#38bdf8" filter="${expressionsGlow}"/>
+                    <!-- Sleeping Floating 'Zzz' Bubbles -->
+                    <g filter="${expressionsGlow}">
+                        <text x="88" y="36" fill="#38bdf8" font-size="11" font-weight="900" font-family="'Poppins', sans-serif">z</text>
+                        <text x="96" y="26" fill="#38bdf8" font-size="15" font-weight="900" font-family="'Poppins', sans-serif">Z</text>
+                        <text x="105" y="15" fill="#38bdf8" font-size="19" font-weight="900" font-family="'Poppins', sans-serif">Z</text>
+                    </g>
+                `;
+            } else if (expression === 'hooray') {
+                specialHeadpiece = `
+                    <!-- Graduation Academic Cap -->
+                    <g transform="translate(0, -6)">
+                        <polygon points="60,8 96,19 60,30 24,19" fill="#1e2937" stroke="#374151" stroke-width="1.5" />
+                        <path d="M 42,23 L 42,32 C 42,38 78,38 78,32 L 78,23" fill="#1e2937" />
+                        <!-- Golden tassel hanging down -->
+                        <path d="M 96,19 L 102,32 L 102,42" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" />
+                        <polygon points="100,42 104,42 102,46" fill="#fbbf24" />
+                    </g>
+                `;
+                expressionSVG = `
+                    <!-- Excited Squinting Eyes > < -->
+                    <path d="M 42 44 L 52 49 L 42 54" fill="none" stroke="#67e8f9" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <path d="M 78 44 L 68 49 L 78 54" fill="none" stroke="#67e8f9" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Big Laughing Open Mouth -->
+                    <path d="M 52 58 Q 60 69 68 58 Z" fill="#67e8f9" filter="${expressionsGlow}"/>
+                    <!-- Confetti sparkles floating -->
+                    <circle cx="15" cy="25" r="3" fill="#fbbf24" />
+                    <circle cx="105" cy="30" r="2.5" fill="#f43f5e" />
+                    <circle cx="20" cy="65" r="2" fill="#38bdf8" />
+                    <circle cx="102" cy="70" r="3" fill="#34d399" />
+                `;
+            } else if (expression === 'sad') {
+                expressionSVG = `
+                    <!-- Crying Downward Sullen Curves -->
+                    <path d="M 44 48 Q 50 52 56 48" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <path d="M 64 48 Q 70 52 76 48" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Downward Sad Frown -->
+                    <path d="M 54 60 Q 60 54 66 60" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Vertical Glowing Tear Streams -->
+                    <path d="M 46 50 L 46 68" stroke="#67e8f9" stroke-width="3" stroke-linecap="round" opacity="0.8" filter="${expressionsGlow}"/>
+                    <path d="M 74 50 L 74 68" stroke="#67e8f9" stroke-width="3" stroke-linecap="round" opacity="0.8" filter="${expressionsGlow}"/>
+                `;
+            } else if (expression === 'perfect') {
+                expressionSVG = `
+                    <!-- Star-eyes Sparkle closed -->
+                    <circle cx="48" cy="46" r="6" fill="#67e8f9" filter="${expressionsGlow}"/>
+                    <circle cx="72" cy="46" r="6" fill="#67e8f9" filter="${expressionsGlow}"/>
+                    <circle cx="48" cy="46" r="2" fill="#ffffff" />
+                    <circle cx="72" cy="46" r="2" fill="#ffffff" />
+                    <!-- Cute Blush strokes -->
+                    <path d="M 38 52 L 42 55 M 40 50 L 44 53" stroke="#f43f5e" stroke-width="1.5" />
+                    <path d="M 82 52 L 78 55 M 80 50 L 76 53" stroke="#f43f5e" stroke-width="1.5" />
+                    <!-- Big joyful grin -->
+                    <path d="M 52 56 Q 60 68 68 56 Z" fill="#67e8f9" filter="${expressionsGlow}"/>
+                `;
+            } else if (expression === 'miss') {
+                expressionSVG = `
+                    <!-- Spiral Dizzy Visor Lines -->
+                    <path d="M 42 46 Q 48 40 48 46 Q 48 52 44 49" fill="none" stroke="#f87171" stroke-width="3" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <path d="M 78 46 Q 72 40 72 46 Q 72 52 76 49" fill="none" stroke="#f87171" stroke-width="3" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Zigzag Mouth Falter -->
+                    <path d="M 50 60 L 55 56 L 60 60 L 65 56 L 70 60" fill="none" stroke="#f87171" stroke-width="2.5" stroke-linecap="round" filter="${expressionsGlow}"/>
+                    <!-- Drop of cold sweat -->
+                    <path d="M 94 34 Q 98 42 94 45 Q 90 42 94 34 Z" fill="#38bdf8" opacity="0.9" />
+                `;
+            }
+
+            el.innerHTML = `
+                <svg width="100%" height="100%" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="transition-transform duration-200 hover:scale-105">
+                    <defs>
+                        <linearGradient id="helmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#10b981"/>
+                            <stop offset="100%" stop-color="#047857"/>
+                        </linearGradient>
+                        <linearGradient id="faceGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#1e293b"/>
+                            <stop offset="100%" stop-color="#0f172a"/>
+                        </linearGradient>
+                        <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feGaussianBlur stdDeviation="2.5" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+                    <!-- Body Base -->
+                    <path d="M 40 85 C 40 73, 80 73, 80 85 C 80 98, 40 98, 40 85" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2" />
+                    <circle cx="60" cy="88" r="4" fill="#10b981" />
+                    
+                    <!-- Hands -->
+                    ${leftHand}
+                    ${rightHand}
+                    
+                    <!-- Helmet Horns/Side Ears -->
+                    <path d="M 22 45 C 10 38, 14 62, 26 55 Z" fill="#047857" />
+                    <path d="M 98 45 C 110 38, 106 62, 94 55 Z" fill="#047857" />
+                    <circle cx="16" cy="46" r="2.5" fill="#34d399" filter="url(#neonGlow)" />
+                    <circle cx="104" cy="46" r="2.5" fill="#34d399" filter="url(#neonGlow)" />
+                    
+                    <!-- Green Outer Helmet Frame -->
+                    <path d="M 24 45 C 24 18, 96 18, 96 45 C 96 72, 80 80, 60 80 C 40 80, 24 72, 24 45 Z" fill="url(#helmGrad)" />
+                    <path d="M 28 42 C 28 22, 92 22, 92 42" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.3" stroke-linecap="round" />
+                    
+                    <!-- Face Screen visors -->
+                    <path d="M 32 46 C 32 32, 88 32, 88 46 C 88 65, 78 73, 60 73 C 42 73, 32 65, 32 46 Z" fill="url(#faceGrad)" />
+                    
+                    <!-- Expression Overlay -->
+                    ${expressionSVG}
+                    <!-- Accessory Headpieces -->
+                    ${specialHeadpiece}
+                </svg>
+            `;
+        }
+
+        // Initialize state vectors for screens on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            renderPBot('startPBot', 'hello');
+        });
+
+        // PROCEDURAL AUDIO SYNTH ENGINE (Web Audio API)
+        let audioCtx = null;
+        let synthInterval = null;
+        let currentBeat = 0;
+        let bpm = 120;
+
+        // Minor Pentatonic musical scale frequencies
+        const notesScale = [130.81, 146.83, 155.56, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66, 311.13, 349.23, 392.00, 440.00, 466.16, 523.25];
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
             }
         }
 
-        function playSoundOfNote(noteName) {
-            // Gunakan Tone.js jika berjaya diaktifkan
-            if (toneSynth && typeof Tone !== 'undefined') {
-                try {
-                    toneSynth.triggerAttackRelease(noteName, "8n");
-                    return;
-                } catch(e) {
-                    console.warn("Ralat memainkan Tone.js note, beralih ke Native");
-                }
-            }
+        // Play procedural hit sound effect based on hit type
+        function playHitSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
 
-            // Pelan Sandaran: Main secara native dengan oscillator dalaman (100% Kalis Sekatan)
-            if (!nativeAudioCtx) {
-                nativeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (nativeAudioCtx.state === 'suspended') {
-                nativeAudioCtx.resume();
-            }
+            let freq = 440;
+            let duration = 0.1;
 
-            const noteFreqs = {
-                "C4": 261.63, "D4": 293.66, "E4": 329.63, "F4": 349.23, "G4": 392.00, "A4": 440.00, "B4": 493.88,
-                "C5": 523.25, "D5": 587.33, "E5": 659.25, "F5": 698.46, "G5": 783.99, "A5": 880.00,
-                "G3": 196.00, "A3": 220.00, "B3": 246.94
-            };
-
-            const freq = noteFreqs[noteName] || 440;
-            try {
-                const osc = nativeAudioCtx.createOscillator();
-                const gain = nativeAudioCtx.createGain();
-
-                osc.type = 'triangle'; // Bunyi yang lembut seakan piano elektrik
-                osc.frequency.setValueAtTime(freq, nativeAudioCtx.currentTime);
-
-                gain.gain.setValueAtTime(0.25, nativeAudioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, nativeAudioCtx.currentTime + 0.6);
-
-                osc.connect(gain);
-                gain.connect(nativeAudioCtx.destination);
-
+            if (type === 'perfect') {
+                freq = 880; duration = 0.12;
+                osc.type = 'triangle';
+            } else if (type === 'great') {
+                freq = 660; duration = 0.1;
+                osc.type = 'triangle';
+            } else if (type === 'good') {
+                freq = 440; duration = 0.08;
+                osc.type = 'triangle';
+            } else if (type === 'miss') {
+                freq = 110; duration = 0.2;
+                osc.type = 'sawtooth';
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(55, audioCtx.currentTime + duration);
                 osc.start();
-                osc.stop(nativeAudioCtx.currentTime + 0.6);
-            } catch(e) {
-                console.error("Gagal memainkan native oscillator", e);
+                osc.stop(audioCtx.currentTime + duration);
+                return;
+            }
+
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + duration);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Countdown audio cue (3, 2, 1, Go!)
+        function playCountdownTone(isGo) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            if (isGo) {
+                osc.frequency.setValueAtTime(880, now);
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else {
+                osc.frequency.setValueAtTime(440, now);
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
             }
         }
 
-        function pickRandomSong() {
-            currentSong = songs[Math.floor(Math.random() * songs.length)];
-            currentNoteIdx = 0;
-            document.getElementById('songDisplay').innerText = "🎵 " + currentSong.name;
+        // Real-time audio loop scheduler & rhythm synchronization engine
+        function startProceduralMusic() {
+            bpm = 110 + (gameLevel * 10); 
+            const beatDuration = 60 / bpm;
+            const stepDuration = beatDuration / 2; // Eighth note scheduling
+
+            songDisplay.innerText = `🎵 Procedural Track: Ruby Wave (BPM: ${bpm})`;
+
+            if (synthInterval) clearInterval(synthInterval);
+
+            synthInterval = setInterval(() => {
+                if (!isPlaying || isPaused || isCountingDown) return;
+
+                const time = audioCtx.currentTime;
+                
+                // 1. Synth Kick Drum scheduler
+                if (currentBeat % 4 === 0) {
+                    playKickDrum(time);
+                }
+
+                // 2. Snare & Hi-Hat scheduler
+                if (currentBeat % 4 === 2) {
+                    playSnare(time);
+                } else if (currentBeat % 2 === 1) {
+                    playHihat(time);
+                }
+
+                // 3. Procedural arpeggiator/bass sequencer
+                playBassline(currentBeat, time);
+
+                // 4. Spawn active notes synchronized perfectly with musical tempos
+                const spawnChance = 0.35 + (gameLevel * 0.05);
+                if (Math.random() < spawnChance && currentBeat % 2 === 0) {
+                    const randomLane = Math.floor(Math.random() * numLanes);
+                    spawnNote(randomLane);
+                }
+
+                currentBeat++;
+            }, stepDuration * 1000);
         }
 
-        function playNextNote() {
-            if (!currentSong) pickRandomSong();
+        function playKickDrum(time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
 
-            let note = currentSong.notes[currentNoteIdx];
-            playSoundOfNote(note);
-            currentNoteIdx++;
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.3);
 
-            if (currentNoteIdx >= currentSong.notes.length) {
-                pickRandomSong(); 
-            }
+            gain.gain.setValueAtTime(0.4, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+
+            osc.start(time);
+            osc.stop(time + 0.3);
         }
 
-        function drawOctagon(ctx, x, y, size, color) {
-            ctx.save();
-            ctx.translate(x, y);
+        function playSnare(time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.frequency.setValueAtTime(180, time);
+            osc.frequency.exponentialRampToValueAtTime(80, time + 0.15);
+
+            gain.gain.setValueAtTime(0.15, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+
+            osc.start(time);
+            osc.stop(time + 0.15);
+        }
+
+        function playHihat(time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.frequency.setValueAtTime(8000, time);
+            gain.gain.setValueAtTime(0.03, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+            osc.start(time);
+            osc.stop(time + 0.05);
+        }
+
+        function playBassline(beat, time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
             
-            const cut = size * 0.25;
-            const outer = [
-                {x: cut, y: 0}, {x: size - cut, y: 0},
-                {x: size, y: cut}, {x: size, y: size - cut},
-                {x: size - cut, y: size}, {x: cut, y: size},
-                {x: 0, y: size - cut}, {x: 0, y: cut}
-            ];
+            const baseIndex = (Math.floor(beat / 8) % 4) * 2;
+            const noteOffset = beat % 8;
+            const noteIndex = Math.min(notesScale.length - 1, baseIndex + (noteOffset % 3));
+            const freq = notesScale[noteIndex];
 
-            const innerSize = size * 0.5;
-            const offset = (size - innerSize) / 2;
-            const inCut = innerSize * 0.25;
-            const inner = [
-                {x: offset + inCut, y: offset}, {x: offset + innerSize - inCut, y: offset},
-                {x: offset + innerSize, y: offset + inCut}, {x: offset + innerSize, y: offset + innerSize - inCut},
-                {x: offset + innerSize - inCut, y: offset + innerSize}, {x: offset + inCut, y: offset + innerSize},
-                {x: offset, y: offset + innerSize - inCut}, {x: offset, y: offset + inCut}
-            ];
+            osc.frequency.setValueAtTime(freq, time);
 
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.moveTo(outer[0].x, outer[0].y);
-            for(let i=1; i<8; i++) ctx.lineTo(outer[i].x, outer[i].y);
-            ctx.closePath();
-            ctx.fill();
+            const biquad = audioCtx.createBiquadFilter();
+            biquad.type = "lowpass";
+            biquad.frequency.setValueAtTime(400, time);
 
-            const shades = [
-                "rgba(255, 255, 255, 0.6)", 
-                "rgba(255, 255, 255, 0.3)", 
-                "rgba(0, 0, 0, 0.1)",       
-                "rgba(0, 0, 0, 0.4)",       
-                "rgba(0, 0, 0, 0.6)",       
-                "rgba(0, 0, 0, 0.4)",       
-                "rgba(0, 0, 0, 0.1)",       
-                "rgba(255, 255, 255, 0.3)"  
-            ];
+            osc.connect(biquad);
+            biquad.connect(gain);
+            gain.connect(audioCtx.destination);
 
-            for (let i = 0; i < 8; i++) {
-                let next = (i + 1) % 8;
-                ctx.fillStyle = shades[i];
+            gain.gain.setValueAtTime(0.08, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+
+            osc.start(time);
+            osc.stop(time + 0.25);
+        }
+
+        function stopProceduralMusic() {
+            if (synthInterval) {
+                clearInterval(synthInterval);
+                synthInterval = null;
+            }
+        }
+
+        // NOTE/GEM RENDERING & TRACK MOVEMENT
+        class Note {
+            constructor(lane) {
+                this.lane = lane;
+                this.y = -50; 
+                this.active = true;
+                this.width = canvas.width / numLanes - 10;
+                this.height = 38; 
+            }
+
+            update() {
+                this.y += noteSpeed;
+                const hitZoneY = canvas.height * hitZoneYPercent;
+                if (this.y > hitZoneY + 50 && this.active) {
+                    this.active = false;
+                    triggerMiss();
+                }
+            }
+
+            draw() {
+                if (!this.active) return;
+                const laneWidth = canvas.width / numLanes;
+                const x = this.lane * laneWidth + 5;
+
+                ctx.save();
+                ctx.shadowBlur = 18;
+                ctx.shadowColor = laneColors[this.lane].main;
+                
+                // Draw 3D-esque glowing diamond ruby
+                ctx.fillStyle = laneColors[this.lane].main;
                 ctx.beginPath();
-                ctx.moveTo(outer[i].x, outer[i].y);
-                ctx.lineTo(outer[next].x, outer[next].y);
-                ctx.lineTo(inner[next].x, inner[next].y);
-                ctx.lineTo(inner[i].x, inner[i].y);
+                ctx.moveTo(x + this.width / 2, this.y); 
+                ctx.lineTo(x + this.width, this.y + this.height / 2); 
+                ctx.lineTo(x + this.width / 2, this.y + this.height); 
+                ctx.lineTo(x, this.y + this.height / 2); 
                 ctx.closePath();
                 ctx.fill();
-            }
 
-            ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-            ctx.beginPath();
-            ctx.moveTo(inner[0].x, inner[0].y);
-            for(let i=1; i<8; i++) ctx.lineTo(inner[i].x, inner[i].y);
-            ctx.closePath();
-            ctx.fill();
+                // Glossy inner gem lines
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                ctx.moveTo(x + this.width / 2, this.y + 6);
+                ctx.lineTo(x + this.width - 7, this.y + this.height / 2);
+                ctx.lineTo(x + this.width / 2, this.y + this.height - 6);
+                ctx.lineTo(x + 7, this.y + this.height / 2);
+                ctx.closePath();
+                ctx.stroke();
 
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-            ctx.lineWidth = 1;
-            
-            ctx.beginPath();
-            ctx.moveTo(inner[0].x, inner[0].y);
-            for(let i=1; i<8; i++) ctx.lineTo(inner[i].x, inner[i].y);
-            ctx.closePath();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(outer[0].x, outer[0].y);
-            for(let i=1; i<8; i++) ctx.lineTo(outer[i].x, outer[i].y);
-            ctx.closePath();
-            ctx.stroke();
-
-            ctx.restore();
-        }
-
-        function createParticles(x, y, color) {
-            for(let i=0; i<10; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: (Math.random() - 0.5) * 300,
-                    vy: (Math.random() - 0.5) * 300,
-                    life: 1.0,
-                    color: color
-                });
+                ctx.restore();
             }
         }
 
-        function createFloatingText(lane, isEscape = false) {
-            let x = lane * laneWidth + laneWidth / 2;
-            let y = isEscape ? (height - 60) : (height - 150);
+        function spawnNote(lane) {
+            notes.push(new Note(lane));
+        }
+
+        // EXPLOSIVE SPARK PARTICLES
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 4 + 2;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8 - 3;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.02 + 0.015;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        // PRECISION TIMING CALCULATION
+        function checkHit(lane) {
+            if (!isPlaying || isPaused || isCountingDown) return;
+
+            const hitZoneY = canvas.height * hitZoneYPercent;
+            let targetNote = null;
+            let targetIdx = -1;
+
+            for (let i = 0; i < notes.length; i++) {
+                if (notes[i].lane === lane && notes[i].active) {
+                    if (targetNote === null || notes[i].y > targetNote.y) {
+                        targetNote = notes[i];
+                        targetIdx = i;
+                    }
+                }
+            }
+
+            const laneWidth = canvas.width / numLanes;
+            const hitX = lane * laneWidth + laneWidth / 2;
+
+            if (targetNote !== null) {
+                const distance = Math.abs((targetNote.y + targetNote.height / 2) - hitZoneY);
+                
+                if (distance < 24) {
+                    registerHit('perfect', targetIdx, hitX);
+                } else if (distance < 48) {
+                    registerHit('great', targetIdx, hitX);
+                } else if (distance < 72) {
+                    registerHit('good', targetIdx, hitX);
+                } else {
+                    registerHit('miss', targetIdx, hitX);
+                }
+            } else {
+                applyMissPenalty();
+                showRating('MISS!', '#fbb7b7');
+                playHitSound('miss');
+            }
+        }
+
+        function registerHit(rating, index, x) {
+            const hitZoneY = canvas.height * hitZoneYPercent;
+            const note = notes[index];
+            note.active = false;
+            stats.totalAttempts++;
+
+            createExplosion(x, hitZoneY, laneColors[note.lane].main);
+
+            // Dynamically change live gameplay PBot companion to 'perfect'
+            renderPBot('gameplayPBot', 'perfect');
+            if (pbotTimeout) clearTimeout(pbotTimeout);
+            pbotTimeout = setTimeout(() => {
+                renderPBot('gameplayPBot', 'hello');
+            }, 550);
+
+            if (rating === 'perfect') {
+                score += 3;
+                combo++;
+                stats.perfect++;
+                showRating('PERFECT!', '#facc15');
+                playHitSound('perfect');
+            } else if (rating === 'great') {
+                score += 2;
+                combo++;
+                stats.great++;
+                showRating('GREAT!', '#4ade80');
+                playHitSound('great');
+            } else if (rating === 'good') {
+                score += 1;
+                combo++;
+                stats.good++;
+                showRating('GOOD', '#60a5fa');
+                playHitSound('good');
+            } else {
+                triggerMiss();
+                return;
+            }
+
+            if (combo > maxComboRecorded) {
+                maxComboRecorded = combo;
+            }
+
+            if (combo > 0) {
+                comboDisplay.innerText = combo;
+                comboDisplayContainer.classList.remove('hidden');
+                
+                comboDisplay.parentElement.classList.remove('combo-anim');
+                void comboDisplay.parentElement.offsetWidth; 
+                comboDisplay.parentElement.classList.add('combo-anim');
+
+                if (combo % 100 === 0) {
+                    score += 10;
+                    triggerBonusAnimation('+10 BONUS KO!');
+                } else if (combo % 50 === 0) {
+                    score += 5;
+                    triggerBonusAnimation('+5 BONUS!');
+                }
+            }
+
+            scoreDisplay.innerText = score;
+        }
+
+        function triggerMiss() {
+            combo = 0;
+            stats.miss++;
+            stats.totalAttempts++;
+            comboDisplayContainer.classList.add('hidden');
+            showRating('MISS', '#f43f5e');
+            applyMissPenalty();
+            playHitSound('miss');
+
+            // Dynamically trigger Dizzy Miss PBot companion reaction
+            renderPBot('gameplayPBot', 'miss');
+            if (pbotTimeout) clearTimeout(pbotTimeout);
+            pbotTimeout = setTimeout(() => {
+                renderPBot('gameplayPBot', 'hello');
+            }, 650);
+        }
+
+        // Apply visual penalty value
+        function applyMissPenalty() {
+            score = Math.max(0, score - 5);
+            scoreDisplay.innerText = score;
+        }
+
+        function triggerBonusAnimation(text) {
+            bonusPopup.innerText = text;
+            bonusPopup.classList.remove('hidden');
+            bonusPopup.classList.add('bonus-anim');
             
-            floatingTexts.push({
-                x: x,
-                y: y,
-                text: "-5",
-                life: 1.0,
-                color: "#ff4444"
+            setTimeout(() => {
+                bonusPopup.classList.remove('bonus-anim');
+                bonusPopup.classList.add('hidden');
+            }, 800);
+        }
+
+        function showRating(text, color) {
+            ratingDisplay.innerText = text;
+            ratingDisplay.style.color = color;
+            ratingDisplay.style.textShadow = `0 0 15px ${color}`;
+            ratingDisplay.style.opacity = '1';
+            
+            setTimeout(() => {
+                if (ratingDisplay.innerText === text) {
+                    ratingDisplay.style.opacity = '0';
+                }
+            }, 500);
+        }
+
+        // SPEED INCREASE SCHEDULER
+        function checkLevelProgression() {
+            const prevLevel = gameLevel;
+            
+            if (timeRemaining > 150) gameLevel = 1;
+            else if (timeRemaining > 130) gameLevel = 2;
+            else if (timeRemaining > 110) gameLevel = 3;
+            else if (timeRemaining > 90) gameLevel = 4;
+            else if (timeRemaining > 70) gameLevel = 5;
+            else if (timeRemaining > 50) gameLevel = 6;
+            else if (timeRemaining > 30) gameLevel = 7;
+            else gameLevel = 8;
+
+            if (gameLevel !== prevLevel) {
+                levelDisplay.innerText = gameLevel;
+                noteSpeed = 4.5 + (gameLevel * 0.85); 
+                
+                startProceduralMusic();
+                
+                triggerBonusAnimation(`LEVEL ${gameLevel}! SPEED UP!`);
+            }
+        }
+
+        // TIMER COUNTER
+        function startTimer() {
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            
+            gameTimerInterval = setInterval(() => {
+                if (!isPlaying || isPaused || isCountingDown) return;
+
+                timeRemaining--;
+                
+                const mins = Math.floor(timeRemaining / 60);
+                const secs = timeRemaining % 60;
+                timeDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+                checkLevelProgression();
+
+                if (timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // COUNTDOWN TIMER SEQUENCE (3, 2, 1, GO!)
+        function runCountdown(callback) {
+            isCountingDown = true;
+            countdownScreen.style.display = 'flex';
+            
+            let count = 3;
+            countdownText.style.color = "#facc15"; 
+
+            function tick() {
+                if (!isPlaying) {
+                    countdownScreen.style.display = 'none';
+                    isCountingDown = false;
+                    return;
+                }
+
+                if (count > 0) {
+                    countdownText.innerText = count;
+                    playCountdownTone(false);
+                    
+                    countdownText.style.transform = 'scale(2.5)';
+                    countdownText.style.opacity = '0';
+                    void countdownText.offsetWidth; 
+                    countdownText.style.transform = 'scale(1)';
+                    countdownText.style.opacity = '1';
+                    
+                    count--;
+                    setTimeout(tick, 1000);
+                } else if (count === 0) {
+                    countdownText.innerText = "GO!";
+                    countdownText.style.color = "#4ade80"; 
+                    playCountdownTone(true);
+                    
+                    countdownText.style.transform = 'scale(2.5)';
+                    countdownText.style.opacity = '0';
+                    void countdownText.offsetWidth; 
+                    countdownText.style.transform = 'scale(1)';
+                    countdownText.style.opacity = '1';
+                    
+                    count--;
+                    setTimeout(tick, 900);
+                } else {
+                    countdownScreen.style.display = 'none';
+                    isCountingDown = false;
+                    callback();
+                }
+            }
+            tick();
+        }
+
+        // RUNLOOP CONTROLLER (PLAY, PAUSE, RESUME, EXIT, END)
+        function startGame() {
+            initAudio();
+            
+            startScreen.style.opacity = '0';
+            setTimeout(() => {
+                startScreen.style.display = 'none';
+            }, 300);
+
+            pauseScreen.style.display = 'none';
+            endScreen.style.display = 'none';
+
+            // Reset state parameters
+            score = 0;
+            combo = 0;
+            maxComboRecorded = 0;
+            timeRemaining = 180; 
+            gameLevel = 1;
+            noteSpeed = 5;
+            notes = [];
+            particles = [];
+            stats = { perfect: 0, great: 0, good: 0, miss: 0, totalAttempts: 0 };
+
+            scoreDisplay.innerText = '0';
+            timeDisplay.innerText = '3:00';
+            levelDisplay.innerText = '1';
+            comboDisplayContainer.classList.add('hidden');
+
+            isPlaying = true;
+            isPaused = false;
+
+            // Render live PBot gameplay companion
+            renderPBot('gameplayPBot', 'hello');
+
+            // Start base animation loop
+            requestAnimationFrame(gameLoop);
+
+            // Execute interactive countdown before procedural schedules
+            runCountdown(() => {
+                startTimer();
+                startProceduralMusic();
             });
         }
 
-        function triggerMiss(lane, isEscape = false) {
-            combo = 0; 
-            score -= 5;
-            if (score < 1) score = 1; 
-            
-            createFloatingText(lane, isEscape);
-
-            container.classList.add('bg-red-900/50');
-            setTimeout(() => container.classList.remove('bg-red-900/50'), 100);
-            updateUI();
-        }
-
-        function checkComboBonus() {
-            if (combo > 0) {
-                if (combo % 100 === 0) {
-                    score += 10;
-                    let popup = document.getElementById('bonusPopup');
-                    popup.innerText = "+10 BONUS!";
-                    popup.classList.remove('hidden');
-                    setTimeout(() => popup.classList.add('hidden'), 1000);
-                } else if (combo % 50 === 0) {
-                    score += 5; 
-                    let popup = document.getElementById('bonusPopup');
-                    popup.innerText = "+5 BONUS!";
-                    popup.classList.remove('hidden');
-                    setTimeout(() => popup.classList.add('hidden'), 1000);
-                }
-            }
-        }
-
-        function handleInput(lane) {
-            if(!isPlaying || isPaused) return;
-
-            // Aktifkan Audio Context jika iOS menidurkannya
-            if (nativeAudioCtx && nativeAudioCtx.state === 'suspended') {
-                nativeAudioCtx.resume();
-            }
-
-            // Efek visual butang aktif
-            const key = document.getElementById('key-' + lane);
-            if(key) {
-                key.classList.add('active');
-                setTimeout(() => key.classList.remove('active'), 100);
-            }
-
-            let laneTiles = tiles.filter(t => t.lane === lane);
-            const size = laneWidth - 20;
-            const hitZoneY = height - 165;
-            const hitZoneHeight = 75;
-
-            if (laneTiles.length > 0) {
-                let lowestTile = laneTiles.reduce((prev, curr) => prev.y > curr.y ? prev : curr);
-                let tileBottom = lowestTile.y + size;
-                let tileTop = lowestTile.y;
-
-                // 1. Sekiranya permata berada di dalam Zon Sasaran (Hit Zone) -> HIT BERJAYA!
-                if (tileBottom >= hitZoneY && tileTop <= hitZoneY + hitZoneHeight) {
-                    tiles = tiles.filter(t => t !== lowestTile); 
-                    createParticles(lowestTile.lane * laneWidth + laneWidth/2, lowestTile.y + size/2, colors[lowestTile.colorIndex]);
-                    
-                    score += 1;
-                    combo += 1;
-                    checkComboBonus();
-                    playNextNote();
-                    updateUI();
-                    return;
-                } 
-                // 2. Sekiranya permata masih jauh di atas (Too Early) -> Abaikan input, TIADA penalti
-                else if (tileBottom < hitZoneY) {
-                    return; 
-                }
-            }
-            
-            // 3. Sekiranya tiada permata langsung di lorong tersebut -> MISS!
-            triggerMiss(lane, false);
-        }
-
-        function gameLoop(timestamp) {
-            if (!isPlaying || isPaused) {
-                lastTime = timestamp;
-                requestAnimationFrame(gameLoop);
-                return;
-            }
-            
-            let delta = (timestamp - lastTime) / 1000;
-            lastTime = timestamp;
-
-            timeAccumulator += delta;
-            if (timeAccumulator >= 1) {
-                timeAccumulator -= 1;
-                timeLeft--;
-                if (timeLeft <= 0) {
-                    endGame();
-                    return;
-                }
-            }
-
-            levelAccumulator += delta;
-            if (levelAccumulator >= 22 && speedLevel < 8) {
-                levelAccumulator -= 22;
-                speedLevel++;
-            }
-
-            spawnTimer += delta;
-            let currentSpawnRate = 0.38 / (1 + speedLevel * 0.08); 
-            if (spawnTimer >= currentSpawnRate) {
-                spawnTimer -= currentSpawnRate;
-                tiles.push({
-                    lane: Math.floor(Math.random() * 4),
-                    y: -100,
-                    colorIndex: Math.floor(Math.random() * 4) 
-                });
-            }
-
-            ctx.clearRect(0, 0, width, height);
-
-            // Melukis Garis Pemisah Lorong
-            ctx.strokeStyle = "rgba(255,255,255,0.1)";
-            ctx.lineWidth = 1;
-            for(let i=1; i<4; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * laneWidth, 0);
-                ctx.lineTo(i * laneWidth, height);
-                ctx.stroke();
-            }
-
-            // Melukis Zon Sasaran (Hit Zone) bercahaya di bahagian bawah
-            const hitZoneY = height - 165;
-            const hitZoneHeight = 75;
-
-            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
-            ctx.fillRect(0, hitZoneY, width, hitZoneHeight);
-
-            // Sempadan atas Hit Zone dengan kecerunan merah & biru Juara Digital
-            let gradTop = ctx.createLinearGradient(0, 0, width, 0);
-            gradTop.addColorStop(0, "rgba(239, 68, 68, 0.8)");
-            gradTop.addColorStop(1, "rgba(59, 130, 246, 0.8)");
-            ctx.strokeStyle = gradTop;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(0, hitZoneY);
-            ctx.lineTo(width, hitZoneY);
-            ctx.stroke();
-
-            // Sempadan bawah Hit Zone
-            ctx.beginPath();
-            ctx.moveTo(0, hitZoneY + hitZoneHeight);
-            ctx.lineTo(width, hitZoneY + hitZoneHeight);
-            ctx.stroke();
-
-            // Menggerakkan dan Melukis Permata
-            let currentSpeed = 350 * (1 + speedLevel * 0.15);
-            for (let i = tiles.length - 1; i >= 0; i--) {
-                let t = tiles[i];
-                t.y += currentSpeed * delta;
-                
-                // Jika permata terkeluar melepasi sempadan bawah Zon Sasaran -> Terlepas!
-                if (t.y > hitZoneY + hitZoneHeight) {
-                    tiles.splice(i, 1);
-                    triggerMiss(t.lane, true);
-                } else {
-                    let size = laneWidth - 20;
-                    drawOctagon(ctx, (t.lane * laneWidth) + 10, t.y, size, colors[t.colorIndex]);
-                }
-            }
-
-            // Mengemaskini dan melukis Zarah (Particles)
-            for(let i=particles.length-1; i>=0; i--) {
-                let p = particles[i];
-                p.x += p.vx * delta;
-                p.y += p.vy * delta;
-                p.life -= delta * 3;
-                if(p.life <= 0) {
-                    particles.splice(i, 1);
-                } else {
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0;
-                }
-            }
-
-            // Mengemaskini dan melukis Teks Terapung (Floating -5)
-            for (let i = floatingTexts.length - 1; i >= 0; i--) {
-                let ft = floatingTexts[i];
-                ft.y -= 75 * delta; 
-                ft.life -= delta * 1.5; 
-                if (ft.life <= 0) {
-                    floatingTexts.splice(i, 1);
-                } else {
-                    ctx.save();
-                    ctx.globalAlpha = ft.life;
-                    ctx.fillStyle = ft.color;
-                    ctx.font = "bold 24px Poppins, sans-serif";
-                    ctx.textAlign = "center";
-                    ctx.shadowColor = "black";
-                    ctx.shadowBlur = 8;
-                    ctx.fillText(ft.text, ft.x, ft.y);
-                    ctx.restore();
-                }
-            }
-
-            updateUI();
-            requestAnimationFrame(gameLoop);
-        }
-
-        function updateUI() {
-            document.getElementById('scoreDisplay').innerText = score;
-            document.getElementById('levelDisplay').innerText = speedLevel;
-            
-            let m = Math.floor(timeLeft / 60);
-            let s = timeLeft % 60;
-            document.getElementById('timeDisplay').innerText = m + ":" + (s < 10 ? "0" : "") + s;
-
-            let comboContainer = document.getElementById('comboDisplayContainer');
-            if(combo > 0) {
-                comboContainer.classList.remove('hidden');
-                let comboText = document.getElementById('comboDisplay');
-                if (comboText.innerText != combo) {
-                    comboText.innerText = combo;
-                    comboText.parentElement.classList.remove('combo-anim');
-                    void comboText.parentElement.offsetWidth; 
-                    comboText.parentElement.classList.add('combo-anim');
-                }
-            } else {
-                comboContainer.classList.add('hidden');
-            }
-        }
-
         function togglePause() {
-            if (!isPlaying) return;
+            if (!isPlaying || isCountingDown) return; 
+
             isPaused = !isPaused;
             if (isPaused) {
-                document.getElementById('pauseScreen').style.display = 'flex';
-                if (typeof Tone !== 'undefined' && Tone.getTransport) {
-                    Tone.getTransport().pause();
-                }
+                renderPBot('pausePBot', 'sleep');
+                pauseScreen.style.display = 'flex';
+                stopProceduralMusic();
             } else {
-                document.getElementById('pauseScreen').style.display = 'none';
-                lastTime = performance.now(); 
+                pauseScreen.style.display = 'none';
+                initAudio();
+                startProceduralMusic();
             }
+        }
+
+        function exitGameHalfway() {
+            isPlaying = false;
+            isPaused = false;
+            isCountingDown = false;
+            stopProceduralMusic();
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+
+            pauseScreen.style.display = 'none';
+            countdownScreen.style.display = 'none';
+
+            document.getElementById('finalScore').innerText = score;
+
+            let ratingStatus = "BEGINNER SPEEDSTER";
+            if (score > 400) ratingStatus = "SUPERSONIC BLAST! 👑";
+            else if (score > 250) ratingStatus = "DIGITAL RHYTHM MASTER! ⭐";
+            else if (score > 120) ratingStatus = "GREAT ENTERTAINER!";
+            else if (score > 50) ratingStatus = "SATISFACTORY PERFORMANCE";
+            
+            document.getElementById('endGameStatus').innerText = ratingStatus;
+
+            // Render matching performance PBot
+            if (score >= 150) {
+                renderPBot('endPBot', 'hooray');
+            } else {
+                renderPBot('endPBot', 'sad');
+            }
+
+            endScreen.style.display = 'flex';
         }
 
         function endGame() {
             isPlaying = false;
-            document.getElementById('endScreen').style.display = 'flex';
+            stopProceduralMusic();
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+
+            const hitAccuracyPercent = stats.totalAttempts > 0 
+                ? Math.round(((stats.perfect + stats.great + stats.good) / stats.totalAttempts) * 100) 
+                : 0;
+
             document.getElementById('finalScore').innerText = score;
+            document.getElementById('maxCombo').innerText = maxComboRecorded;
+            document.getElementById('hitAccuracy').innerText = `${hitAccuracyPercent}%`;
+            document.getElementById('statPerfect').innerText = stats.perfect;
+            document.getElementById('statGreat').innerText = stats.great;
+            document.getElementById('statGood').innerText = stats.good;
+            document.getElementById('statMiss').innerText = stats.miss;
+
+            let ratingStatus = "BEGINNER SPEEDSTER";
+            if (score > 400) ratingStatus = "SUPERSONIC BLAST! 👑";
+            else if (score > 250) ratingStatus = "DIGITAL RHYTHM MASTER! ⭐";
+            else if (score > 120) ratingStatus = "GREAT ENTERTAINER!";
+            else if (score > 50) ratingStatus = "SATISFACTORY PERFORMANCE";
+            
+            document.getElementById('endGameStatus').innerText = ratingStatus;
+
+            // Render matching performance PBot
+            if (score >= 150) {
+                renderPBot('endPBot', 'hooray');
+            } else {
+                renderPBot('endPBot', 'sad');
+            }
+
+            endScreen.style.display = 'flex';
         }
 
-        async function startGame() {
-            // Aktifkan Tone.js sekiranya berjaya diimport
-            if (typeof Tone !== 'undefined') {
-                try {
-                    await Tone.start();
-                } catch(e) {
-                    console.log("Tone.start() skipped");
+        // CANVAS BACKGROUND DRAWING ENGINE
+        function drawTracks() {
+            const laneWidth = canvas.width / numLanes;
+            const hitZoneY = canvas.height * hitZoneYPercent;
+
+            for (let i = 0; i < numLanes; i++) {
+                ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 255, 255, 0.015)' : 'rgba(0, 0, 0, 0.15)';
+                ctx.fillRect(i * laneWidth, 0, laneWidth, canvas.height);
+
+                if (i > 0) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(i * laneWidth, 0);
+                    ctx.lineTo(i * laneWidth, canvas.height);
+                    ctx.stroke();
+                }
+
+                if (keyPressEffect[i]) {
+                    ctx.save();
+                    let gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+                    gradient.addColorStop(0, laneColors[i].glow);
+                    gradient.addColorStop(0.7, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(i * laneWidth, 0, laneWidth, canvas.height);
+                    ctx.restore();
                 }
             }
 
-            // Bina/aktifkan sintesis audio sandaran (native fallback)
-            initSynth();
-            if (nativeAudioCtx && nativeAudioCtx.state === 'suspended') {
-                try {
-                    nativeAudioCtx.resume();
-                } catch(e) {}
+            for (let i = 0; i < numLanes; i++) {
+                const cx = i * laneWidth + laneWidth / 2;
+                
+                ctx.save();
+                ctx.shadowBlur = keyPressEffect[i] ? 20 : 5;
+                ctx.shadowColor = laneColors[i].main;
+                
+                ctx.strokeStyle = laneColors[i].main;
+                ctx.lineWidth = keyPressEffect[i] ? 4 : 2;
+                ctx.beginPath();
+                ctx.arc(cx, hitZoneY, 24, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.fillStyle = keyPressEffect[i] ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.05)';
+                ctx.beginPath();
+                ctx.arc(cx, hitZoneY, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
             }
 
-            document.getElementById('startScreen').style.display = 'none';
-            document.getElementById('endScreen').style.display = 'none';
-            
-            score = 0; combo = 0; timeLeft = 180; speedLevel = 1;
-            timeAccumulator = 0; levelAccumulator = 0; spawnTimer = 0;
-            tiles = []; particles = []; floatingTexts = [];
-            isPlaying = true;
-            isPaused = false;
-            
-            pickRandomSong();
-            lastTime = performance.now();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, hitZoneY - 30);
+            ctx.lineTo(canvas.width, hitZoneY - 30);
+            ctx.moveTo(0, hitZoneY + 30);
+            ctx.lineTo(canvas.width, hitZoneY + 30);
+            ctx.stroke();
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!isPaused) {
+                notes.forEach(note => note.update());
+                particles.forEach(p => p.update());
+
+                notes = notes.filter(note => note.active);
+                particles = particles.filter(p => p.alpha > 0);
+            }
+
+            drawTracks();
+            notes.forEach(note => note.draw());
+            particles.forEach(p => p.draw());
+
             requestAnimationFrame(gameLoop);
         }
 
-        document.getElementById('startBtn').addEventListener('click', startGame);
-        document.getElementById('restartBtn').addEventListener('click', startGame);
-        document.getElementById('pauseBtn').addEventListener('click', togglePause);
-        document.getElementById('resumeBtn').addEventListener('click', togglePause);
-
-        // Khas untuk iOS: Kejutkan Audio Context pada sentuhan pertama
-        const unlockAudio = () => {
-            if (!nativeAudioCtx) {
-                nativeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (nativeAudioCtx && nativeAudioCtx.state === 'suspended') {
-                nativeAudioCtx.resume();
-            }
-            document.removeEventListener('touchstart', unlockAudio);
-            document.removeEventListener('pointerdown', unlockAudio);
-        };
-        document.addEventListener('touchstart', unlockAudio, { passive: true });
-        document.addEventListener('pointerdown', unlockAudio, { passive: true });
-
+        // BROWSER & HARDWARE EVENT LISTENERS
+        
+        // Physical Keyboard Event Listeners
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
-            if(key === 'a') handleInput(0);
-            if(key === 's') handleInput(1);
-            if(key === 'k') handleInput(2);
-            if(key === 'l') handleInput(3);
-        });
-
-        // Menyokong pointerdown (iOS 13+) dan sentuhan touchstart (Fallback ganda)
-        const getLaneFromX = (clientX) => {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const x = (clientX - rect.left) * scaleX;
-            return Math.floor(x / laneWidth);
-        };
-
-        canvas.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            const lane = getLaneFromX(e.clientX);
-            if(lane >= 0 && lane <= 3) {
-                handleInput(lane);
+            if (key in keyMap) {
+                const lane = keyMap[key];
+                if (!keyPressEffect[lane]) {
+                    keyPressEffect[lane] = true;
+                    const keyBtn = document.getElementById(`key-${lane}`);
+                    if (keyBtn) keyBtn.classList.add('active');
+                    
+                    checkHit(lane);
+                }
             }
         });
 
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key in keyMap) {
+                const lane = keyMap[key];
+                keyPressEffect[lane] = false;
+                const keyBtn = document.getElementById(`key-${lane}`);
+                if (keyBtn) keyBtn.classList.remove('active');
+            }
+        });
+
+        // Mouse Clicks for Desktop Integration
+        canvas.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            initAudio();
+
+            const rect = canvas.getBoundingClientRect();
+            const laneWidth = canvas.width / numLanes;
+            const clickX = e.clientX - rect.left;
+            const lane = Math.floor(clickX / laneWidth);
+
+            if (lane >= 0 && lane < numLanes) {
+                keyPressEffect[lane] = true;
+                const keyBtn = document.getElementById(`key-${lane}`);
+                if (keyBtn) keyBtn.classList.add('active');
+                
+                checkHit(lane);
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const laneWidth = canvas.width / numLanes;
+            const clickX = e.clientX - rect.left;
+            const lane = Math.floor(clickX / laneWidth);
+
+            if (lane >= 0 && lane < numLanes) {
+                keyPressEffect[lane] = false;
+                const keyBtn = document.getElementById(`key-${lane}`);
+                if (keyBtn) keyBtn.classList.remove('active');
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            for (let i = 0; i < numLanes; i++) {
+                keyPressEffect[i] = false;
+                const keyBtn = document.getElementById(`key-${i}`);
+                if (keyBtn) keyBtn.classList.remove('active');
+            }
+        });
+
+        // Multi-touch Control Handlers for mobile/tablet environments
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if(e.changedTouches && e.changedTouches[0]) {
-                const lane = getLaneFromX(e.changedTouches[0].clientX);
-                if(lane >= 0 && lane <= 3) {
-                    handleInput(lane);
+            initAudio();
+
+            const rect = canvas.getBoundingClientRect();
+            const laneWidth = canvas.width / numLanes;
+
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const touchX = touch.clientX - rect.left;
+                
+                const lane = Math.floor(touchX / laneWidth);
+                if (lane >= 0 && lane < numLanes) {
+                    keyPressEffect[lane] = true;
+                    const keyBtn = document.getElementById(`key-${lane}`);
+                    if (keyBtn) keyBtn.classList.add('active');
+                    
+                    checkHit(lane);
                 }
             }
         }, { passive: false });
 
-        document.body.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
-        
-        // Sediakan pembacaan awal canvas
-        resizeCanvas();
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const laneWidth = canvas.width / numLanes;
+
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const touchX = touch.clientX - rect.left;
+                
+                const lane = Math.floor(touchX / laneWidth);
+                if (lane >= 0 && lane < numLanes) {
+                    keyPressEffect[lane] = false;
+                    const keyBtn = document.getElementById(`key-${lane}`);
+                    if (keyBtn) keyBtn.classList.remove('active');
+                }
+            }
+        }, { passive: false });
+
+        // Screen UI Navigation listeners
+        startBtn.addEventListener('click', startGame);
+        pauseBtn.addEventListener('click', togglePause);
+        resumeBtn.addEventListener('click', togglePause);
+        exitBtn.addEventListener('click', exitGameHalfway);
+        restartBtn.addEventListener('click', startGame);
+
+        menuBtn.addEventListener('click', () => {
+            startScreen.style.display = 'flex';
+            void startScreen.offsetWidth; 
+            startScreen.style.opacity = '1';
+
+            renderPBot('startPBot', 'hello');
+
+            pauseScreen.style.display = 'none';
+            endScreen.style.display = 'none';
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            songDisplay.innerText = '🎵 Waiting to start...';
+        });
+
     </script>
 </body>
 </html>

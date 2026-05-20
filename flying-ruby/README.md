@@ -1,9 +1,10 @@
 # Flying Ruby
 
-A Flappy-Bird-style arcade game with a Pandai twist. The mascot flies through
-a procedurally generated course, collecting rubies, with a fixed **3-minute
-round** before the run ends.
+A Flappy-Bird-style arcade game with a Pandai twist. The mascot **pbot** flies
+through a procedurally generated course, dodging pillars and collecting rubies,
+with a fixed **3-minute round** before the run ends.
 
+Built with [Phaser 3](https://phaser.io/) (loaded from a CDN — no build step).
 Part of the [JDP Games](../) collection — published via GitHub Pages.
 
 ## Run it locally
@@ -19,43 +20,71 @@ python3 -m http.server 8080
 You can't open `index.html` directly in a browser — the scenes are loaded as
 ES modules, which browsers only allow over `http://` (not `file://`).
 
+## Gameplay
+
+- **Tap, click, or press Space/Up** to flap. The round starts on your first input.
+- Fly through the gaps between pillars and grab rubies for points.
+- A **difficulty ramp** runs across the round: pillars get faster, the gap
+  narrows, and pairs spawn more often. The ramp finishes at 85% of the round so
+  the final stretch plays at a steady maximum.
+- A **magnet power-up** bubble drifts in now and then — collect it to pull every
+  on-screen ruby toward pbot for ~5 seconds.
+- The round ends two ways: **crash** into a pillar/floor (cue a multi-phase
+  shatter + screen-crack animation) or **survive the full 3:00** ("Time's Up!").
+- The game-over screen counts up your score and tracks a **best score** in
+  `localStorage`.
+
+### Dev shortcuts
+
+`BootScene` reads a `?scene=` query param so you can jump straight to a scene:
+
+- `http://localhost:8080/?scene=GameScene` — skip the title screen
+- `http://localhost:8080/?scene=GameOverScene` — jump to results with mock data
+
 ## Project structure
 
 ```
 flying-ruby/
-├── index.html              # entry point — loads Phaser + main.js
+├── index.html              # entry point — loads Phaser (CDN) + src/main.js
 ├── src/
-│   ├── config.js           # palette + gameplay constants
+│   ├── config.js           # palette, gameplay + difficulty/magnet tuning
 │   ├── main.js             # Phaser game config and scene registration
+│   ├── muteButton.js       # shared mute toggle + saved preference
 │   └── scenes/
-│       ├── BootScene.js    # asset loading + placeholder texture factory
-│       ├── StartScene.js   # title screen with play button (this iteration)
-│       ├── GameScene.js    # gameplay (stub — full version next)
-│       └── GameOverScene.js  # results (stub — full version next)
+│       ├── BootScene.js    # asset preload + generated placeholder textures
+│       ├── StartScene.js   # title screen: logo, mascot, Start Game button
+│       ├── GameScene.js    # full gameplay loop, difficulty ramp, crash FX
+│       └── GameOverScene.js  # results: score count-up, best score, buttons
 ├── assets/
-│   ├── sprites/            # bird, ruby, obstacles (PNG, ideally @2x)
-│   ├── backgrounds/        # parallax layers, sky, clouds
-│   ├── buttons/            # button states (idle / hover / pressed)
-│   └── ui/                 # icons, panels, numbers, fonts
-├── sfx/                    # short sound effects (.mp3 or .ogg)
-└── bgm/                    # looping background music tracks
+│   ├── sprites/            # pbot, ruby, magnet, game logo (WebP)
+│   ├── backgrounds/        # shared background art
+│   ├── buttons/            # (empty — buttons are drawn in code)
+│   └── ui/                 # (empty — reserved)
+├── sfx/                    # short sound effects (.m4a)
+└── bgm/                    # looping background music tracks (.m4a)
 ```
 
-### Asset naming
+## Assets
 
-When you drop files in, please match these names so `BootScene.preload()` can
-swap them in without code changes:
+Real art and audio are in place. Images are **WebP** (smaller than PNG, broadly
+supported); audio is **AAC/m4a**. A few gameplay shapes are still generated at
+runtime in `BootScene` rather than loaded from a file.
 
-| Key      | File                        | Notes                                |
-|----------|-----------------------------|--------------------------------------|
-| `bird`   | `assets/sprites/bird.png`   | ~56×44 ideally, transparent          |
-| `ruby`   | `assets/sprites/ruby.png`   | ~36×36, transparent                  |
-| `pipe`   | `assets/sprites/pipe.png`   | vertical, ~64 wide, ≥600 tall        |
-| `bg`     | `assets/backgrounds/sky.png`| 480×854 (or 2× = 960×1708)           |
-| `btn-play` | `assets/buttons/play.png` | with idle/hover/pressed sprites      |
+| Key       | Source                              | Status                         |
+|-----------|-------------------------------------|--------------------------------|
+| `pbot`    | `assets/sprites/pbot.webp`          | mascot — real art              |
+| `ruby`    | `assets/sprites/ruby.webp`          | ruby pickup — real art         |
+| `magnet`  | `assets/sprites/magnet.webp`        | magnet power-up — real art     |
+| `logo`    | `assets/sprites/game_logo.webp`     | title screen — real art        |
+| `bg`      | `assets/backgrounds/bg.webp`        | background — real art          |
+| `pipe`    | generated in `BootScene`            | placeholder pillar texture     |
+| `star`    | generated in `BootScene`            | particle dot                   |
+| `sparkle` | generated in `BootScene`            | 4-point sparkle                |
 
-If a real asset is missing, `BootScene` falls back to a generated placeholder
-shape using the brand palette.
+Audio: `sfx/` holds `jump`, `collect`, `on-hit`, `on-hit-2`, `game-start`,
+`game-over`; `bgm/` holds `start-bgm` and `game-bgm`. To swap a generated
+placeholder for real art, drop a file in `assets/` and add one `this.load`
+line in [BootScene.preload()](src/scenes/BootScene.js).
 
 ## Color palette
 
@@ -70,4 +99,5 @@ Sourced from the [Pandai Design System 1.5](https://www.figma.com/design/Y0DLhf2
 | yellow      | `#fdd83d` | highlights, buttons, score     |
 | orange      | `#ffb800` | glow, sun, accent              |
 
-Constants live in [src/config.js](src/config.js).
+Constants and gameplay tuning (`GAME`, `DIFFICULTY`, `MAGNET`) live in
+[src/config.js](src/config.js).

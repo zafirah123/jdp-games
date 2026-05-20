@@ -1,4 +1,5 @@
-import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
+import { PALETTE, PALETTE_CSS, FONTS } from '../config.js';
+import { addMuteButton } from '../muteButton.js';
 
 export class StartScene extends Phaser.Scene {
   constructor() {
@@ -9,73 +10,100 @@ export class StartScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     this._drawBackground(width, height);
-    this._drawTitle(width, height);
+    this._drawLogo(width, height);
     this._drawMascot(width, height);
     this._drawPlayButton(width, height);
-    this._drawFooter(width, height);
+
+    // start-screen music — loops until the player leaves for the game
+    this.startBgm = this.sound.add('start-bgm', { loop: true, volume: 0.5 });
+    this.startBgm.play();
+    this.events.once('shutdown', () => this.startBgm.stop());
+
+    addMuteButton(this, width - 34, 38);
   }
 
   // ---------------------------------------------------------------------
-  // Background — bg.png cover-fit + slight dark overlay so UI reads cleanly.
+  // Background — bg.png, cover-fit. No dimming overlay: the logo, button
+  // and stroked tagline read cleanly against the art on their own.
   _drawBackground(width, height) {
     const bg = this.add.image(width / 2, height / 2, 'bg');
     const tex = this.textures.get('bg').getSourceImage();
     const scale = Math.max(width / tex.width, height / tex.height);
     bg.setScale(scale);
-
-    // dim layer so foreground text and buttons stay readable against the
-    // detailed background art.
-    this.add.rectangle(width / 2, height / 2, width, height, PALETTE.navy, 0.35);
-
-    // warm glow halo behind the title
-    const glow = this.add.graphics();
-    glow.fillStyle(PALETTE.orange, 0.22);
-    glow.fillCircle(width / 2, height * 0.27, 200);
-    glow.fillStyle(PALETTE.yellow, 0.14);
-    glow.fillCircle(width / 2, height * 0.27, 130);
   }
 
-  _drawTitle(width, height) {
+  // Game logo — replaces the old text title. Bobs slowly up and down and
+  // is framed by a few twinkling sparkles.
+  _drawLogo(width, height) {
     const cx = width / 2;
-    const titleY = height * 0.22;
+    const logoY = height * 0.215;
 
-    // dark plaque behind the title so it sits cleanly on the busy bg
-    const plaque = this.add.graphics();
-    plaque.fillStyle(PALETTE.navy, 0.55);
-    plaque.fillRoundedRect(cx - 180, titleY - 80, 360, 168, 20);
+    const group = this.add.container(cx, logoY);
 
-    const top = this.add.text(cx, titleY - 32, 'FLYING', {
-      fontFamily: FONTS.ui,
-      fontSize:   '52px',
-      fontStyle:  'bold',
-      color:      PALETTE_CSS.yellow,
-      stroke:     PALETTE_CSS.darkRed,
-      strokeThickness: 8,
-    }).setOrigin(0.5);
+    const logo = this.add.image(0, 0, 'logo');
+    logo.setScale(290 / logo.width); // ~290px wide, aspect preserved
+    group.add(logo);
 
-    const bottom = this.add.text(cx, titleY + 32, 'RUBY', {
-      fontFamily: FONTS.ui,
-      fontSize:   '76px',
-      fontStyle:  'bold',
-      color:      PALETTE_CSS.ruby,
-      stroke:     PALETTE_CSS.yellow,
-      strokeThickness: 10,
-    }).setOrigin(0.5);
+    this._addSparkles(group, logo.displayWidth, logo.displayHeight);
 
+    // slow, smooth up-and-down bob
     this.tweens.add({
-      targets: [top, bottom],
-      scale: { from: 1, to: 1.04 },
-      duration: 1800,
+      targets: group,
+      y: logoY - 14,
+      duration: 2400,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    this.add.text(cx, titleY + 110, 'Tap to fly  •  Collect rubies  •  Beat 3:00', {
+    // tagline below the logo — stroked + shadowed so it reads on the
+    // detailed background without a dimming overlay
+    this.add.text(cx, height * 0.42, 'Tap to fly  •  Collect rubies  •  Beat 3:00', {
       fontFamily: FONTS.ui,
-      fontSize:   '15px',
+      fontSize:   '16px',
+      fontStyle:  'bold',
       color:      PALETTE_CSS.white,
-    }).setOrigin(0.5).setAlpha(0.95);
+      stroke:     PALETTE_CSS.navy,
+      strokeThickness: 5,
+    }).setOrigin(0.5).setShadow(0, 2, PALETTE_CSS.navy, 4, false, true);
+  }
+
+  // A handful of star sparkles around the logo, twinkling on a stagger.
+  // Added to the logo's container so they bob along with it.
+  _addSparkles(group, lw, lh) {
+    // the 'sparkle' texture is generated once in BootScene
+
+    // positions are fractions of the logo size, relative to its centre
+    const spots = [
+      { x: -0.52, y: -0.30, s: 1.0 },
+      { x:  0.50, y: -0.40, s: 1.2 },
+      { x:  0.56, y:  0.22, s: 0.85 },
+      { x: -0.48, y:  0.30, s: 1.0 },
+      { x:  0.12, y: -0.52, s: 0.7 },
+      { x: -0.10, y:  0.50, s: 0.8 },
+    ];
+    const tints = [PALETTE.white, PALETTE.yellow, PALETTE.orange];
+
+    spots.forEach((p, i) => {
+      const spark = this.add.image(p.x * lw, p.y * lh, 'sparkle')
+        .setTint(tints[i % tints.length])
+        .setScale(0)
+        .setAlpha(0);
+      group.add(spark);
+      this.tweens.add({
+        targets: spark,
+        alpha: { from: 0, to: 1 },
+        scale: { from: 0, to: 0.5 * p.s },
+        angle: 90,
+        duration: 720,
+        delay: i * 360,
+        hold: 110,
+        yoyo: true,
+        repeat: -1,
+        repeatDelay: 850 + i * 170,
+        ease: 'Sine.easeInOut',
+      });
+    });
   }
 
   // pbot mascot — central, bobs gently and tilts.
@@ -102,7 +130,7 @@ export class StartScene extends Phaser.Scene {
     });
 
     // orbiting ruby teaser
-    const ruby = this.add.image(cx + 100, my + 30, 'ruby').setScale(1.2);
+    const ruby = this.add.image(cx + 100, my + 30, 'ruby').setDisplaySize(72, 72);
     this.tweens.add({
       targets: ruby,
       x: cx - 100,
@@ -194,10 +222,18 @@ export class StartScene extends Phaser.Scene {
     rightIcon.setPosition(rightIconX, innerCenterY);
     btn.add(rightIcon);
 
-    // Hit area
+    // Hit area — padded well beyond the visual button so clicks and taps
+    // near (or just outside) the edges still register, on mouse and touch.
+    const HIT_PAD_X = 48;
+    const HIT_PAD_Y = 30;
     btn.setSize(SPEC.W, SPEC.totalH);
     btn.setInteractive(
-      new Phaser.Geom.Rectangle(-SPEC.W / 2, -SPEC.totalH / 2, SPEC.W, SPEC.totalH),
+      new Phaser.Geom.Rectangle(
+        -SPEC.W / 2 - HIT_PAD_X,
+        -SPEC.totalH / 2 - HIT_PAD_Y,
+        SPEC.W + HIT_PAD_X * 2,
+        SPEC.totalH + HIT_PAD_Y * 2,
+      ),
       Phaser.Geom.Rectangle.Contains,
     );
 
@@ -210,6 +246,8 @@ export class StartScene extends Phaser.Scene {
       this.tweens.add({ targets: btn, scale: 1.0, duration: 120, ease: 'Sine.easeOut' });
     });
     btn.on('pointerdown', () => {
+      // play the start jingle; GameScene then brings in the game music
+      this.sound.play('game-start', { volume: 0.7 });
       // Tactile press — shift the whole button down so the mustard base appears at top,
       // mirroring the Figma "Pressed" state's pt-[8px] flip.
       this.tweens.add({
@@ -254,21 +292,4 @@ export class StartScene extends Phaser.Scene {
     return g;
   }
 
-  _drawFooter(width, height) {
-    const minutes = Math.floor(GAME.roundDurationMs / 60000);
-    const seconds = Math.floor((GAME.roundDurationMs % 60000) / 1000)
-      .toString().padStart(2, '0');
-
-    this.add.text(width / 2, height - 56, `Round time: ${minutes}:${seconds}`, {
-      fontFamily: FONTS.ui,
-      fontSize:   '13px',
-      color:      PALETTE_CSS.yellow,
-    }).setOrigin(0.5).setAlpha(0.9);
-
-    this.add.text(width / 2, height - 32, 'Flying Ruby  •  Pandai JDP Games', {
-      fontFamily: FONTS.ui,
-      fontSize:   '11px',
-      color:      PALETTE_CSS.white,
-    }).setOrigin(0.5).setAlpha(0.55);
-  }
 }

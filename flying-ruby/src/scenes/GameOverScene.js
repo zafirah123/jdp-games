@@ -1,4 +1,5 @@
 import { PALETTE, PALETTE_CSS, FONTS } from '../config.js';
+import { addMuteButton } from '../muteButton.js';
 
 const BEST_KEY = 'flying-ruby:best';
 
@@ -28,6 +29,11 @@ export class GameOverScene extends Phaser.Scene {
     this._drawHeader(width, height);
     this._drawScorePanel(width, height);
     this._drawButtons(width, height);
+
+    // game-over sting
+    this.sound.play('game-over', { volume: 0.7 });
+
+    addMuteButton(this, width - 34, 38);
   }
 
   // ---------------------------------------------------------------------
@@ -97,7 +103,7 @@ export class GameOverScene extends Phaser.Scene {
 
     // big score with ruby icon
     const scoreRow = this.add.container(cx, py - 38);
-    const ruby = this.add.image(-58, 0, 'ruby').setScale(1.4);
+    const ruby = this.add.image(-58, 0, 'ruby').setDisplaySize(56, 56);
     const num  = this.add.text(0, 0, String(this.score), {
       fontFamily: FONTS.ui,
       fontSize:   '64px',
@@ -168,7 +174,7 @@ export class GameOverScene extends Phaser.Scene {
       PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
       () => this.scene.start('GameScene'));
 
-    this._makeButton(cx, by + 84, 200, 52, 'HOME',
+    this._makeButton(cx, by + 96, 200, 52, 'HOME',
       PALETTE.navy, PALETTE_CSS.yellow, PALETTE.yellow,
       () => this.scene.start('StartScene'),
       /* outlined */ true);
@@ -199,9 +205,19 @@ export class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
     btn.add(text);
 
+    // Hit area — padded beyond the visual button so edge clicks/taps still
+    // register. Vertical pad stays modest so the two stacked buttons (96px
+    // apart) keep a clear gap between their hit zones.
+    const HIT_PAD_X = 44;
+    const HIT_PAD_Y = 16;
     btn.setSize(w, h);
     btn.setInteractive(
-      new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
+      new Phaser.Geom.Rectangle(
+        -w / 2 - HIT_PAD_X,
+        -h / 2 - HIT_PAD_Y,
+        w + HIT_PAD_X * 2,
+        h + HIT_PAD_Y * 2,
+      ),
       Phaser.Geom.Rectangle.Contains,
     );
 

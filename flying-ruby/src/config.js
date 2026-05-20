@@ -29,13 +29,31 @@ export const GAME = {
   // 3 minute round timer
   roundDurationMs: 3 * 60 * 1000,
 
-  // gameplay tuning (used later by GameScene)
+  // gameplay tuning
   gravity:          1200,
   flapVelocity:     -380,
-  pipeSpeed:        180,
-  pipeSpawnEveryMs: 1500,
   rubySpawnEveryMs: 2200,
   rubyValue:        1,
+};
+
+// Difficulty ramp. Over the round, pipes get faster, the gap narrows, and
+// pairs spawn more often. Each value is linearly interpolated from `start`
+// to `end` as the timer elapses. The ramp finishes at `rampCompleteAt` (a
+// fraction of the round) so the final stretch plays at a steady maximum.
+export const DIFFICULTY = {
+  rampCompleteAt:   0.85,
+  pipeSpeed:        { start: 180,  end: 315  }, // px/sec
+  pipeGap:          { start: 230,  end: 160  }, // px between top/bottom pipe
+  pipeSpawnEveryMs: { start: 1700, end: 1100 }, // delay between pipe pairs
+};
+
+// Magnet power-up: a bubble occasionally drifts in; collecting it pulls
+// every on-screen ruby toward the player for a few seconds.
+export const MAGNET = {
+  spawnEveryMs: 8000,  // interval between spawn rolls
+  spawnChance:  0.3,   // 3-in-10 chance a roll actually spawns a bubble
+  durationMs:   5000,  // effect lasts up to 5s
+  pullSpeed:    560,   // px/sec rubies fly toward the player
 };
 
 export const FONTS = {

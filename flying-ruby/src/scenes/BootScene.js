@@ -1,4 +1,5 @@
 import { PALETTE } from '../config.js';
+import { applyMutePreference } from '../muteButton.js';
 
 // BootScene preloads any assets the game needs and then hands off to StartScene.
 // For now we generate placeholder textures at runtime so the game runs before
@@ -9,17 +10,29 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('pbot',   'assets/sprites/pbot.png');
-    this.load.image('ruby',   'assets/sprites/ruby.png');
-    this.load.image('bg',     'assets/backgrounds/bg.png');
-    this.load.audio('on-hit', 'sfx/on-hit.wav');
-    // Additional real assets will go here as they arrive, e.g.:
-    // this.load.audio('flap', 'sfx/flap.mp3');
-    // this.load.audio('bgm-start', 'bgm/start-theme.mp3');
+    // images — WebP (lossless): smaller than PNG, broadly supported
+    this.load.image('pbot',   'assets/sprites/pbot.webp');
+    this.load.image('ruby',   'assets/sprites/ruby.webp');
+    this.load.image('logo',   'assets/sprites/game_logo.webp');
+    this.load.image('magnet', 'assets/sprites/magnet.webp');
+    this.load.image('bg',     'assets/backgrounds/bg.webp');
+    // sound effects — AAC/m4a: ~10x smaller than WAV, plays everywhere
+    this.load.audio('on-hit',     'sfx/on-hit.m4a');
+    this.load.audio('on-hit-2',   'sfx/on-hit-2.m4a');
+    this.load.audio('collect',    'sfx/collect.m4a');
+    this.load.audio('jump',       'sfx/jump.m4a');
+    this.load.audio('game-start', 'sfx/game-start.m4a');
+    this.load.audio('game-over',  'sfx/game-over.m4a');
+    // background music
+    this.load.audio('start-bgm',  'bgm/start-bgm.m4a');
+    this.load.audio('game-bgm',   'bgm/game-bgm.m4a');
   }
 
   create() {
     this._buildPlaceholderTextures();
+
+    // honour the player's saved mute preference before any scene plays audio
+    applyMutePreference(this);
 
     // Dev hook: ?scene=GameScene or ?scene=GameOverScene jumps straight to
     // a scene, with sensible mock data for GameOver. Default is StartScene.
@@ -39,6 +52,25 @@ export class BootScene extends Phaser.Scene {
   _buildPlaceholderTextures() {
     this._makePipe();
     this._makeStar();
+    this._makeSparkle();
+  }
+
+  // A 4-point star sparkle, shared by the start screen and the magnet
+  // power-up. Generated once here so every scene can use the 'sparkle' key.
+  _makeSparkle() {
+    const s = 32;
+    const c = s / 2;
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    const pts = [];
+    for (let i = 0; i < 8; i += 1) {
+      const ang = (Math.PI / 4) * i - Math.PI / 2;
+      const rad = (i % 2 === 0) ? c : c * 0.34;
+      pts.push({ x: c + Math.cos(ang) * rad, y: c + Math.sin(ang) * rad });
+    }
+    g.fillStyle(0xffffff, 1);
+    g.fillPoints(pts, true);
+    g.generateTexture('sparkle', s, s);
+    g.destroy();
   }
 
   _makePipe() {

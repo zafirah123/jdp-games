@@ -13,6 +13,7 @@ The landing page ([index.html](index.html)) links to every game:
 | Flying Ruby    | `/flying-ruby/`                   |
 | Liquid Sort    | `/liquid-sort/liquid-sort.html`   |
 | Puzzle         | `/puzzle/puzzle.html`             |
+| Ruby Breaker   | `/ruby-breaker-v2/`               |
 | Ruby Rhythm    | `/ruby-rhythm/`                   |
 | Tetra Blocks   | `/tetra-blocks/tetra-blocks.html` |
 | Tic Tac Toe    | `/tic-tac-toe/tic-tack-toe.html`  |
@@ -21,8 +22,8 @@ The landing page ([index.html](index.html)) links to every game:
 ## Source organization
 
 Each game lives in its own folder. Games with an `index.html` entry file
-(`bubble-shooter`, `flying-ruby`, `ruby-rhythm`) are reachable at the folder
-URL; the rest link directly to a named `.html` file.
+(`bubble-shooter`, `flying-ruby`, `ruby-breaker-v2`, `ruby-rhythm`) are
+reachable at the folder URL; the rest link directly to a named `.html` file.
 
 ## GitHub Pages
 

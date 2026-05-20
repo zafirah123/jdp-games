@@ -51,7 +51,7 @@ export const DIFFICULTY = {
 // every on-screen ruby toward the player for a few seconds.
 export const MAGNET = {
   spawnEveryMs: 8000,  // interval between spawn rolls
-  spawnChance:  0.3,   // 3-in-10 chance a roll actually spawns a bubble
+  spawnChance:  0.7,   // 7-in-10 chance a roll actually spawns a bubble
   durationMs:   5000,  // effect lasts up to 5s
   pullSpeed:    560,   // px/sec rubies fly toward the player
 };

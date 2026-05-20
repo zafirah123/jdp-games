@@ -1,29 +1,47 @@
-// Shared mute toggle. localStorage is the source of truth for the mute
-// state: Phaser's WebAudio `sound.mute` getter is unreliable (it reads a
-// gain-node value back), so we only ever *write* to it and never read it.
+// Shared mute toggle.
+//
+// State handling: Phaser's WebAudio `sound.mute` getter is unreliable (it
+// reads a gain-node value back), so we never read it — we track the state
+// ourselves. localStorage persists it across reloads when available, but a
+// module-level `muteState` is the in-session source of truth: sandboxed
+// webviews (e.g. VS Code's Simple Browser) and private mode make
+// localStorage *throw*, so every access is guarded.
 import { PALETTE } from './config.js';
 
 const MUTE_KEY = 'flying-ruby:muted';
 
+// in-session source of truth; mirrors localStorage when that is available
+let muteState = false;
+
+// Refresh muteState from localStorage. If storage is unavailable the call
+// throws — we swallow it and keep whatever muteState already held.
+function loadMuteState() {
+  try { muteState = window.localStorage.getItem(MUTE_KEY) === '1'; }
+  catch { /* storage blocked — keep the in-memory value */ }
+  return muteState;
+}
+
 export function isMuted() {
-  return window.localStorage.getItem(MUTE_KEY) === '1';
+  return muteState;
 }
 
 function setMuted(scene, muted) {
-  window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+  muteState = muted;
+  try { window.localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); }
+  catch { /* storage blocked — state still held in memory for the session */ }
   scene.sound.mute = muted; // write-only — drives the master gain node
 }
 
 // Sync the game's global sound manager with the saved preference.
 export function applyMutePreference(scene) {
-  scene.sound.mute = isMuted();
+  scene.sound.mute = loadMuteState();
 }
 
 // Adds a speaker on/off toggle at (x, y). The tap target is padded well
 // beyond the icon so it is easy to hit with a mouse or finger. Returns the
 // button container (e.g. so a scene can exclude it from other input).
 export function addMuteButton(scene, x, y) {
-  scene.sound.mute = isMuted();
+  scene.sound.mute = loadMuteState();
 
   const R = 20;       // visual background radius
   const HIT_R = 34;   // generous tap radius

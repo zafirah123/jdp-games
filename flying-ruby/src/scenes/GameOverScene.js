@@ -13,12 +13,16 @@ export class GameOverScene extends Phaser.Scene {
     this.timeUsedMs = data?.timeUsedMs ?? 0;
     this.cause      = data?.cause ?? 'crash'; // 'crash' | 'time'
 
-    // load + update best score
-    const prev = Number(window.localStorage.getItem(BEST_KEY) ?? 0);
+    // load + update best score — guarded, since sandboxed webviews and
+    // private mode can make localStorage throw
+    let prev = 0;
+    try { prev = Number(window.localStorage.getItem(BEST_KEY) ?? 0); }
+    catch { /* storage unavailable */ }
     this.previousBest = prev;
     this.isNewBest = this.score > prev;
     if (this.isNewBest) {
-      window.localStorage.setItem(BEST_KEY, String(this.score));
+      try { window.localStorage.setItem(BEST_KEY, String(this.score)); }
+      catch { /* storage unavailable — best score just won't persist */ }
     }
   }
 

@@ -5,19 +5,13 @@ GitHub Pages.
 
 ## Available games
 
-The landing page ([index.html](index.html)) links to every game:
+The landing page ([index.html](index.html)) now separates games by status:
 
-| Game           | Path                              |
-|----------------|-----------------------------------|
-| Bubble Shooter | `/bubble-shooter/`                |
-| Flying Ruby    | `/flying-ruby/`                   |
-| Liquid Sort    | `/liquid-sort/liquid-sort.html`   |
-| Puzzle         | `/puzzle/puzzle.html`             |
-| Ruby Breaker   | `/ruby-breaker-v2/`               |
-| Ruby Rhythm    | `/ruby-rhythm/`                   |
-| Tetra Blocks   | `/tetra-blocks/tetra-blocks.html` |
-| Tic Tac Toe    | `/tic-tac-toe/tic-tack-toe.html`  |
-| Wordscapes     | `/wordscapes/`                    |
+- Approved games appear in the `Approved` section.
+- Pending games appear in the `Pending` section.
+
+Game metadata lives in [games.js](games.js). Change a game from `pending` to
+`approved` there when it is ready to ship.
 
 ## Source organization
 

@@ -7,10 +7,14 @@
   <style>
     :root {
       --bg: #0b1020;
-      --card: #151c33;
+      --panel: rgba(17, 23, 42, 0.88);
+      --card: #141c33;
+      --card-hover: #1b2441;
       --text: #e9eefc;
       --muted: #9db0e8;
       --accent: #53d3ff;
+      --border: rgba(83, 211, 255, 0.18);
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
     }
 
     * { box-sizing: border-box; }
@@ -19,34 +23,57 @@
       margin: 0;
       font-family: "Segoe UI", Tahoma, sans-serif;
       color: var(--text);
-      background: radial-gradient(circle at top, #1f2b55 0%, var(--bg) 55%);
+      background:
+        radial-gradient(circle at top, rgba(83, 211, 255, 0.18), transparent 38%),
+        linear-gradient(180deg, #111833 0%, var(--bg) 72%);
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       padding: 24px;
     }
 
     main {
-      width: min(760px, 100%);
-      background: rgba(21, 28, 51, 0.85);
-      border: 1px solid rgba(83, 211, 255, 0.2);
-      border-radius: 16px;
-      padding: 24px;
-      backdrop-filter: blur(8px);
+      width: min(860px, 100%);
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 28px;
+    }
+
+    header {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 28px;
     }
 
     h1 {
-      margin: 0 0 8px;
-      font-size: clamp(1.6rem, 2vw + 1rem, 2.3rem);
+      margin: 0;
+      font-size: clamp(1.8rem, 2.4vw + 1rem, 2.8rem);
+      letter-spacing: -0.03em;
     }
 
-    p {
-      margin: 0 0 20px;
+    .lede {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .section {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .section h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       color: var(--muted);
     }
 
-    ul {
+    .grid {
       list-style: none;
       margin: 0;
       padding: 0;
@@ -55,40 +82,101 @@
     }
 
     a {
-      display: block;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
       text-decoration: none;
       color: var(--text);
       background: var(--card);
-      border: 1px solid rgba(83, 211, 255, 0.2);
-      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
       padding: 14px 16px;
       font-weight: 600;
-      transition: transform 0.15s ease, border-color 0.15s ease;
+      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
     }
 
     a:hover {
       transform: translateY(-2px);
       border-color: var(--accent);
+      background: var(--card-hover);
     }
 
-    small { color: var(--muted); }
+    .meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .empty {
+      margin: 0;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    @media (max-width: 640px) {
+      main { padding: 20px; }
+      a {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .meta { white-space: normal; }
+    }
   </style>
 </head>
 <body>
   <main>
-    <h1>JDP Games</h1>
-    <p>Static game previews hosted on GitHub Pages.</p>
-    <ul>
-      <li><a href="./bubble-shooter/">Bubble Shooter <small>(/bubble-shooter/)</small></a></li>
-      <li><a href="./flying-ruby/">Flying Ruby <small>(/flying-ruby/)</small></a></li>
-      <li><a href="./liquid-sort/liquid-sort.html">Liquid Sort <small>(/liquid-sort/)</small></a></li>
-      <li><a href="./puzzle/puzzle.html">Puzzle <small>(/puzzle/)</small></a></li>
-      <li><a href="./ruby-breaker-v2/">Ruby Breaker <small>(/ruby-breaker-v2/)</small></a></li>
-      <li><a href="./ruby-rhythm/">Ruby Rhythm <small>(/ruby-rhythm/)</small></a></li>
-      <li><a href="./tetra-blocks/tetra-blocks.html">Tetra Blocks <small>(/tetra-blocks/)</small></a></li>
-      <li><a href="./tic-tac-toe/tic-tack-toe.html">Tic Tac Toe <small>(/tic-tac-toe/)</small></a></li>
-      <li><a href="./wordscapes/">Wordscapes <small>(/wordscapes/)</small></a></li>
-    </ul>
+    <header>
+      <h1>JDP Games</h1>
+      <p class="lede">Static game previews hosted on GitHub Pages. Approved games will appear here separately from the pending ones.</p>
+    </header>
+
+    <section class="section" aria-labelledby="approved-title">
+      <h2 id="approved-title">Approved</h2>
+      <ul id="approved-games" class="grid"></ul>
+      <p id="approved-empty" class="empty" hidden>Nothing has been approved yet.</p>
+    </section>
+
+    <section class="section" aria-labelledby="pending-title">
+      <h2 id="pending-title">Pending</h2>
+      <ul id="pending-games" class="grid"></ul>
+      <p id="pending-empty" class="empty" hidden>No pending games right now.</p>
+    </section>
   </main>
+
+  <script src="./games.js"></script>
+  <script>
+    const approvedList = document.getElementById('approved-games');
+    const pendingList = document.getElementById('pending-games');
+    const approvedEmpty = document.getElementById('approved-empty');
+    const pendingEmpty = document.getElementById('pending-empty');
+
+    function renderGame(game) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = game.path;
+
+      const title = document.createElement('span');
+      title.textContent = game.name;
+
+      const meta = document.createElement('span');
+      meta.className = 'meta';
+      meta.textContent = game.path;
+
+      a.append(title, meta);
+      li.appendChild(a);
+      return li;
+    }
+
+    const approvedGames = window.GAMES.filter((game) => game.status === 'approved');
+    const pendingGames = window.GAMES.filter((game) => game.status !== 'approved');
+
+    approvedGames.forEach((game) => approvedList.appendChild(renderGame(game)));
+    pendingGames.forEach((game) => pendingList.appendChild(renderGame(game)));
+
+    approvedEmpty.hidden = approvedGames.length > 0;
+    pendingEmpty.hidden = pendingGames.length > 0;
+  </script>
 </body>
 </html>

@@ -1,94 +1,90 @@
 # Ruby Breaker — Dev Notes
 
-Brick-breaker / gem-collector game. Phaser 3, served as a static site (no build step in this repo).
+Brick-breaker / gem-collector game. Phaser 3, built with Vite.
 
-## IMPORTANT: this is a minified bundle
+## IMPORTANT: edit the SOURCE, not the bundle
 
-There is **no source code** in the repo. The entire game lives in one committed,
-minified file:
+This folder (`Desktop/jdp-games/ruby-breaker-v2/`) is the **deployed build** — a minified
+bundle in `assets/` plus `index.html` and image/audio assets. **Do not hand-edit the bundle.**
 
-```
-ruby-breaker-v2/assets/index-D3MXnwhp.js   (~1.5 MB, bundled Phaser + game)
-ruby-breaker-v2/index.html                 (loads the bundle)
-```
-
-All gameplay edits are made **directly to the minified JS**. After editing,
-always validate syntax before committing:
+The readable source project lives at:
 
 ```
-cd ruby-breaker-v2/assets && node --check index-D3MXnwhp.js
+/Users/hanifanas/Downloads/ruby-breaker-v2/
+  src/scenes/{Boot,Preload,Start,Game,GameOver}Scene.js
+  src/utils/{AudioManager,StorageManager}.js
+  src/config/{gameConfig,levels}.js
+  public/            # static assets copied to the build root (pngs, m4a, ...)
+  vite.config.js     # base: './'  (note: its build.outDir points elsewhere — see Deploy)
 ```
 
-If you ever find/restore the original (un-minified) source, prefer editing that
-and rebuilding instead of hand-patching the bundle.
+> History note: earlier in the project the source and this deployed bundle drifted apart
+> (gameplay was hand-patched into the bundle while the source lagged). As of 2026-05-21 the
+> source is the single source of truth again. Keep it that way — always edit `src/` then rebuild.
+
+## Build & deploy
+
+From the source project (`Downloads/ruby-breaker-v2/`):
+
+```
+npm install                              # first time only
+npx vite build --outDir dist --emptyOutDir   # build into a local dist/
+```
+
+Then copy the build into this deployed folder (the repo that pushes to origin):
+
+```
+DEST=/Users/hanifanas/Desktop/jdp-games/ruby-breaker-v2
+rm -f "$DEST/assets/"index-*.js          # drop the old hashed bundle
+cp dist/index.html "$DEST/index.html"
+cp dist/assets/index-*.js "$DEST/assets/"
+cp dist/*.png dist/*.jpeg dist/*.m4a "$DEST/"
+```
+
+(`vite.config.js` `build.outDir` is `../jdp-games/ruby-breaker` — the Downloads jdp-games copy,
+NOT this Desktop repo — which is why we override `--outDir dist` and copy manually. Fix the
+config if you want `npm run build` to target this repo directly.)
 
 ## Run locally
 
-From the repo root (`jdp-games/`):
+From the repo root (`Desktop/jdp-games/`): `python3 -m http.server 8080`
+→ open **http://localhost:8080/ruby-breaker-v2/**
 
-```
-python3 -m http.server 8080
-```
-
-Then open **http://localhost:8080/ruby-breaker-v2/**
-
-## Minified identifier cheat-sheet
-
-The bundle minifies names. Key aliases used by the game logic:
-
-| Minified | Meaning |
-|----------|---------|
-| `lt`     | Phaser namespace — `lt.Math.Between`, `lt.Math.DegToRad`, `lt.Math.Clamp`, `lt.Utils.Array.GetRandom` |
-| `gt`     | Audio/sound manager — `gt.play("hit"|"break"|"combo"|"wall"|...)`, `gt.playBGM()`, `gt.stopBGM()` |
-| `Ut`     | High-score store — `Ut.getHighScore()`, `Ut.saveHighScore()` |
-| `nt`     | Color palette constants — `nt.B_RED`, `nt.CRIMSON`, `nt.GOLD`, `nt.WHITE`, etc. |
-
-### Tunable constants (one place, comma-separated)
-
-Find the run of `...,Qt=10,zt=510,ne=38,re=3,...`:
-
-| Const | Value | Meaning |
-|-------|-------|---------|
-| `Et`  | 480   | canvas width |
-| `At`  | 800   | canvas height |
-| `zt`  | 510   | **base ball speed** (was 340; +50%) |
-| `ne`  | 38    | per-level speed increment (was 25; +50%) — speed = `zt+(level-1)*ne` |
-| `Qt`  | 10    | ball radius-ish offset for paddle rest position |
-
-### Key GameScene methods (search by name in the bundle)
-
-- `spawnBall(H,K,$,j)` — creates a ball; called **twice** at each spawn point to give 2 balls.
-- `dropRubies(H,K)` — drops `getComboMult()` rubies (loops `dropRuby`).
-- `dropRuby(H,K)` — single falling ruby with bounce physics.
-- `catchRuby(H)` — paddle catches a ruby: `combo++`, awards `getComboMult()` points.
-- `getComboMult()` — combo → multiplier. Currently `combo<3?1:2` (capped at **x2**).
-- `breakBrick(H)` — on brick destroyed, calls `dropRubies` (skips type `9` = unbreakable).
-- `onBrickHit` / `onBallLost` / `nextWave` — combo also increments on brick hits; resets to 0 on ball-lost.
-- `addScore(H)` — `score = Math.min(500, score + round(H))` → **hard cap 500**.
-- `update(H,K)` — repositions resting balls (spread 16px apart), culls fallen balls/rubies, runs timer.
+Or, while developing the source: `cd Downloads/ruby-breaker-v2 && npm run dev` (Vite, port 3000).
 
 ## Game rules / balance (current)
 
 - **Goal:** reach **500 points** within **3:00** (180 s). 500 is the intended max.
-- **Score cap:** hard-capped at 500 in `addScore` — multipliers only let you reach it *faster*, never exceed it. Keep it easy.
-- **Balls:** 2 in play. Lose a life only when **both** are gone (`$.length===0` check in `update`). Ball sprite scaled to `0.7` (−30%) with matching physics body.
-- **Combo:** builds from catching rubies *and* breaking bricks; resets on ball-lost. Multiplier maxes at **x2** (combo ≥ 3).
-- **Combo effects:** at x2 → bricks drop 2 rubies and each ruby is worth 2 points. At x1 → 1 ruby / 1 point.
-- **Ruby physics:** rubies bounce off left/right/top walls (`setCollideWorldBounds` + `setBounce(.7,.7)`), but `body.checkCollision.down=false` so they still fall through the bottom if missed.
+- **Score cap:** hard-capped at 500 in `addScore` — multipliers only let you reach it *faster*.
+- **Balls:** 2 in play (`spawnBall()` called twice at start / life-respawn / new wave). Lose a life
+  only when **both** are gone. Ball sprite scaled to `0.7` (−30%) with matching physics body.
+- **Speed:** `BALL_BASE_SPEED = 510`, `BALL_SPEED_LEVEL_INC = 38` (both +50% over the original).
+- **Combo:** builds from catching rubies *and* breaking bricks; resets on ball-lost. Multiplier
+  capped at **x2** (`getComboMult` returns `combo < 3 ? 1 : 2`).
+- **Combo effects:** at x2 → bricks drop 2 rubies (`dropRubies`) and each ruby is worth 2 points.
+- **Ruby physics:** rubies bounce off left/right/top walls (`setCollideWorldBounds` + `setBounce(.7)`),
+  with `body.checkCollision.down = false` so misses still fall through the bottom.
+- **pbot-shield character:** peeks up from the bottom and follows the paddle (`buildPermanentShieldChar`).
 
-## Changes made 2026-05-20 (today's session)
+## Audio
 
-1. **Ruby bounce physics** — falling rubies now ricochet off side/top walls instead of vanishing; still fall through the bottom when missed.
-2. **Two balls** — spawn 2 balls at game start, life-respawn, and each new wave; they rest spread apart on the paddle and launch together with diverging angles.
-3. **Ball speed +50%** — `zt` 340→510, `ne` 25→38.
-4. **Ball size −30%** — `setScale(.7)` + resized physics body.
-5. **Ruby-streak combo** — catching rubies builds the combo and applies the multiplier to points; floating "+N" popup shows real value.
-6. **Combo-scaled drops** — bricks drop a number of rubies equal to the combo multiplier.
-7. **Multiplier capped at x2** — `getComboMult` returns `combo<3?1:2` (earlier iterations tried up to x5; deliberately reduced to keep the game easy).
+All SFX/BGM are **synthesized at runtime** via the Web Audio API in `src/utils/AudioManager.js`
+(no files), EXCEPT the **game-over jingle**, which plays `public/game-over.m4a`:
+- Loaded + decoded in `AudioManager.init()` (`loadGameoverSound`), routed through `masterGain`
+  so it respects the mute toggle. Falls back to the synth jingle if the file fails to load.
+- To swap other sounds for files: add the file to `public/`, decode it the same way, and play a
+  `BufferSource` through `masterGain` inside the relevant `SFX.*` entry. Prefer **MP3** for the
+  widest browser support; m4a works on Safari/Chrome.
 
-## Ideas / next dev steps
+## Cosmetics
 
-- Consider whether **missing** a ruby should break the combo streak (currently only ball-loss resets it). Trade-off: more "streak" feel vs. harder game — current design favors easy.
-- Tune the x2 threshold (`combo<3`) if x2 comes too early/late.
-- The bundle filename (`index-D3MXnwhp.js`) is referenced in `index.html` — if you ever regenerate the bundle, update the `<script>`/asset reference there to match the new hashed name.
-- No automated tests / type-checking exist — verify changes by playing in the browser. `node --check` only catches syntax errors, not gameplay regressions.
+- **Background:** palette gradient (navy → blue → deep maroon) drawn in `PreloadScene.genBackground`
+  as a canvas texture (replaces the old `bg-space.png`). `bg-space.png` is still in `public/` but unused.
+- **Title:** start screen uses the `game-logo.png` image (`StartScene.buildTitle`) with a soft
+  light-blue radial glow (`logoGlow` canvas texture) behind it. No text title / no "GEM EDITION".
+
+## Notes
+
+- No automated tests / type-checking. Verify changes by playing in the browser.
+- Palette lives in `src/config/gameConfig.js` (`P`): NAVY, BLUE, BLUE_LT, CRIMSON, D_RED, MAROON,
+  B_RED, GOLD, AMBER, WHITE.

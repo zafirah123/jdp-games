@@ -6,6 +6,10 @@ convention.
 
 > If you are running **Claude Code**, also read [CLAUDE.md](CLAUDE.md) — it
 > contains the same guidance plus a few Claude-Code-specific tips.
+>
+> For any UI work — colors, typography, buttons, HUD chips, progress bars,
+> tier badges — read [DESIGN.md](DESIGN.md) **before** writing code. It is
+> the source of truth for visual language across all JDP games.
 
 ---
 
@@ -19,6 +23,36 @@ shipped as previews through GitHub Pages.
 - Each game is a self-contained folder at the repo root.
 - Landing page ([index.html](index.html)) reads [games.js](games.js) and
   renders an Approved / Pending list.
+
+## Baseline requirements (apply to every game)
+
+Non-negotiable for every game in this repo — new builds and legacy
+single-file games alike.
+
+1. **Static HTML only — no backend.** HTML + CSS + JS, deployable to any
+   static host (today: GitHub Pages). No server, no database, no
+   game-controlled API. Library CDNs (Phaser, Tailwind) are fine; private
+   backends are not. The local `python3 -m http.server` is a dev-time
+   workaround for ES-module `file://` restrictions, not a runtime
+   dependency.
+2. **Desktop, mobile, and tablet.** Every game must play on:
+   - Desktop (keyboard / mouse, viewport ≥1024 px)
+   - Mobile phones (portrait, touch, viewports as narrow as 360 px)
+   - Tablets (both orientations, touch)
+   Use canvas-fit scaling, tap targets ≥44×44 px, and include
+   `<meta name="viewport" content="width=device-width, initial-scale=1">`.
+   No keyboard-only controls — every input must have a touch path.
+3. **Child-safe content (audience: under 18).** No violence, blood, gore,
+   weapons, or "kill" framing — use crash/miss/out/cartoon-failure framing
+   instead. No nudity, sexual or suggestive imagery, gambling mechanics, or
+   discriminatory language. No ads, no third-party analytics that profile
+   children. When in doubt, ship the safer version and ask first.
+4. **Suitable audio.** At minimum: SFX for the primary action, the pickup /
+   score event, and the lose / round-end moment. Tone is bright and
+   arcade-friendly — nothing scary. Mute toggle required in every scene,
+   mute state persisted in `localStorage` and applied **before** any audio
+   plays. Don't autoplay BGM until the player has interacted. Format:
+   `.m4a` (AAC) for new builds.
 
 ## Setup
 
@@ -89,6 +123,12 @@ Keep entries alphabetical by `name`.
 
 ## Design system
 
+**Start here:** [DESIGN.md](DESIGN.md) is the in-repo source of truth — it
+mirrors the JDP 2026 components frame with resolved color tokens,
+typography, spacing, radii, button/pill/progress-bar anatomy, and motion
+guidance. Read it before pulling anything from Figma; only reach for the
+Figma MCP when DESIGN.md is silent on what you need.
+
 UI follows **Pandai Design System 1.5**:
 [Figma — Design System 1.5](https://www.figma.com/design/Y0DLhf2MGdGwG0jyjN7EbQ/Pandai-Design-System-1.5--WIP---BACKUP-?node-id=1390-161)
 
@@ -127,6 +167,11 @@ tokens as JSON and reference them in a per-game config.
 | yellow      | `#fdd83d` | highlights, buttons, score     |
 | orange      | `#ffb800` | glow, sun, accent              |
 
+These are the legacy Flying Ruby tokens. For new UI prefer the JDP 2026
+values in [DESIGN.md §1](DESIGN.md) (Brick Red `#9E131F`, Blue `#133B9F`,
+Light Yellow `#FFD633`, etc.) — DESIGN.md includes a reconciliation table
+mapping legacy names to the Figma styles.
+
 ## Conventions
 
 - **Folders:** kebab-case. **Entry file:** `index.html` where possible.
@@ -140,10 +185,18 @@ tokens as JSON and reference them in a per-game config.
 ## Verification checklist before declaring "done"
 
 - [ ] Game loads at `http://localhost:8080/<folder>/` with no console
-      errors.
-- [ ] Plays through the golden path (start → win/lose → restart).
-- [ ] Sound works and the mute toggle is honoured.
+      errors — and would load identically from any static host (no backend
+      calls).
+- [ ] Plays through the golden path (start → win/lose → restart) on
+      **desktop, mobile (portrait, ≥360 px), and tablet**. Touch input
+      verified, not just mouse.
+- [ ] SFX play for primary action, pickup/score, and lose/round-end.
+      Mute toggle is honoured and applied before any audio plays.
+- [ ] Content reviewed for child-safety: no violence, nudity, gambling,
+      ads, or third-party tracking.
 - [ ] Layout looks correct at the canvas's intended aspect ratio.
+- [ ] UI matches [DESIGN.md](DESIGN.md) — palette, typography, button
+      states, pill/progress-bar anatomy.
 - [ ] No other game folder was modified.
 - [ ] [games.js](games.js) updated if a new game was added or status
       changed.

@@ -19,8 +19,89 @@ live in the case study:
   [`src/scenes/GameScene.js`](./flying-ruby/src/scenes/GameScene.js) before
   designing your own.
 
+**Visual language**: [`DESIGN.md`](./DESIGN.md) is the source of truth for
+colors, typography, spacing, radii, effects, and component anatomy. Read it
+**before** writing any UI — HUD chips, buttons, progress bars, leaderboards,
+tier badges, and mascot usage are all specified there. Per-game `config.js`
+palette overrides must reconcile against the JDP 2026 tokens in DESIGN.md §1.
+
 When this document and the case study disagree, the case study wins — open a
-PR to update this file.
+PR to update this file. When this document and DESIGN.md disagree on visuals,
+DESIGN.md wins.
+
+---
+
+## 0. Non-negotiables (every JDP game)
+
+These four hold for **every** game in this repo — new builds and legacy
+single-file games alike. If a change would break any of them, stop and
+raise it before continuing.
+
+### 0.1 Static HTML, no backend
+The game ships as **static HTML + CSS + JS only**. No server, no database,
+no API calls to a backend you control. The deployed game must load and play
+end-to-end from GitHub Pages (or any plain static host) with nothing more
+than a browser. Third-party CDNs for libraries (Phaser, Tailwind) are fine;
+private backends are not.
+
+> Local dev still uses `python3 -m http.server` because browsers block
+> `file://` ES-module loads — that's a dev-time convenience, not a runtime
+> dependency. The shipped artifact stays static.
+
+### 0.2 Plays on desktop, mobile, and tablet
+Every game must be usable on:
+
+- **Desktop** — keyboard and/or mouse, any viewport ≥1024 px wide.
+- **Mobile phones** — portrait, touch input, viewports as narrow as 360 px.
+- **Tablets** — both orientations, touch input.
+
+Practical implications:
+
+- Use Phaser's `Scale.FIT` (or equivalent canvas-fit logic) so the game
+  scales to the viewport without clipping or letterboxing badly.
+- Every input must have a touch path — no keyboard-only controls. Tap, drag,
+  and swipe targets ≥44×44 px.
+- Test in browser dev-tools mobile emulation **and** on at least one real
+  device before declaring done.
+- Include `<meta name="viewport" content="width=device-width, initial-scale=1">`
+  in every `index.html`.
+
+### 0.3 Child-safe content (under-18 audience)
+JDP's audience is school-age children. Every asset, mechanic, and bit of
+copy must be appropriate for that audience:
+
+- **No violence.** No blood, gore, weapons, combat, or "kill" framing. Use
+  "crash", "miss", "out", or game-specific verbs instead. Death sequences
+  (§6.2) should read as cartoonish *failure*, not harm — flash + shatter,
+  not blood or injury.
+- **No nudity, sexual content, or suggestive imagery.** Characters fully
+  clothed. No innuendo in copy.
+- **No gambling mechanics.** No loot boxes, real-money purchases, or
+  randomized-reward loops disguised as core gameplay. (Power-up drops with
+  *visible* odds are fine; spin-the-wheel monetization is not.)
+- **No discriminatory or hateful language** in any string, including
+  placeholder text. Review every visible word before shipping.
+- **No tracking, ads, or third-party analytics** that profile children.
+  `localStorage` for best score and mute is fine; sending player data
+  anywhere is not.
+
+If a mechanic forces a borderline judgement call, write the safer version
+and ask the user before shipping the edgier one.
+
+### 0.4 Suitable audio
+Every game ships with sound, and every game ships with a working mute:
+
+- **At minimum**: SFX for the primary action (tap/flap/launch), the pickup
+  / score event, and the lose / round-end moment. Most games also want a
+  short BGM loop.
+- **Tone**: bright, friendly, arcade — match the under-18 audience. No
+  jarring impacts, distorted bass, or anything that reads as "scary".
+- **Format**: `.m4a` (AAC) per §5.2. No WAV / MP3 in new builds.
+- **Mute toggle**: required in every scene per §6.3. Mute state persists in
+  `localStorage` and is applied **before** any audio plays so a returning
+  muted player never hears a sound.
+- **Autoplay**: don't autoplay BGM until the player has interacted (browsers
+  block it anyway). First tap on the start screen is the right trigger.
 
 ---
 
@@ -189,7 +270,9 @@ Flying Ruby ships in 2.8 MB across 16 files. Stay within that envelope.
 
 ### 6.1 Palette
 Use the Pandai Design System 1.5 palette unless the game explicitly needs
-its own. Defined in `src/config.js`:
+its own. The canonical tokens (with role mappings to legacy Flying Ruby
+names) live in [`DESIGN.md`](./DESIGN.md) §1 — consult it before adding new
+colors. Defined in `src/config.js`:
 
 | Token | Hex | Used for |
 |---|---|---|
@@ -211,6 +294,10 @@ Every game must ship with:
 - Power-up activation effects (ring + label + aura)
 - HUD that turns red / urgent in the final 10 seconds
 - "NEW BEST!" celebration when applicable
+
+For button states, progress-bar anatomy, score-pill chrome, and motion
+durations, follow [`DESIGN.md`](./DESIGN.md) §4–§8. Don't invent button
+shadows, border widths, or easings — they're already specified.
 
 ### 6.3 Mute & persistence
 - Mute toggle in every scene, top-right corner of HUD area
@@ -288,6 +375,10 @@ the status for you.
 
 A game is shippable when it satisfies **all** of:
 
+- [ ] Loads end-to-end from a static host with no backend (§0.1)
+- [ ] Plays on desktop, mobile (portrait, ≥360 px), and tablet — touch + keyboard paths (§0.2)
+- [ ] Content reviewed against §0.3 — no violence, nudity, gambling, ads, or tracking
+- [ ] SFX for primary action, pickup, and round end; BGM if appropriate; mute applied before audio (§0.4)
 - [ ] Single endless round with a fixed timer (or stages with a documented reason)
 - [ ] One currency, one HUD number
 - [ ] Two power-ups max
@@ -297,10 +388,10 @@ A game is shippable when it satisfies **all** of:
 - [ ] All images are WebP, all audio is AAC
 - [ ] Folder layout matches §5.1
 - [ ] Polish checklist (§6.2) complete
+- [ ] Visuals reconciled against [`DESIGN.md`](./DESIGN.md) (palette, typography, button/pill/progress-bar anatomy)
 - [ ] Mute toggle + best score persistence working
 - [ ] `?scene=` dev jump wired in BootScene
 - [ ] Listed in `games.js`
-- [ ] Plays cleanly on mobile (mobile viewport, touch input, canvas-fit)
 
 ---
 
@@ -393,6 +484,13 @@ loads at `https://<org>.github.io/pandaijdpgames/<your-game>/` after deploy.
 ---
 
 ## Appendix B: Pulling design from Figma
+
+Before reaching for Figma, check whether [`DESIGN.md`](./DESIGN.md) already
+covers what you need — it mirrors the JDP 2026 components frame and is the
+fastest path for routine UI work. Use the Figma MCP only when DESIGN.md is
+silent on the component you're building, or when a designer has shipped a
+new frame that hasn't been mirrored into DESIGN.md yet (refresh it with the
+prompt at the top of that file).
 
 For Claude Code, the cleanest workflow for picking up design context is the
 **Figma MCP server**:

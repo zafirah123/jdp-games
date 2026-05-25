@@ -4,6 +4,8 @@ A collection of small, static browser games built for **Juara Digital Pandai
 (JDP)** — Pandai's 2026 digital learning programme. The games are published as
 previews through GitHub Pages.
 
+**Live site**: https://zafirah123.github.io/jdp-games/
+
 ## Available games
 
 The landing page ([index.html](index.html)) lists every game and separates

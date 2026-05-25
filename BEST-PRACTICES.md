@@ -305,9 +305,27 @@ ships a flourish, no round does.
 
 ## 05 — Economy control
 
-**Caps the player must not see.** If a fairness or brand rule demands a
-soft ceiling on score per round, do **not** clamp the counter, end the
-round early, or stop spawning entirely. Each of those reads as a bug.
+**Target a 500-score ceiling per 3-minute round.** Every JDP game should
+land within this envelope — it keeps leaderboards comparable across the
+catalogue and gives the player one clear brag-number scale (a 500 run is
+*the* perfect run). There are two legitimate ways to enforce it; pick one
+based on whether your game has a supply lever to thin:
+
+1. **Cap supply invisibly** — taper the spawn / payout lever as the player
+   approaches 500. Recommended when the game has a natural supply lever
+   (scrolling, spawning, dropping). See "The soft-taper pattern" below.
+2. **Make 500 unrealistic** — escalate difficulty so hard near the cap
+   that reaching it demands near-perfect play, while leaving the counter
+   technically uncapped. Recommended when the game has no supply lever —
+   rhythm beats, memory sequences, fixed-pace puzzles. See "The
+   difficulty-escalation pattern" below.
+
+Pick one path. Don't combine them, or the game both punishes *and*
+under-pays the player at the same time.
+
+**Caps the player must not see.** Whichever path you pick, do **not**
+clamp the counter, end the round early, or stop spawning entirely. Each
+of those reads as a bug.
 
 ### Why a visible clamp fails
 
@@ -359,7 +377,8 @@ not as ambient HUD chrome.
 |---|---|---|
 | Hard clamp | `score = Math.min(cap, score + 1)` | Very obvious |
 | Stop all content past threshold | Spawns / new rounds / new beats return empty after cap | Obvious |
-| **Soft taper (recommended)** | Multiply the reward-flow lever by `1 − smoothstep(taperStart, taperEnd, score)`. Suppress new high-payout power-ups within ~10% of cap. The lever is *spawn probability* for scrolling games, *per-round payout* for round-based games, *multiplier ceiling* for combo games. | Invisible |
+| **Soft taper (recommended when supply exists)** | Multiply the reward-flow lever by `1 − smoothstep(taperStart, taperEnd, score)`. Suppress new high-payout power-ups within ~10% of cap. The lever is *spawn probability* for scrolling games, *per-round payout* for round-based games, *multiplier ceiling* for combo games. | Invisible |
+| **Difficulty escalation (recommended when supply doesn't fit)** | Compound the §03 ramp so end values get harsher once score crosses ~80% of the cap — faster scroll, tighter timing windows, shorter recall pauses. Counter stays technically uncapped; in practice, hitting 500 demands near-perfect play. | Invisible |
 | Pre-rolled per-round budget | Pick a target near cap at round start; spread reward events via inverse-CDF across the timeline | Invisible but rigid |
 
 ### The soft-taper pattern
@@ -405,6 +424,58 @@ if (Math.random() > this._supplyMultiplier()) return;
 > **Reference: Flying Ruby.** Today, score is unbounded. If a 500-ruby cap
 > is added, the values above (taperStart 420, taperEnd 520, Power Rush
 > blocked at 430) are the recommended starting tuning.
+
+### The difficulty-escalation pattern
+
+For games whose payout is structurally fixed — one beat hit = one point,
+one round cleared = one point, one tile matched = one point — there is no
+"supply" to multiply by zero. Tapering per-event payout in those genres
+reads as the game cheating ("I hit the beat, why no point?"). The
+alternative: leave the payout honest and make 500 *technically possible
+but practically out of reach* by stacking a score-driven difficulty ramp
+on top of the §03 time-driven one.
+
+```js
+// Add to config.js
+export const ECONOMY = {
+  softCap:     500,
+  hardenStart: 400,   // begin compounding difficulty at this score
+  hardenEnd:   500,   // peak score-driven difficulty here
+};
+
+// A second ramp, driven by score instead of elapsed time
+function scoreHardness(score) {
+  const { hardenStart, hardenEnd } = ECONOMY;
+  return clamp((score - hardenStart) / (hardenEnd - hardenStart), 0, 1);
+}
+
+// Apply alongside the §03 time-based ramp — whichever is harder wins.
+// Example: scroll speed climbs another ~50% past its time-based peak.
+const t = rampProgress(elapsedMs);
+const s = scoreHardness(score);
+const speed = lerp(DIFFICULTY.scrollSpeed.start,
+                   DIFFICULTY.scrollSpeed.end * 1.5,
+                   Math.max(t, s));
+```
+
+**Levers that read as escalation, not punishment:**
+
+- **Pace** — scroll / spawn / beat rate climbs another 30–60% past the
+  §03 peak.
+- **Timing windows** — perfect/good windows tighten on the same curve.
+- **Hit pads** — collision / tap margins shrink toward (but never below)
+  the §07 mobile-tap floor of ~40 px padding.
+- **Distraction** — for memory/sequence games: faster reveal, shorter
+  recall pause, an extra decoy flash.
+
+> **Why this works.** The player still sees the world reacting to *them*
+> — the game just gets genuinely hard. A 500 run reads as earned. A 487
+> run reads as "I almost cracked it," not "the game ran out of points."
+
+> **Don't combine patterns.** Pick supply-taper *or* escalation. Doing
+> both means the player has to fight a harder game for a worse payout —
+> the felt experience is "this stopped being fun" rather than "this got
+> hard / this calmed down."
 
 ---
 
@@ -694,8 +765,10 @@ pattern from §08.
       distinct visual language.
 - [ ] Decide drop odds as a probability table. Most rolls should be empty
       so the rare drops feel special.
-- [ ] Specify any economy caps now. Implement as a taper on spawn
-      probability, not as a counter clamp.
+- [ ] Target a 500-score ceiling for the 3-minute round. Pick **one**
+      enforcement path: soft-taper supply (if a spawn/payout lever exists)
+      *or* compound difficulty near the cap so 500 demands near-perfect
+      play. Never implement as a counter clamp.
 - [ ] Identify which textures are art (mascot, currency, power-ups,
       background) and which are generated (obstacles, particles, glows).
 - [ ] Reserve a polish budget per interaction: input response, pickup
@@ -717,9 +790,11 @@ If you remember four things:
    endless round with a smooth difficulty ramp. Stages are friction.
 3. **One currency, one HUD number.** Make variety come from *how* rewards
    appear (formations, power-ups), not from competing score systems.
-4. **Cap economies by thinning supply.** Never freeze a visible counter.
-   Taper spawn probabilities as the player nears the cap — the world simply
-   "calms down".
+4. **Cap the brag-number at 500 per 3-minute round.** If the game has a
+   spawn/payout lever, taper it so the world "calms down" near the cap.
+   If it doesn't, compound difficulty near 500 so reaching it demands
+   near-perfect play. Pick one — never both. And never freeze a visible
+   counter.
 
 > **Closing thought.** A JDP game should be small on purpose. A handful of
 > scenes, one config file, two power-ups, one currency. The discipline of

@@ -182,53 +182,64 @@
     </section>
   </main>
 
-  <script src="./games.js"></script>
   <script>
-    const lists = {
-      'approved-dev':    document.getElementById('approved-dev-games'),
-      'approved-design': document.getElementById('approved-design-games'),
-      'pending':         document.getElementById('pending-games'),
-    };
-    const empties = {
-      'approved-dev':    document.getElementById('approved-dev-empty'),
-      'approved-design': document.getElementById('approved-design-empty'),
-      'pending':         document.getElementById('pending-empty'),
-    };
+    // Load games.js with a cache-busting timestamp so the CDN (Cloudflare) and
+    // browser always fetch the latest list. Trade-off: games.js is never
+    // CDN-cached. It's small (~1 KB) so this is acceptable.
+    (function loadGames() {
+      const s = document.createElement('script');
+      s.src = './games.js?t=' + Date.now();
+      s.onload = renderGames;
+      document.head.appendChild(s);
+    })();
 
-    function renderGame(game) {
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.href = game.path;
+    function renderGames() {
+      const lists = {
+        'approved-dev':    document.getElementById('approved-dev-games'),
+        'approved-design': document.getElementById('approved-design-games'),
+        'pending':         document.getElementById('pending-games'),
+      };
+      const empties = {
+        'approved-dev':    document.getElementById('approved-dev-empty'),
+        'approved-design': document.getElementById('approved-design-empty'),
+        'pending':         document.getElementById('pending-empty'),
+      };
 
-      const title = document.createElement('span');
-      title.textContent = game.name;
+      function renderGame(game) {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = game.path;
 
-      const meta = document.createElement('span');
-      meta.className = 'meta';
-      meta.textContent = game.path;
+        const title = document.createElement('span');
+        title.textContent = game.name;
 
-      a.append(title, meta);
-      li.appendChild(a);
-      return li;
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = game.path;
+
+        a.append(title, meta);
+        li.appendChild(a);
+        return li;
+      }
+
+      // Unknown / legacy status values fall through to "pending" so a typo in
+      // games.js doesn't drop a game off the landing page entirely.
+      function bucketFor(status) {
+        if (status === 'approved-dev' || status === 'approved-design') return status;
+        return 'pending';
+      }
+
+      const counts = { 'approved-dev': 0, 'approved-design': 0, 'pending': 0 };
+      window.GAMES.forEach((game) => {
+        const bucket = bucketFor(game.status);
+        lists[bucket].appendChild(renderGame(game));
+        counts[bucket] += 1;
+      });
+
+      Object.keys(empties).forEach((key) => {
+        empties[key].hidden = counts[key] > 0;
+      });
     }
-
-    // Unknown / legacy status values fall through to "pending" so a typo in
-    // games.js doesn't drop a game off the landing page entirely.
-    function bucketFor(status) {
-      if (status === 'approved-dev' || status === 'approved-design') return status;
-      return 'pending';
-    }
-
-    const counts = { 'approved-dev': 0, 'approved-design': 0, 'pending': 0 };
-    window.GAMES.forEach((game) => {
-      const bucket = bucketFor(game.status);
-      lists[bucket].appendChild(renderGame(game));
-      counts[bucket] += 1;
-    });
-
-    Object.keys(empties).forEach((key) => {
-      empties[key].hidden = counts[key] > 0;
-    });
   </script>
 </body>
 </html>

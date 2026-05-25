@@ -643,15 +643,26 @@ function pointInRect(p, r) {
   return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 }
 
+// Compute the directory this page lives in so relative asset paths
+// resolve correctly whether the URL has a trailing slash or not.
+// Without this, `/tap-tap-match?lang=ms` would resolve `assets/foo`
+// against `/` instead of `/tap-tap-match/`.
+const BASE_PATH = (() => {
+  let p = location.pathname;
+  if (/\.[a-z0-9]+$/i.test(p)) p = p.substring(0, p.lastIndexOf('/') + 1);
+  else if (!p.endsWith('/')) p += '/';
+  return p;
+})();
+
 const pbotImg = new Image();
 let pbotReady = false;
 pbotImg.onload = () => { pbotReady = true; };
-pbotImg.src = 'assets/pbot.webp';
+pbotImg.src = BASE_PATH + 'assets/pbot.webp';
 
 const gemImages = {};
 CONFIG.cells.forEach(c => {
   const img = new Image();
-  img.src = `assets/gems/${c.gem}.svg`;
+  img.src = `${BASE_PATH}assets/gems/${c.gem}.svg`;
   gemImages[c.gem] = img;
 });
 

@@ -123,12 +123,10 @@
             animation: pulse-red 0.8s infinite;
         }
 
-        /* Audio toggle — DESIGN.md §5.11 */
+        /* Audio toggle — DESIGN.md §5.11 (inlined into HUD row for tight mobile alignment) */
         .mute {
-            position: fixed;
-            top: max(12px, env(safe-area-inset-top));
-            right: max(12px, env(safe-area-inset-right));
             width: 44px; height: 44px;
+            flex-shrink: 0;
             border-radius: 22px;
             border: 2px solid var(--jdp-dark-yellow);
             background: var(--jdp-brick);
@@ -136,7 +134,6 @@
             display: flex; align-items: center; justify-content: center;
             padding: 0;
             cursor: pointer;
-            z-index: 30;
             transition: transform 80ms ease;
         }
         .mute:active { transform: scale(0.92); }
@@ -145,13 +142,8 @@
 </head>
 <body class="overflow-hidden w-screen h-screen flex flex-col items-center justify-between p-2 md:p-4 text-white">
 
-    <!-- Audio toggle — DESIGN.md §5.11 -->
-    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
-        <svg viewBox="0 0 24 24"></svg>
-    </button>
-
     <!-- Top HUD Bar — JDP two-tone pills per DESIGN.md §5.2 -->
-    <div class="w-full max-w-md flex justify-between items-stretch gap-2 z-10 shrink-0">
+    <div class="w-full max-w-md flex justify-between items-center gap-2 z-10 shrink-0">
         <!-- Score pill -->
         <div class="jdp-pill flex-1">
             <span class="pill-label">Score</span>
@@ -160,12 +152,14 @@
 
         <!-- Timer pill -->
         <div class="jdp-pill flex-1">
-            <span class="pill-label">Time Remaining</span>
+            <span class="pill-label">Time</span>
             <span id="timer" class="pill-value font-mono">03:00</span>
         </div>
 
-        <!-- Spacer reserving room for the fixed audio toggle (DESIGN.md §5.11) -->
-        <div class="w-11 shrink-0" aria-hidden="true"></div>
+        <!-- Audio toggle — DESIGN.md §5.11 (inlined for HUD alignment) -->
+        <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+            <svg viewBox="0 0 24 24"></svg>
+        </button>
     </div>
 
     <!-- Main Game Container -->
@@ -269,7 +263,7 @@
                 // Game-specific
                 title: '3-MIN BLITZ',
                 hudScore: 'Score',
-                hudTime: 'Time Remaining',
+                hudTime: 'Time',
                 hudHigh: 'High Score',
                 hudNext: 'Next',
                 dangerLine: 'Danger Line',
@@ -304,7 +298,7 @@
                 // Game-specific
                 title: 'BLITZ 3-MINIT',
                 hudScore: 'Markah',
-                hudTime: 'Masa Berbaki',
+                hudTime: 'Masa',
                 hudHigh: 'Markah Tertinggi',
                 hudNext: 'Seterusnya',
                 dangerLine: 'Garisan Bahaya',
@@ -344,7 +338,7 @@
             document.querySelectorAll('span').forEach(span => {
                 const t = span.textContent.trim();
                 if (t === 'Score') span.textContent = COPY.hudScore;
-                else if (t === 'Time Remaining') span.textContent = COPY.hudTime;
+                else if (t === 'Time') span.textContent = COPY.hudTime;
                 else if (t === 'High Score') span.textContent = COPY.hudHigh;
                 else if (t === 'Next') span.textContent = COPY.hudNext;
                 else if (t === 'Final Score') span.textContent = COPY.statFinal;

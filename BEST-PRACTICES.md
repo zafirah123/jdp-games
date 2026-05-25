@@ -294,6 +294,39 @@ round early, or stop spawning entirely. Each of those reads as a bug.
 - **Hard freeze** — Ending the round early breaks the "spend the full
   advertised time" contract the title screen made.
 
+### Don't display the cap as a denominator
+
+**Show the score alone — never `46 / 500`.** This is a separate mistake
+from clamping, but in the same family: it makes the cap part of the HUD.
+
+- A visible denominator turns the cap into a goal. The HUD reads as a
+  checklist toward a known number, not an open run. Every "+1" pop feels
+  like a tick toward an inevitable end rather than momentum in a
+  continuing round.
+- When the soft taper (below) kicks in around 90% of the cap, the
+  visible gap slows in a way that reads as broken progression — the
+  player can't tell whether their pickup rate dropped or the game
+  cheated them. Without the denominator, the same taper is just
+  "difficulty calming down."
+- The cap is a tuning detail. Players didn't sign up to chase a number
+  the dev picked; they signed up to chase the *highest* number they
+  can hit. A denominator caps the brag.
+
+```
+HUD score pill
+  ❌  46 / 500
+  ✅  46
+```
+
+The same rule applies to the game-over card: `Score: 46` reads cleaner
+than `Score: 46 / 500`. If the player maxes the cap, *that* is when a
+`500 / 500 — MAX` badge earns its place — as a one-time celebration,
+not as ambient HUD chrome.
+
+> **Reference: Susun.** The game-over screen already shows the score
+> alone (`b496591`); the in-game HUD pill still renders `0 / 500` and
+> is the next thing to fix.
+
 ### Approaches ranked by how invisible they are
 
 | Approach | How it works | Visibility |

@@ -182,6 +182,11 @@
   }
   .key:active { transform: scale(0.94) translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
   .key.wide { flex: 1.6; max-width: 64px; font-size: 11px; }
+  .key[data-key="ENTER"] {
+    background: var(--yellow); color: var(--navy);
+    font-size: 18px; font-weight: 900;
+    box-shadow: 0 2px 0 var(--orange);
+  }
   .key.correct { background: var(--tile-correct); }
   .key.present { background: var(--tile-present); color: var(--navy); }
   .key.absent  { background: var(--tile-absent); color: #888; }

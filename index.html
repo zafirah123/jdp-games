@@ -47,10 +47,38 @@
       margin-bottom: 28px;
     }
 
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
     h1 {
       margin: 0;
       font-size: clamp(1.8rem, 2.4vw + 1rem, 2.8rem);
       letter-spacing: -0.03em;
+    }
+
+    .header-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--accent);
+      background: rgba(83, 211, 255, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .header-link:hover {
+      background: rgba(83, 211, 255, 0.16);
+      border-color: var(--accent);
     }
 
     .lede {
@@ -128,7 +156,10 @@
 <body>
   <main>
     <header>
-      <h1>JDP Games</h1>
+      <div class="header-row">
+        <h1>JDP Games</h1>
+        <a class="header-link" href="./flying-ruby-case-study.html">Case studies →</a>
+      </div>
       <p class="lede">Static game previews hosted on GitHub Pages. Approved games will appear here separately from the pending ones.</p>
     </header>
 

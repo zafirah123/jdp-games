@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#020d26">
+<title>Kataku</title>
+<style>
+  :root {
+    --navy: #020d26;
+    --royal: #1535a8;
+    --ruby: #b81c26;
+    --darkRed: #a21520;
+    --yellow: #fdd83d;
+    --orange: #ffb800;
+    --tile: #1a2548;
+    --tile-empty: #0f1a3a;
+    --tile-border: #2a3a6a;
+    --tile-correct: #6aaa64;
+    --tile-present: #fdd83d;
+    --tile-absent: #3a3a3c;
+    --key-bg: #4a5680;
+    --key-text: #ffffff;
+    --text: #ffffff;
+    --muted: #b6c0e0;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--navy); color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    overflow: hidden; user-select: none;
+  }
+  body {
+    background:
+      radial-gradient(ellipse at top, rgba(21,53,168,0.35) 0%, transparent 60%),
+      var(--navy);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #app {
+    position: relative;
+    width: 100%; max-width: 480px; height: 100dvh; max-height: 900px;
+    display: flex; flex-direction: column;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
+  }
+  /* Audio toggle — DESIGN.md §5.11 */
+  .mute {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    border: 2px solid #FFB603;
+    background: #9E131F;
+    color: #FFD633;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; cursor: pointer; z-index: 30;
+    transition: transform 80ms ease;
+  }
+  .mute:active { transform: scale(0.92); }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; }
+
+  /* HUD */
+  #hud {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 4px 12px; gap: 8px;
+  }
+  .pill {
+    background: #1a2548;
+    border: 2px solid var(--tile-border);
+    border-radius: 22px;
+    padding: 8px 14px;
+    font-weight: 700;
+    font-size: 16px;
+    min-width: 70px;
+    text-align: center;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.3);
+  }
+  .pill.timer {
+    color: var(--yellow);
+    font-variant-numeric: tabular-nums;
+  }
+  .pill.timer.urgent {
+    background: var(--ruby); color: #fff; border-color: var(--darkRed);
+    animation: pulse 0.6s ease-in-out infinite alternate;
+  }
+  .pill.timer.zone-x12 { color: #ffcc66; }
+  .pill.timer.zone-x15 { color: var(--orange); }
+  .pill.timer.zone-x20 { color: #ff7a59; }
+  .mult-badge {
+    background: var(--yellow); color: var(--navy);
+    border-radius: 12px; padding: 4px 10px;
+    font-weight: 900; font-size: 13px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+  .mult-badge.x12 { background: #ffcc66; }
+  .mult-badge.x15 { background: var(--orange); }
+  .mult-badge.x20 { background: #ff7a59; color: #fff; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+  /* Board */
+  #board-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  #board {
+    display: grid; grid-template-rows: repeat(6, 1fr); gap: 5px;
+    width: 100%; max-width: 330px; aspect-ratio: 5 / 6;
+  }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .tile {
+    background: var(--tile-empty);
+    border: 2px solid var(--tile-border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: clamp(20px, 7vw, 30px);
+    color: var(--text); text-transform: uppercase;
+    transition: transform 0.12s ease, background 0.3s ease, border-color 0.3s ease;
+  }
+  .tile.filled { border-color: #6a7aa8; transform: scale(1.04); animation: pop 0.12s ease; }
+  .tile.correct { background: var(--tile-correct); border-color: var(--tile-correct); color: #fff; }
+  .tile.present { background: var(--tile-present); border-color: var(--tile-present); color: var(--navy); }
+  .tile.absent  { background: var(--tile-absent);  border-color: var(--tile-absent);  color: #fff; }
+  .tile.flip { animation: flip 0.5s ease forwards; }
+  @keyframes pop { 0% { transform: scale(0.9); } 100% { transform: scale(1.04); } }
+  @keyframes flip {
+    0%   { transform: rotateX(0); }
+    45%  { transform: rotateX(90deg); }
+    55%  { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+  }
+  .row.shake { animation: shake 0.4s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  /* Message */
+  #message {
+    min-height: 28px; text-align: center;
+    font-size: 14px; font-weight: 600;
+    margin: 6px 0; color: var(--muted);
+    transition: opacity 0.2s ease;
+  }
+  #message.flash { color: var(--yellow); }
+  #message .pts { color: var(--yellow); font-weight: 900; }
+  .float-pts {
+    position: fixed; pointer-events: none;
+    color: var(--yellow); font-weight: 900; font-size: 28px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    animation: floatPts 1s ease forwards;
+    z-index: 20;
+  }
+  @keyframes floatPts {
+    0% { transform: translate(-50%, 0); opacity: 1; }
+    100% { transform: translate(-50%, -60px); opacity: 0; }
+  }
+
+  /* Keyboard */
+  #keyboard {
+    display: flex; flex-direction: column; gap: 5px;
+    padding: 4px 0 0;
+  }
+  .krow { display: flex; gap: 4px; justify-content: center; }
+  .key {
+    flex: 1; min-width: 0; max-width: 44px;
+    height: 48px;
+    border: none; border-radius: 6px;
+    background: var(--key-bg); color: var(--key-text);
+    font-weight: 700; font-size: 14px; text-transform: uppercase;
+    cursor: pointer; padding: 0;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+    transition: transform 80ms ease, background 0.3s ease;
+  }
+  .key:active { transform: scale(0.94) translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+  .key.wide { flex: 1.6; max-width: 64px; font-size: 11px; }
+  .key.correct { background: var(--tile-correct); }
+  .key.present { background: var(--tile-present); color: var(--navy); }
+  .key.absent  { background: var(--tile-absent); color: #888; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(2,13,38,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 40; padding: 16px;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.hidden { display: none; }
+  .card {
+    background: linear-gradient(160deg, #142244 0%, #0b1530 100%);
+    border: 2px solid var(--tile-border);
+    border-radius: 18px;
+    padding: 24px 20px;
+    max-width: 380px; width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .card h1 {
+    margin: 0 0 8px;
+    font-size: 40px; font-weight: 900;
+    color: var(--yellow);
+    letter-spacing: 1px;
+    text-shadow: 0 3px 0 var(--darkRed);
+  }
+  .card h2 {
+    margin: 0 0 12px; font-size: 28px; font-weight: 900;
+    color: var(--yellow);
+  }
+  .card p { margin: 6px 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .card .best { color: var(--orange); font-weight: 700; font-size: 15px; margin: 12px 0; }
+  .cta {
+    display: block; width: 100%;
+    margin-top: 16px; padding: 16px;
+    background: var(--yellow); color: var(--navy);
+    border: none; border-radius: 12px;
+    font-weight: 900; font-size: 18px; letter-spacing: 0.5px;
+    cursor: pointer; text-transform: uppercase;
+    box-shadow: 0 4px 0 var(--orange);
+    transition: transform 80ms ease;
+  }
+  .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--orange); }
+  .skip-btn {
+    margin-top: 8px;
+    padding: 8px 14px;
+    background: transparent; color: var(--muted);
+    border: 2px solid var(--tile-border);
+    border-radius: 10px;
+    font-weight: 700; font-size: 13px; text-transform: uppercase;
+    cursor: pointer;
+    align-self: center;
+  }
+  .skip-btn:active { transform: scale(0.96); }
+  .skip-wrap { display: flex; justify-content: center; padding: 4px 0; }
+
+  .stats { text-align: left; margin: 12px 0; font-size: 14px; }
+  .stats .row-stat { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .stats .row-stat:last-child { border-bottom: none; }
+  .stats .label { color: var(--muted); }
+  .stats .val { color: var(--text); font-weight: 700; }
+  .new-best {
+    display: inline-block; padding: 6px 12px;
+    background: var(--orange); color: var(--navy);
+    border-radius: 20px; font-weight: 900; font-size: 13px;
+    margin: 8px 0;
+    animation: nbpulse 1s ease-in-out infinite alternate;
+  }
+  @keyframes nbpulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+  .hidden { display: none !important; }
+
+  /* Tight viewports */
+  @media (max-height: 700px) {
+    .card h1 { font-size: 32px; }
+    .tile { font-size: clamp(18px, 6vw, 26px); }
+    .key { height: 42px; }
+  }
+  @media (max-width: 380px) {
+    .key { height: 44px; font-size: 13px; }
+    .key.wide { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+  <svg viewBox="0 0 24 24"></svg>
+</button>
+
+<div id="app">
+  <header id="hud" class="hidden">
+    <div id="scorePill" class="pill">0</div>
+    <div class="mult-badge" id="multBadge">×1.0</div>
+    <div id="timerPill" class="pill timer">3:00</div>
+  </header>
+
+  <div id="board-wrap" class="hidden">
+    <div id="board"></div>
+  </div>
+
+  <div id="message" class="hidden"></div>
+
+  <div class="skip-wrap hidden" id="skipWrap">
+    <button id="skipBtn" class="skip-btn"></button>
+  </div>
+
+  <div id="keyboard" class="hidden"></div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="card">
+    <h1>KATAKU</h1>
+    <p id="menuSub"></p>
+    <p class="best" id="bestText">&nbsp;</p>
+    <button id="startBtn" class="cta"></button>
+    <p id="menuHint" style="font-size:12px;margin-top:14px;"></p>
+  </div>
+</div>
+
+<div id="gameOver" class="overlay hidden">
+  <div class="card">
+    <h2 id="goTitle"></h2>
+    <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
+    <div id="finalStats" class="stats"></div>
+    <button id="claimBtn" class="cta"></button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// =============================================================================
+// CONFIG — all tuning lives here
+// =============================================================================
+const CONFIG = {
+  GAME_NAME: 'kataku',
+  ROUND_MS: 180 * 1000,
+  WORD_LEN: 5,
+  MAX_GUESSES: 6,
+  STORAGE_KEY_BEST: 'kataku:best',
+  STORAGE_KEY_MUTE: 'kataku:mute',
+  // Base score by guess number (1..6)
+  BASE_BY_GUESS: { 1: 100, 2: 70, 3: 50, 4: 30, 5: 20, 6: 10 },
+  // Streak: +5 per consecutive solve, cap at +25
+  STREAK_BONUS_STEP: 5,
+  STREAK_BONUS_CAP: 25,
+  SKIP_COST: 15,
+  PARTIAL_PER_GREEN: 5,
+  // Time multiplier zones: applied based on time REMAINING at solve
+  // (time elapsed from start: 0..90 -> x1, 90..120 -> x1.2, 120..150 -> x1.5, 150..180 -> x2)
+  MULT_ZONES: [
+    { fromRemMs: 180000, toRemMs: 90000, mult: 1.0, label: '×1.0', cls: '' },
+    { fromRemMs: 90000,  toRemMs: 60000, mult: 1.2, label: '×1.2', cls: 'x12' },
+    { fromRemMs: 60000,  toRemMs: 30000, mult: 1.5, label: '×1.5', cls: 'x15' },
+    { fromRemMs: 30000,  toRemMs: 0,     mult: 2.0, label: '×2.0', cls: 'x20' },
+  ],
+  // Difficulty ramp — pool selected by time ELAPSED at puzzle load
+  POOL_WINDOWS: [
+    { fromMs: 0,      toMs: 60000,  pool: 'easy' },
+    { fromMs: 60000,  toMs: 120000, pool: 'medium' },
+    { fromMs: 120000, toMs: 180000, pool: 'hard' },
+  ],
+  URGENT_THRESHOLD_MS: 10000,
+  CLAIM_URL: 'https://app.pandai.org/app/game',
+};
+
+// =============================================================================
+// Language + copy
+// =============================================================================
+const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE',
+    skip: 'SKIP (−15)',
+    menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
+    menuHint: 'Tip: green = right letter & spot, yellow = wrong spot, gray = not in the word.',
+    best: 'Best',
+    final: 'Final score',
+    solved: 'Puzzles solved',
+    avgGuess: 'Avg guesses',
+    bestPuzzle: 'Best puzzle',
+    skipped: 'Skips used',
+    streak: 'Longest streak',
+    notInList: 'Not in word list',
+    tooShort: 'Not enough letters',
+    plus: '+',
+    answerWas: 'Answer:',
+    streakLabel: 'Streak',
+    newBest: 'NEW BEST!',
+  },
+  ms: {
+    start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR',
+    skip: 'LANGKAU (−15)',
+    menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
+    menuHint: 'Tip: hijau = huruf & tempat betul, kuning = tempat salah, kelabu = tiada dalam perkataan.',
+    best: 'Terbaik',
+    final: 'Skor akhir',
+    solved: 'Teka selesai',
+    avgGuess: 'Purata cubaan',
+    bestPuzzle: 'Teka terbaik',
+    skipped: 'Langkauan',
+    streak: 'Siri terpanjang',
+    notInList: 'Tiada dalam senarai',
+    tooShort: 'Huruf tidak cukup',
+    plus: '+',
+    answerWas: 'Jawapan:',
+    streakLabel: 'Siri',
+    newBest: 'TERBAIK BAHARU!',
+  },
+}[lang];
+
+// =============================================================================
+// Sandbox-safe storage
+// =============================================================================
+function storageGet(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+// =============================================================================
+// Encrypted word lists (XOR + base64). Source words are not visible in
+// plaintext; readers see only the encoded blob.
+// Key kept short and not labelled to slow down casual extraction.
+// =============================================================================
+const _K = 'k4t4ku-2026-jdp';
+const _W = {
+  e: 'KXEndTlZZndze3oBKDE7KnpYcCo5bH8cdnNmKzBcL3EkdSVZaWd0Z30BIjE6KnpYfD4hbHwceHdhKypcIHU5YThZZnNgc3oBISUnKnpYfy43eHwceXNpKy1cIHE6dSdZZndieHcBISEiKmdYfyIhbHAceXl5Ky9cJ3U5ZD5ZYXNgc2QBJiUgImdYeC44bHocfnNgKzdcJ308dT9ZYXt8e3gBJyUyPn9YeSo9bH4cf3dmKypcJnU4dSZZYHN8c2UBJyU+ImdYeSonbHocf3d+Ky9cJnUnYSBZYHdic34BJy09O31YeSI7eH8cf2NpKyxcJmEmdSNZYGdje3sBJCU2KmdYeio7eXscfHNjLy9cJHk2dSBZfXN0c3sBOiU4ImBYZCo+bHscYndjKzdcO3UnfTlZfXNkc34BOiUpKnxYZC42bHocYnNpKzdcO3E/dSVZfXd8e30BOiE+PnxYZC4nanscYn9hIyxcO306YD5ZfXtjc2MBOis7JH9YZD40fnMcYmNuKzBcO2E4dT5ZfWdke34BOjEkPmdYZio/ZHwcYHdgKy1cOXUkdT9Zf3dyZ2UBOC0+L2FYZiQ+YnkcYHl+Ky9cOXsgdSVZf2dxfHEBODE9KnxYZj44ZGYcYGN+Ky9cOHU2dTlZfnNyZ3gBOSU7ImBYZyo5bHocYXdhKylcOHEwdTtZfnd0e3cBOSE0InxYZy4ybGAcYXNnPy9cOHE5dSBZfnd9Z3cBOS0yPn9YZyI9bGYcYX9mKzBcOGE1ZipZfmd7c3gBOTEiKmBYZz4mbHocYWN+PypcP3U2dSNZeXN4c3gBPiU6KnlYYCo+eGYcZndgKypcP3U6dSNZeXN+a3cBPiUgKn9YYConZHkcZnNvKyhcP3E/dSVZeXd8Z2QBPiE9KnpYYCIxbHkcZn9pPzZcP305YTlZeXtke30BPis8Kn9YYD4+bGAcZmNjKy1cP2EmYSVZeWdkZ2YBPy45KnpYYSc0Y3UcZ3h5Py9cPmc1fCpZeGZxf3cBPSU6KnxYYyo/ZHAcZXdmPjFcPHU6cyJZenNidXcBPSUiJXVYYyosbGAca3dmIypcMXU5dSVZZnd8c3QBKCE+KmZYdi4nbGYccHN/KzdcKWE6cypZb2d7e2IBKDE8KmBYdio7eWcccHd/KzBcKXUtdTlZb3t6c30BKDE7P31YdioyeGE=',
+  m: 'KnM1eSpZbHhxe3QBKy84ImZYdSY3ZH4cc3hqIypcKnozfypZbGBxfHEBKzc5JXNYdio3bHkccHdpKy1cKXUzdSJZb3N4c3gBKCU4KmdYdio/bHkccHdmKzZcKXU/YSdZb3Ngc30BKCUjPnxYdiohbGEccHd5Iy9cKXUgYSBZb3d7c2UBKCE8JH9Ydi47eHMccH9pKypcKX02fTlZb3t8c34BKC0jIn9Ydj4neHkccGN5PyxcKHU3dT9ZbnN3c2QBKSU7KmRYdyo5bGAccXdhJSpcKHUgdT9ZbndyZ2QBKSE8KnxYdy45bHkccXNhPzRcKHEkdT9Zbnt+ZncBKS0gP3VYdyQ4aH4ccXl/Ky9cKGE1dypZbmd7c38BKTE7PmRYcCo+enMcdndgKy1cL3UkdT9ZaXNic34BLiUiKmBYcCombGAcdnd5KzZcL3E2dTlZaXd+c34BLiE+L3VYcC4nbGEcdnN+KyxcL3EjdSVZaWd7Z3gBLjE+InVYcSc0Y3Ucd3t9KzBcLnk7ZyJZanN0e2UBLSU3KnxYcyoybH4cdXdhKy9cLHU6dThZanN+Zn8BLSUiKnlYcyonZGEcdXd5KyhcLHE4dTtZand8c2UBLSE8KmZYcy44bGAcdX9qIzBcLGE4dSJZZXNye2UBIiU0KmRYfCoxZGAcendnKzBcI3U/fSZZZXN8Z2UBIiU9InhYfCo4fXMcendjPjFcI3UkYThZZXNic3sBIiUiKmRYfConanMcend/PiVcI3UnfSdZZXdyc2IBIiE9KmBYfCI3eGAcen9pPzRcI30+dT5ZZXtiZ2YBIyA/J3VYfSA5bHwce31hIylcInowdSNZZHx0Z30BIyojKnJYfTk8Y3UceHdqKzBcIXU8dT9ZZ3N7d2IBICU8InpYfio4b2cceHdgIypcIXU6fiJZZ3Nic34BICUjKnBYfioheHoceHNgPzZcIXEmdSZZZ3die34BICEiKmBYfiInbHwceGNsOCVcIWEwYSdZZ2d6Z2QBIDE9O3VYfyo3eGAceXdvPzBcIHUzYSZZZnN7c30BISU9KmZYfyo7bHwceXd9Ky9cIHUmdT9ZZnNjc2QBISUjInxYfyomeGYceXNvKyhcIHE3dTtZZnd0Z2IBISE6KnlYfy4/bGIceXNmKyhcIHE4dSZZZnd8c2UBISE8JH9Yfy44bGEceXN/KyxcIHEmdT9ZZndie2UBISEjKnhYfy4hbH8ceXN5Py9cIH02dTlZZntzc2MBIS00KnhYfyI5bGEceX9hKzBcIH04dT5ZZntgc2UBIS0iInlYfyQ5bH8ceXl/KypcIHsmcSBZZmdxYXcBITEyPmZYfz4xZGEceWNmPyxcIGE/YTlZZmd8c2IBITE8ImBYfz44bHwceWN/PzdcIGEndSZZZmdjZ2IBITEkPnY=',
+  h: 'J3U8dTlZYXN4e2QBJiU8Kn1YeCo5bGYcfnd/KzdcJ3UndSBZYXNpc30BJiUpKmZYeC43bHocfnNvKzZcJ3E2fSNZYXd9c30BJi0zInpYeCI4bGccfn9gOiVcJ30ndSVZYWd7e2UBJjE+Kn9YeD47bGEcfmN/PyxcJ2EmYThZYWdkZ2IBJyUzKnlYeSo9ZGAcf3dgOjFcJnU6cCJZYHN+eHcBJyUjKnlYeSosbGYcf3NpKypcJnEmdSBZYHt8e30BJy0+KmBYeSQyYnkcf2N/ISVcJmEmeiJZY3N2YWMBJCU6ImdYeio+bH4cfHdjKyxcJXU6dThZY3Nje3QBJC07KnxYeiI5bHscfWRsJCNcO3UwdT9ZfXN3c2QBOiU8OGFYZCo4aGAcYnd/KyxcO3UmYCJZfXNiZ34BOiUjP31YZCoheHocYnNmKzBcO3E4YSNZfXd8Z30BOiE+KmBYZC4nbHkcYnN+KypcO3EndT9ZfXdke30BOiEkKn9YZCI/bHkcYn99IyxcO30ndSNZfXtkc3sBOjE6Pn9YZD45bGEcYmNhIyxcO2E6dSNZfWd+cXcBOjE+MnVYZD4mbGAcYmN+KzBcO2EgdTlZfWdpZ34BOCU3KnlYZio9ZH8cYHdnPy9cOXU/dSVZf3N7e2IBOCU7PmdYZio4bHocYHdgKzdcOXUkYSNZf3NkZ2UBOCEyKnxYZi4xeGIcYHNnKylcOXE/ey9Zf3d9c2UBOCE9KnxYZi44aHocYHN+KyxcOXEndSZZf3txfHEBOC0yPmBYZiI4bGccYHlvJSxcOXs6cCpZfnN0Z2QBOSU5JXNYZyo5Z2ccYXdgKzZcOHUmdS1ZfnNic3gBOSUpKmRYZyoseGAcYXNvKyZcOHE2dTlZfnd0c3gBOSE3KnpYZy4+bGYcYXNhKy9cOHE4dSZZfnd8c2QBOSE+KnlYZy4lbHkcYXN9KyxcOHEmdSNZfndic30BOSEiKnlYZy4mbHkcYXN5IyVcOH01cypZfnt4e2QBOS07KmRYZyInbH8cYX9/IyxcOGE2YSNZfmd0Z2IBOTE+Mn1YZz4meGYcYWN5OCVcP3U2fTlZeXNyZ34BPiUyPmZYYCo5bH8cZndgKy9cP3U6dSZZeXN+dncBPiUgImdYYComZHkcZnNvKzZcP3EwYSNZeXd3c30BPiE7KmBYYC4+eHwcZnNhKyxcP3E5ZCpZeXd9YnkBPi0xJXNYYCInbHscZn9/PzdcP2E5fT9ZeWd9YmMBPjE+KmdYYSc0YHMcZ3hpPzZcPmc1eixZeGZxYHcBPSU6KmZYYyoneXMcZX9/IyBcMnUgfSZZd3N8e3sBMC07ImY=',
+};
+function _dec(s) {
+  const b = atob(s);
+  let o = '';
+  for (let i = 0; i < b.length; i++) {
+    o += String.fromCharCode(b.charCodeAt(i) ^ _K.charCodeAt(i % _K.length));
+  }
+  return o;
+}
+const POOLS = {
+  easy:   _dec(_W.e).split(','),
+  medium: _dec(_W.m).split(','),
+  hard:   _dec(_W.h).split(','),
+};
+// Combined dictionary for guess validation — any word in any pool is acceptable
+const DICT = new Set([...POOLS.easy, ...POOLS.medium, ...POOLS.hard]);
+
+// =============================================================================
+// Audio (Web Audio synthesis)
+// =============================================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, dur, type = 'sine', vol = 0.12, attack = 0.005) {
+  if (state.muted) return;
+  const ctx = ensureAudio(); if (!ctx) return;
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator(); const g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+const sfx = {
+  type:    () => tone(440, 0.04, 'square', 0.05),
+  submit:  () => { tone(520, 0.08, 'sine', 0.10); setTimeout(() => tone(660, 0.10, 'sine', 0.08), 60); },
+  invalid: () => tone(180, 0.18, 'sawtooth', 0.10),
+  correct: () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.16, 'triangle', 0.12), i * 70)); },
+  fail:    () => { tone(220, 0.20, 'sawtooth', 0.10); setTimeout(() => tone(160, 0.30, 'sawtooth', 0.10), 180); },
+  skip:    () => tone(330, 0.10, 'triangle', 0.08),
+  zoneUp:  () => { tone(660, 0.08, 'triangle', 0.10); setTimeout(() => tone(880, 0.12, 'triangle', 0.10), 70); },
+  timeUp:  () => { [440, 330, 220].forEach((f, i) => setTimeout(() => tone(f, 0.25, 'sine', 0.12), i * 180)); },
+};
+
+// =============================================================================
+// State
+// =============================================================================
+const state = {
+  scene: 'menu',      // 'menu' | 'play' | 'over'
+  muted: storageGet(CONFIG.STORAGE_KEY_MUTE, '0') === '1',
+  best:  parseInt(storageGet(CONFIG.STORAGE_KEY_BEST, '0'), 10) || 0,
+
+  // Run state
+  startTs: 0,
+  elapsedMs: 0,
+  remainingMs: CONFIG.ROUND_MS,
+  score: 0,
+  streak: 0,
+  longestStreak: 0,
+  solvedCount: 0,
+  totalGuesses: 0,
+  bestPuzzle: 0,
+  skipped: 0,
+  zoneStats: { x10: 0, x12: 0, x15: 0, x20: 0 },
+  curMultLabel: '×1.0',
+  prevZoneIdx: 0,
+
+  // Puzzle state
+  target: '',
+  rows: [],          // array of arrays of {ch, status}
+  curRow: 0,
+  curCol: 0,
+  locked: false,
+  keyStatus: {},     // letter -> 'correct'|'present'|'absent'
+
+  rafId: 0,
+};
+
+// =============================================================================
+// DOM
+// =============================================================================
+const dom = {
+  app: document.getElementById('app'),
+  hud: document.getElementById('hud'),
+  scorePill: document.getElementById('scorePill'),
+  timerPill: document.getElementById('timerPill'),
+  multBadge: document.getElementById('multBadge'),
+  boardWrap: document.getElementById('board-wrap'),
+  board: document.getElementById('board'),
+  message: document.getElementById('message'),
+  skipWrap: document.getElementById('skipWrap'),
+  skipBtn: document.getElementById('skipBtn'),
+  keyboard: document.getElementById('keyboard'),
+  muteBtn: document.getElementById('muteBtn'),
+  menu: document.getElementById('menu'),
+  menuSub: document.getElementById('menuSub'),
+  menuHint: document.getElementById('menuHint'),
+  startBtn: document.getElementById('startBtn'),
+  bestText: document.getElementById('bestText'),
+  gameOver: document.getElementById('gameOver'),
+  goTitle: document.getElementById('goTitle'),
+  goNewBest: document.getElementById('goNewBest'),
+  newBestLabel: document.getElementById('newBestLabel'),
+  finalStats: document.getElementById('finalStats'),
+  claimBtn: document.getElementById('claimBtn'),
+};
+
+// Apply localized strings
+dom.menuSub.textContent = COPY.menuSub;
+dom.menuHint.textContent = COPY.menuHint;
+dom.startBtn.textContent = COPY.start;
+dom.claimBtn.textContent = COPY.claim;
+dom.skipBtn.textContent = COPY.skip;
+dom.newBestLabel.textContent = COPY.newBest;
+
+// =============================================================================
+// Mute toggle (DESIGN.md §5.11)
+// =============================================================================
+const MUTE_ICON_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
+const MUTE_ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
+function updateMuteUI() {
+  const svg = dom.muteBtn.querySelector('svg');
+  svg.innerHTML = state.muted ? MUTE_ICON_OFF : MUTE_ICON_ON;
+  const label = state.muted ? COPY.audioOff : COPY.audioOn;
+  dom.muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+  dom.muteBtn.setAttribute('aria-label', label);
+}
+dom.muteBtn.addEventListener('click', () => {
+  state.muted = !state.muted;
+  storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');
+  updateMuteUI();
+});
+updateMuteUI();
+
+// =============================================================================
+// Menu
+// =============================================================================
+function showMenuBest() {
+  dom.bestText.textContent = state.best > 0 ? `${COPY.best}: ${state.best}` : ' ';
+}
+showMenuBest();
+
+dom.startBtn.addEventListener('click', () => { ensureAudio(); startRun(); });
+
+// =============================================================================
+// Board + keyboard build
+// =============================================================================
+function buildBoard() {
+  dom.board.innerHTML = '';
+  state.rows = [];
+  for (let r = 0; r < CONFIG.MAX_GUESSES; r++) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.dataset.row = String(r);
+    const tiles = [];
+    for (let c = 0; c < CONFIG.WORD_LEN; c++) {
+      const t = document.createElement('div'); t.className = 'tile';
+      row.appendChild(t);
+      tiles.push({ el: t, ch: '', status: '' });
+    }
+    dom.board.appendChild(row);
+    state.rows.push(tiles);
+  }
+}
+
+const KEY_ROWS = [
+  'QWERTYUIOP'.split(''),
+  'ASDFGHJKL'.split(''),
+  ['ENTER', ...'ZXCVBNM'.split(''), 'BACK'],
+];
+const keyEls = {};
+function buildKeyboard() {
+  dom.keyboard.innerHTML = '';
+  keyEls['ENTER'] = null; keyEls['BACK'] = null;
+  for (const row of KEY_ROWS) {
+    const div = document.createElement('div'); div.className = 'krow';
+    for (const k of row) {
+      const b = document.createElement('button');
+      b.className = 'key';
+      if (k === 'ENTER' || k === 'BACK') b.classList.add('wide');
+      b.textContent = k === 'ENTER' ? '⏎' : k === 'BACK' ? '⌫' : k;
+      b.dataset.key = k;
+      b.addEventListener('click', (e) => { e.preventDefault(); ensureAudio(); handleKey(k); });
+      div.appendChild(b);
+      keyEls[k] = b;
+    }
+    dom.keyboard.appendChild(div);
+  }
+}
+
+function paintKeyboard() {
+  for (const k in keyEls) {
+    const el = keyEls[k]; if (!el || k === 'ENTER' || k === 'BACK') continue;
+    el.classList.remove('correct', 'present', 'absent');
+    const s = state.keyStatus[k];
+    if (s) el.classList.add(s);
+  }
+}
+
+// =============================================================================
+// Word selection (per pool by elapsed time)
+// =============================================================================
+function currentPool() {
+  const e = state.elapsedMs;
+  for (const w of CONFIG.POOL_WINDOWS) {
+    if (e >= w.fromMs && e < w.toMs) return w.pool;
+  }
+  return 'hard';
+}
+function pickWord() {
+  const pool = POOLS[currentPool()];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// =============================================================================
+// Multiplier + zone
+// =============================================================================
+function zoneFor(remMs) {
+  for (let i = 0; i < CONFIG.MULT_ZONES.length; i++) {
+    const z = CONFIG.MULT_ZONES[i];
+    if (remMs <= z.fromRemMs && remMs > z.toRemMs) return { ...z, idx: i };
+  }
+  // final-zone catch
+  const last = CONFIG.MULT_ZONES[CONFIG.MULT_ZONES.length - 1];
+  return { ...last, idx: CONFIG.MULT_ZONES.length - 1 };
+}
+
+function updateMultBadge(z) {
+  dom.multBadge.className = 'mult-badge' + (z.cls ? ' ' + z.cls : '');
+  dom.multBadge.textContent = z.label;
+  state.curMultLabel = z.label;
+}
+
+function updateTimerCls(remMs, z) {
+  const p = dom.timerPill;
+  p.classList.remove('urgent', 'zone-x12', 'zone-x15', 'zone-x20');
+  if (z.cls) p.classList.add('zone-' + z.cls);
+  if (remMs <= CONFIG.URGENT_THRESHOLD_MS) p.classList.add('urgent');
+}
+
+function fmtTime(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return m + ':' + (ss < 10 ? '0' + ss : ss);
+}
+
+// =============================================================================
+// Run lifecycle
+// =============================================================================
+function startRun() {
+  dom.menu.classList.add('hidden');
+  dom.gameOver.classList.add('hidden');
+  dom.hud.classList.remove('hidden');
+  dom.boardWrap.classList.remove('hidden');
+  dom.message.classList.remove('hidden');
+  dom.skipWrap.classList.remove('hidden');
+  dom.keyboard.classList.remove('hidden');
+
+  state.scene = 'play';
+  state.startTs = performance.now();
+  state.elapsedMs = 0;
+  state.remainingMs = CONFIG.ROUND_MS;
+  state.score = 0;
+  state.streak = 0;
+  state.longestStreak = 0;
+  state.solvedCount = 0;
+  state.totalGuesses = 0;
+  state.bestPuzzle = 0;
+  state.skipped = 0;
+  state.zoneStats = { x10: 0, x12: 0, x15: 0, x20: 0 };
+  state.prevZoneIdx = 0;
+
+  buildBoard();
+  buildKeyboard();
+  loadNewPuzzle();
+  updateScore();
+  loop();
+}
+
+function loop() {
+  if (state.scene !== 'play') return;
+  const now = performance.now();
+  state.elapsedMs = now - state.startTs;
+  state.remainingMs = CONFIG.ROUND_MS - state.elapsedMs;
+
+  const z = zoneFor(state.remainingMs);
+  if (z.idx !== state.prevZoneIdx) {
+    state.prevZoneIdx = z.idx;
+    sfx.zoneUp();
+    flashMessage('×' + z.mult.toFixed(1).replace('.0','') + (lang==='ms' ? ' zon!' : ' zone!'));
+  }
+  updateMultBadge(z);
+  updateTimerCls(state.remainingMs, z);
+  dom.timerPill.textContent = fmtTime(state.remainingMs);
+
+  if (state.remainingMs <= 0) {
+    endRun('timeUp');
+    return;
+  }
+  state.rafId = requestAnimationFrame(loop);
+}
+
+function endRun(reason) {
+  cancelAnimationFrame(state.rafId);
+  state.scene = 'over';
+
+  // Partial credit on timeout for any tiles already submitted in the active row
+  if (reason === 'timeUp' && !state.locked && state.curRow < CONFIG.MAX_GUESSES) {
+    // Look at the last submitted row (curRow - 1 if any guesses made on this puzzle and not yet solved/failed)
+    // Per spec: "last submitted guess in the active puzzle"
+    // We award per the CURRENT multiplier (which is the timeUp zone → ×2.0 by definition).
+    let lastRow = -1;
+    for (let r = state.curRow - 1; r >= 0; r--) {
+      if (state.rows[r] && state.rows[r][0].status) { lastRow = r; break; }
+    }
+    if (lastRow >= 0) {
+      let greens = 0;
+      for (const t of state.rows[lastRow]) if (t.status === 'correct') greens++;
+      if (greens > 0) {
+        const base = greens * CONFIG.PARTIAL_PER_GREEN;
+        const z = zoneFor(0);
+        const pts = Math.round(base * z.mult);
+        state.score += pts;
+        addZoneStat(z, pts);
+      }
+    }
+  }
+
+  sfx.timeUp();
+  showGameOver(reason);
+}
+
+// =============================================================================
+// Puzzle lifecycle
+// =============================================================================
+function loadNewPuzzle() {
+  state.target = pickWord();
+  state.curRow = 0;
+  state.curCol = 0;
+  state.locked = false;
+  state.keyStatus = {};
+  // reset board
+  for (const row of state.rows) {
+    for (const t of row) {
+      t.ch = ''; t.status = '';
+      t.el.textContent = '';
+      t.el.className = 'tile';
+    }
+  }
+  paintKeyboard();
+  dom.message.textContent = '';
+}
+
+function lockAndAdvance() {
+  state.locked = true;
+  // Skip-cooldown briefly to prevent double-fire
+  setTimeout(() => {
+    if (state.scene === 'play') loadNewPuzzle();
+  }, 1200);
+}
+
+// =============================================================================
+// Input
+// =============================================================================
+function handleKey(k) {
+  if (state.scene !== 'play' || state.locked) return;
+  if (k === 'ENTER') return submitRow();
+  if (k === 'BACK')  return backspace();
+  if (/^[A-Z]$/.test(k)) typeLetter(k);
+}
+
+function typeLetter(ch) {
+  if (state.curCol >= CONFIG.WORD_LEN) return;
+  const t = state.rows[state.curRow][state.curCol];
+  t.ch = ch;
+  t.el.textContent = ch;
+  t.el.classList.add('filled');
+  state.curCol++;
+  sfx.type();
+}
+function backspace() {
+  if (state.curCol <= 0) return;
+  state.curCol--;
+  const t = state.rows[state.curRow][state.curCol];
+  t.ch = '';
+  t.el.textContent = '';
+  t.el.classList.remove('filled');
+}
+
+function submitRow() {
+  if (state.curCol < CONFIG.WORD_LEN) {
+    flashMessage(COPY.tooShort, true);
+    shakeRow();
+    sfx.invalid();
+    return;
+  }
+  const guess = state.rows[state.curRow].map(t => t.ch).join('');
+  if (!DICT.has(guess)) {
+    flashMessage(COPY.notInList, true);
+    shakeRow();
+    sfx.invalid();
+    return;
+  }
+  evaluateRow(guess);
+}
+
+function shakeRow() {
+  const el = dom.board.children[state.curRow];
+  el.classList.remove('shake'); void el.offsetWidth;
+  el.classList.add('shake');
+}
+
+function evaluateRow(guess) {
+  sfx.submit();
+  const target = state.target;
+  const result = new Array(CONFIG.WORD_LEN).fill('absent');
+  const remain = {};
+  for (const ch of target) remain[ch] = (remain[ch] || 0) + 1;
+  // first pass: correct
+  for (let i = 0; i < CONFIG.WORD_LEN; i++) {
+    if (guess[i] === target[i]) { result[i] = 'correct'; remain[guess[i]]--; }
+  }
+  // second pass: present
+  for (let i = 0; i < CONFIG.WORD_LEN; i++) {
+    if (result[i] === 'correct') continue;
+    const ch = guess[i];
+    if (remain[ch] > 0) { result[i] = 'present'; remain[ch]--; }
+  }
+  // animate
+  const rank = { absent: 0, present: 1, correct: 2 };
+  for (let i = 0; i < CONFIG.WORD_LEN; i++) {
+    const t = state.rows[state.curRow][i];
+    t.status = result[i];
+    setTimeout(() => {
+      t.el.classList.add('flip');
+      setTimeout(() => {
+        t.el.classList.add(result[i]);
+        t.el.classList.remove('filled');
+        // update keyboard color (upgrade-only)
+        const cur = state.keyStatus[t.ch];
+        if (!cur || rank[result[i]] > rank[cur]) state.keyStatus[t.ch] = result[i];
+        paintKeyboard();
+      }, 240);
+      setTimeout(() => t.el.classList.remove('flip'), 500);
+    }, i * 120);
+  }
+
+  state.totalGuesses++;
+  const solved = result.every(s => s === 'correct');
+  const usedRow = state.curRow + 1;
+  state.curRow++;
+  state.curCol = 0;
+
+  // After flip animation completes
+  setTimeout(() => {
+    if (solved) onSolve(usedRow);
+    else if (state.curRow >= CONFIG.MAX_GUESSES) onFail();
+  }, CONFIG.WORD_LEN * 120 + 260);
+}
+
+// =============================================================================
+// Scoring
+// =============================================================================
+function streakBonus() {
+  return Math.min(CONFIG.STREAK_BONUS_CAP, state.streak * CONFIG.STREAK_BONUS_STEP);
+}
+function addZoneStat(z, pts) {
+  if (z.cls === 'x12') state.zoneStats.x12 += pts;
+  else if (z.cls === 'x15') state.zoneStats.x15 += pts;
+  else if (z.cls === 'x20') state.zoneStats.x20 += pts;
+  else state.zoneStats.x10 += pts;
+}
+function updateScore() { dom.scorePill.textContent = String(state.score); }
+
+function onSolve(guessNum) {
+  state.solvedCount++;
+  state.streak++;
+  if (state.streak > state.longestStreak) state.longestStreak = state.streak;
+  const base = CONFIG.BASE_BY_GUESS[guessNum] || 0;
+  const bonus = streakBonus();
+  const z = zoneFor(state.remainingMs);
+  const pts = Math.round((base + bonus) * z.mult);
+  state.score += pts;
+  if (pts > state.bestPuzzle) state.bestPuzzle = pts;
+  addZoneStat(z, pts);
+  updateScore();
+  floatPoints(pts);
+  sfx.correct();
+  flashMessage(`+${pts}  (${base}${bonus?'+'+bonus:''} ${z.label})`);
+  lockAndAdvance();
+}
+
+function onFail() {
+  state.streak = 0;
+  sfx.fail();
+  flashMessage(`${COPY.answerWas} ${state.target}`);
+  lockAndAdvance();
+}
+
+dom.skipBtn.addEventListener('click', () => {
+  if (state.scene !== 'play' || state.locked) return;
+  ensureAudio();
+  state.score = Math.max(0, state.score - CONFIG.SKIP_COST);
+  state.skipped++;
+  state.streak = 0;
+  updateScore();
+  sfx.skip();
+  flashMessage(`−${CONFIG.SKIP_COST}  ${COPY.answerWas} ${state.target}`);
+  lockAndAdvance();
+});
+
+// =============================================================================
+// Message + floating points
+// =============================================================================
+let msgTimer = 0;
+function flashMessage(text, isError) {
+  dom.message.textContent = text;
+  dom.message.classList.toggle('flash', !isError);
+  dom.message.style.opacity = '1';
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => { dom.message.style.opacity = '0.6'; }, 1200);
+}
+function floatPoints(pts) {
+  const el = document.createElement('div');
+  el.className = 'float-pts';
+  el.textContent = `+${pts}`;
+  const rect = dom.scorePill.getBoundingClientRect();
+  el.style.left = (rect.left + rect.width / 2) + 'px';
+  el.style.top  = (rect.top + rect.height + 4) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+// =============================================================================
+// Physical keyboard
+// =============================================================================
+window.addEventListener('keydown', (e) => {
+  if (state.scene !== 'play') return;
+  if (e.key === 'Enter') { e.preventDefault(); ensureAudio(); handleKey('ENTER'); return; }
+  if (e.key === 'Backspace') { e.preventDefault(); handleKey('BACK'); return; }
+  if (/^[a-zA-Z]$/.test(e.key)) { ensureAudio(); handleKey(e.key.toUpperCase()); }
+});
+
+// =============================================================================
+// Game over
+// =============================================================================
+function showGameOver(reason) {
+  // Persist best
+  let newBest = false;
+  if (state.score > state.best) {
+    state.best = state.score;
+    storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
+    newBest = true;
+  }
+
+  dom.goTitle.textContent = reason === 'timeUp' ? COPY.timeUp : COPY.gameOver;
+  dom.goNewBest.classList.toggle('hidden', !newBest);
+
+  const avg = state.solvedCount > 0
+    ? (state.totalGuesses / state.solvedCount).toFixed(1)
+    : '—';
+
+  const zs = state.zoneStats;
+  const zoneRow = (label, val) =>
+    `<div class="row-stat"><span class="label">${label}</span><span class="val">${val}</span></div>`;
+
+  dom.finalStats.innerHTML = [
+    zoneRow(COPY.final, state.score),
+    zoneRow(COPY.solved, state.solvedCount),
+    zoneRow(COPY.avgGuess, avg),
+    zoneRow(COPY.bestPuzzle, state.bestPuzzle),
+    zoneRow(COPY.streak, state.longestStreak),
+    zoneRow(COPY.skipped, state.skipped),
+    zoneRow('×1.0', zs.x10),
+    zoneRow('×1.2', zs.x12),
+    zoneRow('×1.5', zs.x15),
+    zoneRow('×2.0', zs.x20),
+  ].join('');
+
+  dom.gameOver.classList.remove('hidden');
+}
+
+// =============================================================================
+// CLAIM SCORE — single end-of-game CTA (CLAUDE.md §6.5)
+// =============================================================================
+dom.claimBtn.addEventListener('click', () => {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const url = CONFIG.CLAIM_URL
+    + `?game=${encodeURIComponent(CONFIG.GAME_NAME)}`
+    + `&score=${state.score}`
+    + `&token=${encodeURIComponent(token)}`;
+  location.href = url;
+});
+
+// =============================================================================
+// Dev jump: ?scene=over
+// =============================================================================
+(function devJump() {
+  const s = new URLSearchParams(location.search).get('scene');
+  if (s === 'over') {
+    state.score = 245; state.solvedCount = 4; state.totalGuesses = 14;
+    state.bestPuzzle = 100; state.longestStreak = 3; state.skipped = 1;
+    state.zoneStats = { x10: 80, x12: 60, x15: 45, x20: 60 };
+    showGameOver('timeUp');
+  }
+})();
+
+})();
+</script>
+</body>
+</html>

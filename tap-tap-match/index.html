@@ -123,10 +123,17 @@ const CONFIG = {
   ],
   postCap: { flashStep: 30, gapStep: 10, flashFloor: 150, gapFloor: 70 },
 
-  // Scoring
-  basePoints:    [3, 4, 6, 8, 11, 14, 18],   // by round 1..7
-  postCapPoints: 22,
-  speedBonus:    2,
+  // Scoring — each cell carries a number 1..9 (shuffled per round).
+  // Round payout = sum of numbers on tapped cells, + speedBonus if fast.
+  speedBonus: 2,
+
+  // Number badge style
+  numBadge: {
+    font:    '700 18px Poppins, sans-serif',
+    color:   '#FFD633',           // JDP Light Yellow
+    padX:    10,                  // from cell left
+    padY:    8,                   // from cell top
+  },
 
   // Soft cap — taper per-round payout (BEST-PRACTICES.md §05).
   // Per-round payout because Tap Tap Grid has no spawn rate to taper.
@@ -229,9 +236,14 @@ function timingForRound(round) {
   };
 }
 
-function basePointsForRound(round) {
-  if (round <= CONFIG.basePoints.length) return CONFIG.basePoints[round - 1];
-  return CONFIG.postCapPoints;
+// Fisher-Yates shuffle of [1..9]. Reshuffled each round so payouts vary.
+function shuffleNumbers() {
+  const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 // §05 soft taper — multiply the per-round payout, never clamp the counter.
@@ -271,6 +283,7 @@ const state = {
   best: 0,
   round: 1,
   sequence: [],
+  cellNumbers: [1,2,3,4,5,6,7,8,9],  // shuffled each round; payout = sum of tapped
   inputIndex: 0,
   flashIndex: -1,
   flashUntil: 0,             // when current flash event ends (advance timer)
@@ -451,13 +464,6 @@ function drawCell(idx, lit, scale = 1) {
     ctx.globalAlpha = lit ? 1 : t.idleAlpha;
     ctx.drawImage(gemImg, -gemW / 2, -gemH / 2, gemW, gemH);
     ctx.restore();
-
-    // Lit specular: a small white sheen on top of the gem.
-    if (lit) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
-      roundRect(-w / 2 + 10, -h / 2 + 10, w - 20, h * 0.22, 10);
-      ctx.fill();
-    }
   }
 
   // Tile edge.
@@ -468,6 +474,14 @@ function drawCell(idx, lit, scale = 1) {
   ctx.lineWidth = lit ? 2.5 : 1.5;
   roundRect(-w / 2, -h / 2, w, h, t.radius);
   ctx.stroke();
+
+  // Number badge — top-left corner of the cell, payout multiplier for this tap.
+  const b = CONFIG.numBadge;
+  ctx.fillStyle = b.color;
+  ctx.font = b.font;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(String(state.cellNumbers[idx]), -w / 2 + b.padX, -h / 2 + b.padY);
 
   ctx.restore();
 }
@@ -804,6 +818,7 @@ function startGame() {
 function startRound() {
   const t = timingForRound(state.round);
   state.sequence = makeSequence(t.len);
+  state.cellNumbers = shuffleNumbers();
   state.inputIndex = 0;
   state.flashIndex = -1;
   state.flashCellOnUntil = 0;
@@ -813,7 +828,9 @@ function startRound() {
 }
 
 function awardForCompletedRound(fastBonus) {
-  const raw = basePointsForRound(state.round) + (fastBonus ? CONFIG.speedBonus : 0);
+  // Payout = sum of numbers on the cells the player tapped, in tap order.
+  const sum = state.sequence.reduce((s, idx) => s + state.cellNumbers[idx], 0);
+  const raw = sum + (fastBonus ? CONFIG.speedBonus : 0);
   const mult = payoutMultiplier(state.score);
   // Soft taper: round-half-up but never below 0. At taperEnd payouts hit 0.
   const awarded = Math.max(0, Math.round(raw * mult));

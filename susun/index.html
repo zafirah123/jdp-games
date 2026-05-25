@@ -131,8 +131,7 @@
     color: #FFD633;
     font-weight: 700;
   }
-  .card .sub { font-size: 14px; color: #FFFFFF; margin: 0 0 4px; opacity: 0.9; }
-  .card .cap { font-size: 14px; color: #FFFFFF; margin: 0 0 16px; opacity: 0.8; }
+  .card .sub { font-size: 14px; color: #FFFFFF; margin: 0 0 20px; opacity: 0.9; }
   .card .best { font-size: 14px; color: #FFD633; margin: 0 0 20px; font-weight: 600; min-height: 20px; }
   .card .hint { font-size: 12px; color: rgba(255,255,255,0.6); margin: 14px 0 0; }
   .card .hint kbd {
@@ -169,18 +168,6 @@
   }
   .stats .label { color: rgba(255,255,255,0.7); text-align: left; }
   .stats .value { color: #FFD633; font-weight: 700; text-align: right; }
-  .max-badge {
-    display: inline-block;
-    background: #AF1726;
-    border: 2px solid #FFD633;
-    border-radius: 999px;
-    padding: 6px 14px;
-    color: #FFD633;
-    font-weight: 700;
-    font-size: 14px;
-    letter-spacing: 1px;
-    margin: 0 0 12px;
-  }
   .new-best {
     display: inline-block;
     background: #FFD633;
@@ -209,7 +196,7 @@
 
 <div id="hud" class="hidden">
   <div class="hud-row">
-    <div id="scorePill" class="pill">0 / 500</div>
+    <div id="scorePill" class="pill">0</div>
     <div id="timerPill" class="pill timer">3:00</div>
   </div>
   <div id="streakBadge" class="badge hidden"></div>
@@ -219,7 +206,6 @@
   <div class="card">
     <h1>Susun</h1>
     <p class="sub" id="menuSub"></p>
-    <p class="cap" id="menuCap"></p>
     <p class="best" id="bestText">&nbsp;</p>
     <button id="startBtn" class="cta"></button>
     <p class="hint" id="menuHint"></p>
@@ -230,7 +216,6 @@
   <div class="card">
     <h2 id="goTitle"></h2>
     <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
-    <div id="goMaxBadge" class="hidden"><span class="max-badge" id="maxBadgeLabel">500 / 500 — MAX</span></div>
     <div id="finalStats" class="stats"></div>
     <button id="playAgainBtn" class="cta"></button>
   </div>
@@ -252,11 +237,9 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     roundMiss: 'MISSED!',
     menuSub: 'Stack as high as you can in 3 minutes.',
-    menuCap: 'Max score: <b>500</b>',
     menuHint: 'Tap, click, or press <kbd>Space</kbd>',
     playAgain: 'PLAY AGAIN',
     newBest: 'NEW BEST!',
-    maxBadge: '500 / 500 — MAX',
     streak: 'STREAK',
     perfectSuffix: 'PERFECT!',
     bestPrefix: 'Best',
@@ -275,11 +258,9 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     roundMiss: 'TERLEPAS!',
     menuSub: 'Susun setinggi mungkin dalam 3 minit.',
-    menuCap: 'Skor maksimum: <b>500</b>',
     menuHint: 'Ketuk, klik, atau tekan <kbd>Space</kbd>',
     playAgain: 'MAIN SEMULA',
     newBest: 'REKOD BAHARU!',
-    maxBadge: '500 / 500 — MAKS',
     streak: 'RENTETAN',
     perfectSuffix: 'SEMPURNA!',
     bestPrefix: 'Terbaik',
@@ -336,7 +317,6 @@ const dom = {
   muteBtn: document.getElementById('muteBtn'),
   menu: document.getElementById('menu'),
   menuSub: document.getElementById('menuSub'),
-  menuCap: document.getElementById('menuCap'),
   menuHint: document.getElementById('menuHint'),
   startBtn: document.getElementById('startBtn'),
   bestText: document.getElementById('bestText'),
@@ -344,20 +324,16 @@ const dom = {
   goTitle: document.getElementById('goTitle'),
   goNewBest: document.getElementById('goNewBest'),
   newBestLabel: document.getElementById('newBestLabel'),
-  goMaxBadge: document.getElementById('goMaxBadge'),
-  maxBadgeLabel: document.getElementById('maxBadgeLabel'),
   finalStats: document.getElementById('finalStats'),
   playAgainBtn: document.getElementById('playAgainBtn'),
 };
 
 // Apply localized copy into the DOM up front.
 dom.menuSub.textContent = COPY.menuSub;
-dom.menuCap.innerHTML = COPY.menuCap;
 dom.menuHint.innerHTML = COPY.menuHint;
 dom.startBtn.textContent = COPY.start;
 dom.playAgainBtn.textContent = COPY.playAgain;
 dom.newBestLabel.textContent = COPY.newBest;
-dom.maxBadgeLabel.textContent = COPY.maxBadge;
 
 // =============================================================================
 // Sandbox-safe storage
@@ -733,7 +709,7 @@ function update(dt) {
 }
 
 function updateHud() {
-  dom.scorePill.textContent = `${state.score} / ${CONFIG.MAX_SCORE}`;
+  dom.scorePill.textContent = String(state.score);
   const mins = Math.floor(state.timer / 60);
   const secs = Math.floor(state.timer % 60);
   dom.timerPill.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -894,7 +870,6 @@ function endGame(reason) {
   }
 
   dom.goTitle.textContent = reason === 'miss' ? COPY.roundMiss : COPY.timeUp;
-  dom.goMaxBadge.classList.toggle('hidden', state.score < CONFIG.MAX_SCORE);
   dom.goNewBest.classList.toggle('hidden', !isNewBest);
 
   dom.finalStats.innerHTML =

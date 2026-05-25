@@ -11,6 +11,7 @@ window.GAMES = [
   { name: 'Puzzle', path: './puzzle/puzzle.html', status: 'pending' },
   { name: 'Ruby Breaker', path: './ruby-breaker-v2/', status: 'pending' },
   { name: 'Ruby Rhythm', path: './ruby-rhythm/', status: 'pending' },
+  { name: 'Susun', path: './susun/', status: 'pending' },
   { name: 'Tetra Blocks', path: './tetra-blocks/tetra-blocks.html', status: 'pending' },
   { name: 'Tic Tac Toe', path: './tic-tac-toe/tic-tack-toe.html', status: 'pending' },
   { name: 'Wordscapes', path: './wordscapes/', status: 'pending' },

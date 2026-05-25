@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020d26">
+<title>Susun — JDP Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #020d26 0%, #000000 100%);
+    color: #fff;
+    font-family: 'Poppins', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  canvas#game {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  .hidden { display: none !important; }
+
+  /* HUD */
+  #hud {
+    position: fixed;
+    top: 16px; left: 16px; right: 72px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .hud-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .pill {
+    background: rgba(2, 13, 38, 0.85);
+    border: 2px solid #FFD633;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1;
+    color: #FFD633;
+    letter-spacing: 0.4px;
+    pointer-events: auto;
+    min-width: 96px;
+    text-align: center;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+  }
+  .pill.timer { color: #FFFFFF; }
+  .pill.timer.urgent {
+    animation: pulse 0.4s ease-in-out infinite alternate;
+    border-color: #AF1726;
+    color: #FFE258;
+  }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+  .badge {
+    margin: 8px auto 0;
+    background: #AF1726;
+    border: 2px solid #FFD633;
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #FFD633;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    width: fit-content;
+    pointer-events: none;
+  }
+  .mute {
+    position: fixed;
+    top: 16px; right: 16px;
+    background: rgba(2, 13, 38, 0.85);
+    border: 2px solid #FFD633;
+    border-radius: 50%;
+    width: 40px; height: 40px;
+    color: #FFD633;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center; justify-content: center;
+    z-index: 30;
+  }
+  .mute svg { width: 100%; height: 100%; fill: currentColor; }
+
+  /* Overlays (menu + game over) */
+  .overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(2, 13, 38, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    padding: 16px;
+  }
+  .card {
+    background: linear-gradient(180deg, #020d26 0%, #051335 100%);
+    border: 3px solid #FFD633;
+    border-radius: 24px;
+    padding: 32px 28px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 0 rgba(0,0,0,0.4);
+  }
+  .card h1 {
+    font-size: 44px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #FFD633;
+    letter-spacing: 1px;
+    text-shadow: 0 4px 0 #AF1726;
+  }
+  .card h2 {
+    font-size: 26px;
+    margin: 0 0 16px;
+    color: #FFD633;
+    font-weight: 700;
+  }
+  .card .sub { font-size: 14px; color: #FFFFFF; margin: 0 0 4px; opacity: 0.9; }
+  .card .cap { font-size: 14px; color: #FFFFFF; margin: 0 0 16px; opacity: 0.8; }
+  .card .best { font-size: 14px; color: #FFD633; margin: 0 0 20px; font-weight: 600; min-height: 20px; }
+  .card .hint { font-size: 12px; color: rgba(255,255,255,0.6); margin: 14px 0 0; }
+  .card .hint kbd {
+    background: rgba(255,214,51,0.15);
+    border: 1px solid rgba(255,214,51,0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #FFD633;
+    font-family: inherit;
+    font-size: 11px;
+  }
+  .cta {
+    background: linear-gradient(180deg, #FFE258 0%, #FFBA0A 100%);
+    border: 3px solid #FFB603;
+    border-radius: 999px;
+    padding: 14px 36px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    color: #031034;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 0 #DE9D00;
+    transition: transform 0.08s, box-shadow 0.08s;
+    text-transform: uppercase;
+  }
+  .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 16px;
+    margin: 0 0 20px;
+    font-size: 14px;
+  }
+  .stats .label { color: rgba(255,255,255,0.7); text-align: left; }
+  .stats .value { color: #FFD633; font-weight: 700; text-align: right; }
+  .max-badge {
+    display: inline-block;
+    background: #AF1726;
+    border: 2px solid #FFD633;
+    border-radius: 999px;
+    padding: 6px 14px;
+    color: #FFD633;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin: 0 0 12px;
+  }
+  .new-best {
+    display: inline-block;
+    background: #FFD633;
+    color: #031034;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin: 0 0 12px;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+
+  @media (max-width: 420px) {
+    .card h1 { font-size: 36px; }
+    .pill { font-size: 14px; padding: 6px 12px; min-width: 80px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<button id="muteBtn" class="mute" aria-label="Toggle sound">
+  <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+</button>
+
+<div id="hud" class="hidden">
+  <div class="hud-row">
+    <div id="scorePill" class="pill">0 / 500</div>
+    <div id="timerPill" class="pill timer">3:00</div>
+  </div>
+  <div id="streakBadge" class="badge hidden">STREAK x5</div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="card">
+    <h1>Susun</h1>
+    <p class="sub">Stack as high as you can in 3 minutes.</p>
+    <p class="cap">Max score: <b>500</b></p>
+    <p class="best" id="bestText">&nbsp;</p>
+    <button id="startBtn" class="cta">Start</button>
+    <p class="hint">Tap, click, or press <kbd>Space</kbd></p>
+  </div>
+</div>
+
+<div id="gameOver" class="overlay hidden">
+  <div class="card">
+    <h2 id="goTitle">Time's up!</h2>
+    <div id="goNewBest" class="hidden"><span class="new-best">NEW BEST!</span></div>
+    <div id="goMaxBadge" class="hidden"><span class="max-badge">500 / 500 — MAX</span></div>
+    <div id="finalStats" class="stats"></div>
+    <button id="playAgainBtn" class="cta">Play Again</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// =============================================================================
+// CONFIG — all tunables live here
+// =============================================================================
+const CONFIG = {
+  GAME_DURATION_SEC: 180,
+  MAX_SCORE: 500,
+  PERFECT_TOLERANCE: 3,      // world units of slack that still counts as perfect
+  BASE_SWEEP: 1.6,           // seconds for the first block to cross
+  SPEED_STEP: 0.02,          // seconds shaved off per placed block
+  MIN_SWEEP: 0.55,           // floor on sweep duration
+  BLOCK_W: 200,              // world units
+  BLOCK_D: 200,
+  BLOCK_H: 40,
+  PERFECT_POINTS: 4,
+  IMPERFECT_POINTS: 1,
+  STREAK_TIER_1: 5,          // streak >= 5 awards +1 bonus per perfect
+  STREAK_TIER_2: 10,         // streak >= 10 awards +2 bonus per perfect
+  CAMERA_LERP: 0.12,
+  HUE_STEP_DEG: 7,
+  GRAVITY: 1500,             // world units / s^2
+  SWEEP_PAD: 90,             // extra world units beyond block on each side of sweep
+  INPUT_DEBOUNCE_MS: 100,
+  HEADROOM_WORLD: 140,       // world Y headroom above tower top in camera view
+  STORAGE_KEY_BEST: 'susun:best',
+  STORAGE_KEY_MUTE: 'susun:mute',
+};
+
+const COS30 = Math.cos(Math.PI / 6);
+const SIN30 = Math.sin(Math.PI / 6);
+
+// =============================================================================
+// DOM refs
+// =============================================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const dom = {
+  hud: document.getElementById('hud'),
+  scorePill: document.getElementById('scorePill'),
+  timerPill: document.getElementById('timerPill'),
+  streakBadge: document.getElementById('streakBadge'),
+  muteBtn: document.getElementById('muteBtn'),
+  menu: document.getElementById('menu'),
+  startBtn: document.getElementById('startBtn'),
+  bestText: document.getElementById('bestText'),
+  gameOver: document.getElementById('gameOver'),
+  goTitle: document.getElementById('goTitle'),
+  goNewBest: document.getElementById('goNewBest'),
+  goMaxBadge: document.getElementById('goMaxBadge'),
+  finalStats: document.getElementById('finalStats'),
+  playAgainBtn: document.getElementById('playAgainBtn'),
+};
+
+// =============================================================================
+// Sandbox-safe storage
+// =============================================================================
+function storageGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v === null ? fallback : v; }
+  catch (e) { return fallback; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+
+// =============================================================================
+// State
+// =============================================================================
+const state = {
+  phase: 'MENU',             // MENU | PLAYING | GAME_OVER
+  blocks: [],                // placed blocks, blocks[0] is the base
+  currentBlock: null,        // active sweeping block
+  cutoffs: [],               // falling slices
+  floaters: [],              // "+4 PERFECT!" / "+1" text indicators
+  flashes: [],               // perfect-placement ring effects
+  score: 0,
+  streak: 0,
+  bestStreak: 0,
+  blocksPlaced: 0,
+  timer: CONFIG.GAME_DURATION_SEC,
+  timerStarted: false,
+  startTime: 0,
+  camera: { y: 0, targetY: 0 },
+  muted: storageGet(CONFIG.STORAGE_KEY_MUTE, '0') === '1',
+  best: parseInt(storageGet(CONFIG.STORAGE_KEY_BEST, '0'), 10) || 0,
+  lastDropAt: 0,
+  lastTickPlayed: 999,
+  paused: false,
+  pausedAt: 0,
+  shake: { t: 0, mag: 0 },
+};
+
+// =============================================================================
+// Sizing / viewport
+// =============================================================================
+const view = { w: 0, h: 0, dpr: 1, cx: 0, cy: 0, scale: 1 };
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.w = window.innerWidth;
+  view.h = window.innerHeight;
+  view.dpr = dpr;
+  canvas.width = Math.floor(view.w * dpr);
+  canvas.height = Math.floor(view.h * dpr);
+  canvas.style.width = view.w + 'px';
+  canvas.style.height = view.h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  view.cx = view.w / 2;
+  view.cy = view.h * 0.58;
+  const refW = 900, refH = 720;
+  view.scale = Math.min(view.w / refW, view.h / refH);
+  view.scale = Math.max(Math.min(view.scale, 1.4), 0.38);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// =============================================================================
+// Iso projection — +X projects lower-right, +Z projects lower-left, +Y up
+// =============================================================================
+function project(wx, wy, wz) {
+  const shake = state.shake.t > 0 ? state.shake.mag * Math.sin(state.shake.t * 80) : 0;
+  return {
+    x: view.cx + ((wx - wz) * COS30) * view.scale,
+    y: view.cy + ((state.camera.y - wy) + (wx + wz) * SIN30) * view.scale + shake,
+  };
+}
+
+// =============================================================================
+// Color — HSL gradient with three-tone faked lighting
+// =============================================================================
+function colorForIndex(i) {
+  const hue = (200 + i * CONFIG.HUE_STEP_DEG) % 360;
+  return {
+    hue,
+    top:   `hsl(${hue}, 65%, 56%)`,
+    right: `hsl(${hue}, 65%, 41%)`,
+    left:  `hsl(${hue}, 65%, 31%)`,
+  };
+}
+
+// =============================================================================
+// Block draw — three parallelograms (top, right +X, left +Z faces)
+// =============================================================================
+function drawBlock(b) {
+  const hw = b.w / 2, hd = b.d / 2;
+  const x0 = b.x - hw, x1 = b.x + hw;
+  const z0 = b.z - hd, z1 = b.z + hd;
+  const y0 = b.y, y1 = b.y + b.h;
+
+  const t1 = project(x0, y1, z0);
+  const t2 = project(x1, y1, z0);
+  const t3 = project(x1, y1, z1);
+  const t4 = project(x0, y1, z1);
+  const b2 = project(x1, y0, z0);
+  const b3 = project(x1, y0, z1);
+  const b4 = project(x0, y0, z1);
+
+  // Left face (+Z, screen-left)
+  ctx.fillStyle = b.color.left;
+  ctx.beginPath();
+  ctx.moveTo(b4.x, b4.y);
+  ctx.lineTo(b3.x, b3.y);
+  ctx.lineTo(t3.x, t3.y);
+  ctx.lineTo(t4.x, t4.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right face (+X, screen-right)
+  ctx.fillStyle = b.color.right;
+  ctx.beginPath();
+  ctx.moveTo(b2.x, b2.y);
+  ctx.lineTo(b3.x, b3.y);
+  ctx.lineTo(t3.x, t3.y);
+  ctx.lineTo(t2.x, t2.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Top face
+  ctx.fillStyle = b.color.top;
+  ctx.beginPath();
+  ctx.moveTo(t1.x, t1.y);
+  ctx.lineTo(t2.x, t2.y);
+  ctx.lineTo(t3.x, t3.y);
+  ctx.lineTo(t4.x, t4.y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// =============================================================================
+// Spawn the next sweeping block
+// =============================================================================
+function spawnNextBlock() {
+  const last = state.blocks[state.blocks.length - 1];
+  const idx = state.blocks.length;            // 1 for first sweepable
+  const axis = (idx % 2 === 1) ? 'x' : 'z';   // alternate
+  const dir = (Math.floor((idx - 1) / 2) % 2 === 0) ? 1 : -1;
+
+  const sweepDuration = Math.max(
+    CONFIG.MIN_SWEEP,
+    CONFIG.BASE_SWEEP - (idx - 1) * CONFIG.SPEED_STEP
+  );
+  const refSize = axis === 'x' ? last.w : last.d;
+  const sweepHalf = refSize + CONFIG.SWEEP_PAD;
+  const center = axis === 'x' ? last.x : last.z;
+  const startPos = center - dir * sweepHalf;
+  const endPos = center + dir * sweepHalf;
+
+  state.currentBlock = {
+    x: axis === 'x' ? startPos : last.x,
+    y: last.y + last.h,
+    z: axis === 'z' ? startPos : last.z,
+    w: last.w,
+    d: last.d,
+    h: last.h,
+    color: colorForIndex(idx),
+    axis,
+    dir,
+    startPos,
+    endPos,
+    progress: 0,
+    sweepDir: 1,
+    sweepDuration,
+  };
+}
+
+// =============================================================================
+// Active block sweep — bounces back and forth so the player can take their time
+// =============================================================================
+function updateCurrentBlock(dt) {
+  const b = state.currentBlock;
+  if (!b) return;
+  b.progress += (dt / b.sweepDuration) * b.sweepDir;
+  if (b.progress >= 1) { b.progress = 1 - (b.progress - 1); b.sweepDir = -1; }
+  else if (b.progress <= 0) { b.progress = -b.progress; b.sweepDir = 1; }
+  const pos = b.startPos + (b.endPos - b.startPos) * b.progress;
+  if (b.axis === 'x') b.x = pos; else b.z = pos;
+}
+
+// =============================================================================
+// Drop attempt + debounce
+// =============================================================================
+function attemptDrop() {
+  if (state.phase !== 'PLAYING') return;
+  const now = performance.now();
+  if (now - state.lastDropAt < CONFIG.INPUT_DEBOUNCE_MS) return;
+  state.lastDropAt = now;
+  if (!state.currentBlock) return;
+  dropBlock();
+}
+
+function dropBlock() {
+  const b = state.currentBlock;
+  const last = state.blocks[state.blocks.length - 1];
+
+  if (!state.timerStarted) {
+    state.timerStarted = true;
+    state.startTime = performance.now();
+  }
+
+  const axis = b.axis;
+  let curMin, curMax, prevMin, prevMax, curSize;
+  if (axis === 'x') {
+    curMin = b.x - b.w / 2; curMax = b.x + b.w / 2;
+    prevMin = last.x - last.w / 2; prevMax = last.x + last.w / 2;
+    curSize = b.w;
+  } else {
+    curMin = b.z - b.d / 2; curMax = b.z + b.d / 2;
+    prevMin = last.z - last.d / 2; prevMax = last.z + last.d / 2;
+    curSize = b.d;
+  }
+
+  const overlapMin = Math.max(curMin, prevMin);
+  const overlapMax = Math.min(curMax, prevMax);
+  const overlap = overlapMax - overlapMin;
+
+  if (overlap <= 0) { onMiss(); return; }
+
+  const isPerfect = (curSize - overlap) <= CONFIG.PERFECT_TOLERANCE;
+
+  if (isPerfect) {
+    if (axis === 'x') { b.x = last.x; b.w = last.w; }
+    else { b.z = last.z; b.d = last.d; }
+    onPerfect(b);
+  } else {
+    const newCenter = (overlapMin + overlapMax) / 2;
+    const newSize = overlap;
+    const cutoffSize = curSize - newSize;
+    if (axis === 'x') {
+      const cutoffCenter = (b.x > last.x)
+        ? (overlapMax + cutoffSize / 2)
+        : (overlapMin - cutoffSize / 2);
+      state.cutoffs.push({
+        x: cutoffCenter, y: b.y, z: b.z,
+        w: cutoffSize, d: b.d, h: b.h,
+        vx: Math.sign(cutoffCenter - newCenter) * 90,
+        vy: 60, vz: 0,
+        color: b.color,
+      });
+      b.x = newCenter; b.w = newSize;
+    } else {
+      const cutoffCenter = (b.z > last.z)
+        ? (overlapMax + cutoffSize / 2)
+        : (overlapMin - cutoffSize / 2);
+      state.cutoffs.push({
+        x: b.x, y: b.y, z: cutoffCenter,
+        w: b.w, d: cutoffSize, h: b.h,
+        vx: 0, vy: 60,
+        vz: Math.sign(cutoffCenter - newCenter) * 90,
+        color: b.color,
+      });
+      b.z = newCenter; b.d = newSize;
+    }
+    onImperfect(b);
+  }
+
+  state.blocks.push(b);
+  state.currentBlock = null;
+  state.blocksPlaced += 1;
+
+  // Camera target — top of new block, lifted into the upper portion of view
+  state.camera.targetY = (b.y + b.h) - CONFIG.HEADROOM_WORLD;
+
+  spawnNextBlock();
+  updateHud();
+}
+
+function onPerfect(block) {
+  state.streak += 1;
+  if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+  let points = CONFIG.PERFECT_POINTS;
+  if (state.streak >= CONFIG.STREAK_TIER_2) points += 2;
+  else if (state.streak >= CONFIG.STREAK_TIER_1) points += 1;
+  state.score = Math.min(state.score + points, CONFIG.MAX_SCORE);
+
+  state.floaters.push({
+    x: block.x, y: block.y + block.h + 30, z: block.z,
+    text: `+${points} PERFECT!`,
+    t: 0, color: '#FFE258', size: 20,
+  });
+  state.flashes.push({ x: block.x, y: block.y + block.h, z: block.z, t: 0 });
+  playPerfect();
+}
+
+function onImperfect(block) {
+  state.streak = 0;
+  state.score = Math.min(state.score + CONFIG.IMPERFECT_POINTS, CONFIG.MAX_SCORE);
+  state.floaters.push({
+    x: block.x, y: block.y + block.h + 20, z: block.z,
+    text: `+${CONFIG.IMPERFECT_POINTS}`,
+    t: 0, color: '#FFFFFF', size: 16,
+  });
+  playTap();
+}
+
+function onMiss() {
+  state.streak = 0;
+  if (state.currentBlock) {
+    const b = state.currentBlock;
+    // Push initial downward velocity so it visibly tumbles off
+    state.cutoffs.push({
+      x: b.x, y: b.y, z: b.z,
+      w: b.w, d: b.d, h: b.h,
+      vx: 0, vy: -100, vz: 0,
+      color: b.color,
+    });
+  }
+  state.currentBlock = null;
+  playMiss();
+  state.shake = { t: 0.45, mag: 5 };
+  endGame('miss');
+}
+
+// =============================================================================
+// Cutoff slice physics — simple gravity in world Y
+// =============================================================================
+function updateCutoffs(dt) {
+  for (let i = state.cutoffs.length - 1; i >= 0; i--) {
+    const c = state.cutoffs[i];
+    c.vy -= CONFIG.GRAVITY * dt;
+    c.x += (c.vx || 0) * dt;
+    c.y += c.vy * dt;
+    c.z += (c.vz || 0) * dt;
+    if (c.y < state.camera.y - 1400) state.cutoffs.splice(i, 1);
+  }
+}
+
+// =============================================================================
+// Main update
+// =============================================================================
+function update(dt) {
+  if (state.shake.t > 0) state.shake.t -= dt;
+  state.camera.y += (state.camera.targetY - state.camera.y) * CONFIG.CAMERA_LERP;
+
+  if (state.phase === 'PLAYING') {
+    if (state.timerStarted) {
+      state.timer = Math.max(0, CONFIG.GAME_DURATION_SEC - (performance.now() - state.startTime) / 1000);
+
+      const secondsLeft = Math.ceil(state.timer);
+      const tickPoints = [10, 5, 4, 3, 2, 1];
+      if (tickPoints.indexOf(secondsLeft) !== -1 && state.lastTickPlayed !== secondsLeft) {
+        playTick();
+        state.lastTickPlayed = secondsLeft;
+      }
+      dom.timerPill.classList.toggle('urgent', state.timer <= 10);
+
+      if (state.timer <= 0) { state.timer = 0; endGame('time'); return; }
+    }
+    updateCurrentBlock(dt);
+  }
+
+  updateCutoffs(dt);
+
+  for (let i = state.floaters.length - 1; i >= 0; i--) {
+    const f = state.floaters[i];
+    f.t += dt;
+    f.y += dt * 50;
+    if (f.t > 0.75) state.floaters.splice(i, 1);
+  }
+  for (let i = state.flashes.length - 1; i >= 0; i--) {
+    state.flashes[i].t += dt;
+    if (state.flashes[i].t > 0.5) state.flashes.splice(i, 1);
+  }
+
+  updateHud();
+}
+
+function updateHud() {
+  dom.scorePill.textContent = `${state.score} / ${CONFIG.MAX_SCORE}`;
+  const mins = Math.floor(state.timer / 60);
+  const secs = Math.floor(state.timer % 60);
+  dom.timerPill.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+  if (state.streak >= CONFIG.STREAK_TIER_1) {
+    dom.streakBadge.classList.remove('hidden');
+    dom.streakBadge.textContent = `STREAK x${state.streak}`;
+  } else {
+    dom.streakBadge.classList.add('hidden');
+  }
+}
+
+// =============================================================================
+// Draw
+// =============================================================================
+function draw() {
+  ctx.clearRect(0, 0, view.w, view.h);
+
+  // Faint ground glow near base — fades out as camera rises
+  const horizonY = view.cy + (state.camera.y) * view.scale;
+  if (horizonY > -200 && horizonY < view.h + 200) {
+    const grad = ctx.createRadialGradient(view.cx, horizonY, 0, view.cx, horizonY, view.w * 0.7);
+    grad.addColorStop(0, 'rgba(21, 53, 168, 0.22)');
+    grad.addColorStop(1, 'rgba(2, 13, 38, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, view.w, view.h);
+  }
+
+  // Only draw the recent slice of the tower (everything else is off-screen below)
+  const startIdx = Math.max(0, state.blocks.length - 30);
+  for (let i = startIdx; i < state.blocks.length; i++) drawBlock(state.blocks[i]);
+
+  // Cutoffs
+  for (let i = 0; i < state.cutoffs.length; i++) drawBlock(state.cutoffs[i]);
+
+  // Active block last so the sweeping piece is always on top
+  if (state.currentBlock) drawBlock(state.currentBlock);
+
+  // Perfect-placement rings
+  for (let i = 0; i < state.flashes.length; i++) drawFlash(state.flashes[i]);
+
+  // Floating score text
+  for (let i = 0; i < state.floaters.length; i++) drawFloater(state.floaters[i]);
+}
+
+function drawFlash(f) {
+  const p = project(f.x, f.y, f.z);
+  const alpha = 1 - (f.t / 0.5);
+  const r = 26 + f.t * 130;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, alpha) * 0.85;
+  ctx.strokeStyle = '#FFE258';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, r * COS30, r * SIN30, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawFloater(f) {
+  const p = project(f.x, f.y, f.z);
+  const alpha = 1 - (f.t / 0.75);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, alpha);
+  ctx.fillStyle = f.color;
+  ctx.font = `700 ${f.size}px Poppins, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 2;
+  ctx.fillText(f.text, p.x, p.y);
+  ctx.restore();
+}
+
+// =============================================================================
+// Audio — Web Audio API synthesis, no asset files needed
+// =============================================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(opts) {
+  if (state.muted) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime + (opts.delay || 0);
+  const dur = opts.dur || 0.15;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = opts.type || 'sine';
+  osc.frequency.setValueAtTime(opts.freq, t);
+  if (opts.freqEnd !== undefined) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.freqEnd), t + dur);
+  }
+  g.gain.setValueAtTime(opts.gain || 0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + dur + 0.05);
+}
+function playTap()    { playTone({ freq: 360, freqEnd: 260, type: 'triangle', dur: 0.12, gain: 0.18 }); }
+function playPerfect(){
+  playTone({ freq: 880,  type: 'triangle', dur: 0.18, gain: 0.18 });
+  playTone({ freq: 1320, type: 'triangle', dur: 0.22, gain: 0.14, delay: 0.05 });
+}
+function playMiss()   { playTone({ freq: 200, freqEnd: 55, type: 'sawtooth', dur: 0.45, gain: 0.24 }); }
+function playTick()   { playTone({ freq: 1200, type: 'sine', dur: 0.07, gain: 0.12 }); }
+
+// =============================================================================
+// Game lifecycle
+// =============================================================================
+function startGame() {
+  state.phase = 'PLAYING';
+  state.blocks = [];
+  state.cutoffs = [];
+  state.floaters = [];
+  state.flashes = [];
+  state.score = 0;
+  state.streak = 0;
+  state.bestStreak = 0;
+  state.blocksPlaced = 0;
+  state.timer = CONFIG.GAME_DURATION_SEC;
+  state.timerStarted = false;
+  state.lastTickPlayed = 999;
+  state.shake = { t: 0, mag: 0 };
+
+  // Base block at origin
+  state.blocks.push({
+    x: 0, y: 0, z: 0,
+    w: CONFIG.BLOCK_W, d: CONFIG.BLOCK_D, h: CONFIG.BLOCK_H,
+    color: colorForIndex(0),
+  });
+
+  state.camera.y = CONFIG.BLOCK_H - CONFIG.HEADROOM_WORLD;
+  state.camera.targetY = state.camera.y;
+
+  spawnNextBlock();
+
+  dom.menu.classList.add('hidden');
+  dom.gameOver.classList.add('hidden');
+  dom.hud.classList.remove('hidden');
+  dom.timerPill.classList.remove('urgent');
+  updateHud();
+}
+
+function endGame(reason) {
+  if (state.phase === 'GAME_OVER') return;
+  state.phase = 'GAME_OVER';
+
+  const isNewBest = state.score > state.best;
+  if (isNewBest) {
+    state.best = state.score;
+    storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
+  }
+
+  dom.goTitle.textContent = reason === 'miss' ? 'Missed!' : "Time's up!";
+  dom.goMaxBadge.classList.toggle('hidden', state.score < CONFIG.MAX_SCORE);
+  dom.goNewBest.classList.toggle('hidden', !isNewBest);
+
+  dom.finalStats.innerHTML =
+    `<div class="label">Score</div><div class="value">${state.score} / ${CONFIG.MAX_SCORE}</div>` +
+    `<div class="label">Blocks placed</div><div class="value">${state.blocksPlaced}</div>` +
+    `<div class="label">Longest streak</div><div class="value">${state.bestStreak}</div>` +
+    `<div class="label">Tower height</div><div class="value">${state.blocksPlaced} blocks</div>` +
+    `<div class="label">Best</div><div class="value">${state.best}</div>`;
+
+  // Brief delay on miss so the death animation reads
+  setTimeout(() => {
+    dom.hud.classList.add('hidden');
+    dom.gameOver.classList.remove('hidden');
+  }, reason === 'miss' ? 900 : 250);
+}
+
+// =============================================================================
+// Input
+// =============================================================================
+function onCanvasPointer(e) {
+  e.preventDefault();
+  if (state.phase === 'PLAYING') attemptDrop();
+}
+canvas.addEventListener('mousedown', onCanvasPointer);
+canvas.addEventListener('touchstart', onCanvasPointer, { passive: false });
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !e.repeat) {
+    e.preventDefault();
+    if (state.phase === 'PLAYING') attemptDrop();
+  }
+});
+
+dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
+dom.playAgainBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
+dom.muteBtn.addEventListener('click', () => {
+  state.muted = !state.muted;
+  storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');
+  updateMuteUI();
+});
+
+function updateMuteUI() {
+  const svg = dom.muteBtn.querySelector('svg');
+  svg.innerHTML = state.muted
+    ? '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3zm17.59-7L17 5.59 13.41 2 12 3.41l3.59 3.59L12 10.59 13.41 12 17 8.41 20.59 12 22 10.59 18.41 7 22 3.41z"/>'
+    : '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
+}
+
+function showBest() {
+  if (state.best > 0) dom.bestText.innerHTML = `Best: <b>${state.best}</b>`;
+  else dom.bestText.innerHTML = '&nbsp;';
+}
+
+// =============================================================================
+// Pause on tab hide — preserve the wall-clock timer accurately on resume
+// =============================================================================
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (state.phase === 'PLAYING' && !state.paused) {
+      state.paused = true;
+      state.pausedAt = performance.now();
+    }
+  } else {
+    if (state.paused) {
+      const pausedFor = performance.now() - state.pausedAt;
+      state.startTime += pausedFor;
+      state.lastDropAt += pausedFor;
+      state.paused = false;
+      lastT = 0;
+    }
+  }
+});
+
+// =============================================================================
+// Main loop
+// =============================================================================
+let lastT = 0;
+function loop(t) {
+  if (!lastT) lastT = t;
+  const dt = Math.min((t - lastT) / 1000, 1 / 30);
+  lastT = t;
+  if (!state.paused) update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// =============================================================================
+// Boot
+// =============================================================================
+showBest();
+updateMuteUI();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

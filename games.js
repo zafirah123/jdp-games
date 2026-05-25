@@ -6,7 +6,7 @@
 // progressed far enough; see CLAUDE.md §7 for the publishing flow.
 window.GAMES = [
   { name: 'Bubble Shooter', path: './bubble-shooter/', status: 'pending' },
-  { name: 'Flying Ruby', path: './flying-ruby/', status: 'pending' },
+  { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-design' },
   { name: 'Liquid Sort', path: './liquid-sort/liquid-sort.html', status: 'pending' },
   { name: 'Puzzle', path: './puzzle/puzzle.html', status: 'pending' },
   { name: 'Ruby Breaker', path: './ruby-breaker-v2/', status: 'pending' },

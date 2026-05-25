@@ -344,14 +344,14 @@ const CONFIG = {
   STREAK_BONUS_CAP: 50,
   SKIP_COST: 15,
   PARTIAL_PER_GREEN: 10,
-  // Free clues for the opening puzzles of each new run. The game picks
-  // a real dictionary word that, when matched against the target, satisfies
-  // the criteria, then drops it into row 0 as a "free first guess".
+  // Free clues for the opening puzzles of each new run. 3 letters per clue
+  // dropped into row 0 with green/yellow/grey statuses per the criteria.
+  // Each clue covers 3 of the 5 columns; the other 2 columns of row 0 stay empty.
   // Index 0 = first puzzle, 1 = second, 2 = third. Beyond that: no clue.
   CLUES: [
-    { maxGreens: 2, minYellows: 1 },              // puzzle 1
-    { maxGreens: 1, minYellows: 2 },              // puzzle 2
-    { exactGreens: 0, minYellows: 3 },            // puzzle 3
+    { total: 3, minGreens: 2,   maxYellows: 1 },  // puzzle 1
+    { total: 3, minGreens: 1,   maxYellows: 2 },  // puzzle 2
+    { total: 3, exactGreens: 0, maxYellows: 3 },  // puzzle 3
   ],
   // Time multiplier zones: applied based on time REMAINING at solve
   // (time elapsed from start: 0..90 -> x1, 90..120 -> x1.2, 120..150 -> x1.5, 150..180 -> x2)
@@ -817,9 +817,11 @@ function _matchesCriteria(result, c) {
     if (s === 'correct') greens++;
     else if (s === 'present') yellows++;
   }
-  if (c.maxGreens   !== undefined && greens  > c.maxGreens)   return false;
-  if (c.exactGreens !== undefined && greens !== c.exactGreens) return false;
-  if (c.minYellows  !== undefined && yellows < c.minYellows)  return false;
+  // `total` = greens + yellows must equal this (rest of the 5 are grey).
+  if (c.total       !== undefined && greens + yellows !== c.total) return false;
+  if (c.minGreens   !== undefined && greens  <  c.minGreens)   return false;
+  if (c.exactGreens !== undefined && greens !== c.exactGreens)  return false;
+  if (c.maxYellows  !== undefined && yellows >  c.maxYellows)   return false;
   return true;
 }
 

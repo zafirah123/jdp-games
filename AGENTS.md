@@ -125,10 +125,14 @@ Before writing code, walk the pre-implementation checklist in
 2. Put the entry HTML inside. Prefer `index.html`.
 3. Append an entry to [games.js](games.js):
    ```js
-   { name: 'Your Game', path: './your-game/', status: 'pending' },
+   { name: 'Your Game', path: './your-game/', status: 'pending', author: 'your-github-username' },
    ```
+   `author` is **required** — it's the GitHub username of the original
+   developer and is rendered under the game name on the landing page so
+   contributors are credited. Don't omit it.
 4. Test at `http://localhost:8080/your-game/`.
-5. Promote to `status: 'approved'` when shipping.
+5. Promote to `status: 'approved-dev'` or `'approved-design'` when shipping
+   (see [CLAUDE.md §7](CLAUDE.md) for the move flow).
 
 Keep entries alphabetical by `name`.
 
@@ -213,7 +217,7 @@ for the design-side checklist; the items below cover the harness/repo side.
       states, pill/progress-bar anatomy.
 - [ ] No other game folder was modified.
 - [ ] [games.js](games.js) updated if a new game was added or status
-      changed.
+      changed — new entries include an `author` (GitHub username).
 - [ ] Landing page ([index.html](index.html)) still renders the game list.
 
 ## Deployment

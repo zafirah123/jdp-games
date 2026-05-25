@@ -332,8 +332,17 @@ The landing page has three lists, each backed by a `status` value in
 
 1. Build the game in its own top-level folder: `/<game-name>/`.
 2. Verify it serves correctly via `python3 -m http.server` from the game folder.
-3. Add an entry to [`games.js`](./games.js) with `status: 'pending'`.
+3. Add an entry to [`games.js`](./games.js) with `status: 'pending'` **and**
+   `author: '<your-github-username>'` — the landing page renders this under
+   the game name so contributors are credited. `author` is required for
+   every new game; do not omit it.
 4. Open a PR. Reviewers will check this CLAUDE.md and [BEST-PRACTICES.md](./BEST-PRACTICES.md) against your work.
+
+**Example `games.js` entry:**
+
+```js
+{ name: 'Your Game', path: './your-game/', status: 'pending', author: 'your-github-username' },
+```
 
 ### 7.2 Moving a game between lists — reminder steps
 
@@ -401,7 +410,7 @@ A game is shippable when it satisfies **all** of:
 - [ ] Visuals reconciled against [`DESIGN.md`](./DESIGN.md) (palette, typography, button/pill/progress-bar anatomy)
 - [ ] Mute toggle + best score persistence working
 - [ ] `?scene=` dev jump wired in BootScene
-- [ ] Listed in `games.js`
+- [ ] Listed in `games.js` with `author: '<github-username>'` set
 
 ---
 

@@ -250,6 +250,27 @@
   .stats .row-stat:last-child { border-bottom: none; }
   .stats .label { color: var(--muted); }
   .stats .val { color: var(--text); font-weight: 700; }
+  /* Final score hero on the end-of-game modal */
+  .final-score-hero {
+    margin: 18px 0 14px;
+    padding: 14px 12px;
+    background: linear-gradient(180deg, rgba(253,216,61,0.10) 0%, rgba(255,184,0,0.04) 100%);
+    border: 2px solid rgba(253,216,61,0.35);
+    border-radius: 14px;
+  }
+  .final-score-label {
+    font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .final-score-value {
+    font-size: 64px; font-weight: 900;
+    line-height: 1;
+    color: var(--yellow);
+    text-shadow: 0 3px 0 var(--darkRed), 0 6px 18px rgba(255,184,0,0.35);
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Unsolved-word reveal on the end-of-game modal */
   .answer-reveal { margin: 14px 0 4px; }
   .answer-label {
@@ -337,6 +358,10 @@
     <div id="goAnswer" class="answer-reveal hidden">
       <div class="answer-label" id="goAnswerLabel"></div>
       <div class="answer-tiles" id="goAnswerTiles"></div>
+    </div>
+    <div class="final-score-hero">
+      <div class="final-score-label" id="goFinalLabel"></div>
+      <div class="final-score-value" id="goFinalValue">0</div>
     </div>
     <div id="finalStats" class="stats"></div>
     <button id="claimBtn" class="cta"></button>
@@ -572,6 +597,8 @@ const dom = {
   goAnswer: document.getElementById('goAnswer'),
   goAnswerLabel: document.getElementById('goAnswerLabel'),
   goAnswerTiles: document.getElementById('goAnswerTiles'),
+  goFinalLabel: document.getElementById('goFinalLabel'),
+  goFinalValue: document.getElementById('goFinalValue'),
   finalStats: document.getElementById('finalStats'),
   claimBtn: document.getElementById('claimBtn'),
 };
@@ -1097,6 +1124,8 @@ function showGameOver(reason) {
 
   dom.goTitle.textContent = reason === 'timeUp' ? COPY.timeUp : COPY.gameOver;
   dom.goNewBest.classList.toggle('hidden', !newBest);
+  dom.goFinalLabel.textContent = COPY.final;
+  dom.goFinalValue.textContent = String(state.score);
 
   // Reveal the unsolved answer, if any (player didn't crack the current puzzle).
   if (!state.solvedThisPuzzle && state.target) {
@@ -1117,7 +1146,6 @@ function showGameOver(reason) {
     `<div class="row-stat"><span class="label">${label}</span><span class="val">${val}</span></div>`;
 
   dom.finalStats.innerHTML = [
-    zoneRow(COPY.final, state.score),
     zoneRow(COPY.solved, state.solvedCount),
     zoneRow(COPY.avgGuess, avg),
     zoneRow(COPY.bestPuzzle, state.bestPuzzle),

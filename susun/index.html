@@ -286,8 +286,6 @@ const CONFIG = {
   BLOCK_W: 200,              // world units
   BLOCK_D: 200,
   BLOCK_H: 40,
-  PERFECT_POINTS: 4,
-  IMPERFECT_POINTS: 1,
   STREAK_TIER_1: 5,          // streak >= 5 awards +1 bonus per perfect
   STREAK_TIER_2: 10,         // streak >= 10 awards +2 bonus per perfect
   CAMERA_LERP: 0.12,
@@ -611,7 +609,8 @@ function onPerfect(block) {
   state.streak += 1;
   if (state.streak > state.bestStreak) state.bestStreak = state.streak;
 
-  let points = CONFIG.PERFECT_POINTS;
+  const n = state.blocksPlaced + 1;
+  let points = 2 * n;
   if (state.streak >= CONFIG.STREAK_TIER_2) points += 2;
   else if (state.streak >= CONFIG.STREAK_TIER_1) points += 1;
   state.score = Math.min(state.score + points, CONFIG.MAX_SCORE);
@@ -627,10 +626,11 @@ function onPerfect(block) {
 
 function onImperfect(block) {
   state.streak = 0;
-  state.score = Math.min(state.score + CONFIG.IMPERFECT_POINTS, CONFIG.MAX_SCORE);
+  const n = state.blocksPlaced + 1;
+  state.score = Math.min(state.score + n, CONFIG.MAX_SCORE);
   state.floaters.push({
     x: block.x, y: block.y + block.h + 20, z: block.z,
-    text: `+${CONFIG.IMPERFECT_POINTS}`,
+    text: `+${n}`,
     t: 0, color: '#FFFFFF', size: 16,
   });
   playTap();

@@ -76,6 +76,26 @@ single-file games alike.
    choice — the URL is the source of truth. See
    [CLAUDE.md §6.4](CLAUDE.md) for the full string set and reference
    implementation.
+6. **CLAIM SCORE on end-of-game — no in-game retry.** The final
+   end-of-game modal (after `TIME'S UP!` or `GAME OVER`) must have
+   **exactly one** CTA: `CLAIM SCORE` (en) / `TUNTUT SKOR` (ms). Tapping
+   it redirects to:
+
+   ```
+   https://app.pandai.org/app/game?game=<folder>&score=<final>&token=<random>
+   ```
+
+   - `<folder>` — kebab-case folder name matching `games.js` path
+   - `<final>` — integer final score
+   - `<random>` — freshly-generated nonce per run (UUID v4 or random hex)
+
+   No `Play Again` / `Try Again` / `Restart` / `Main Semula` button on
+   the end-of-game modal — players replay by relaunching the game from
+   the Pandai app. The mid-run `CONTINUE` prompt (when the player
+   crashes with time remaining) continues to work as before; CLAIM
+   SCORE only appears on the *final* modal. See
+   [CLAUDE.md §6.5](CLAUDE.md) for the redirect contract and reference
+   implementation.
 
 ## Setup
 
@@ -229,6 +249,10 @@ for the design-side checklist; the items below cover the harness/repo side.
       ads, or third-party tracking.
 - [ ] Standardized end-of-game / audio strings used (§5 baseline);
       `?lang=ms` switches the game's copy to Bahasa Melayu.
+- [ ] End-of-game modal has a single `CLAIM SCORE` / `TUNTUT SKOR` CTA
+      (no retry/play-again button) and redirects to
+      `app.pandai.org/app/game?game=<folder>&score=<n>&token=<random>`
+      per §6 baseline.
 - [ ] Layout looks correct at the canvas's intended aspect ratio.
 - [ ] UI matches [DESIGN.md](DESIGN.md) — palette, typography, button
       states, pill/progress-bar anatomy.

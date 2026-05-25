@@ -211,6 +211,7 @@ See also the more detailed pre-implementation checklist in
 - [ ] Added a `?scene=` / `?phase=` dev jump at boot from day one.
 - [ ] Persisted best score and mute preference in `localStorage` with try/catch for sandboxed webviews.
 - [ ] Used the standardized strings from §6.4 — `START GAME`, `TIME'S UP!`, `GAME OVER`, `AUDIO ON`, `AUDIO OFF` — and wired `?lang=ms` to switch the game's copy to Bahasa Melayu.
+- [ ] End-of-game modal has a single `CLAIM SCORE` CTA (no in-game retry button) that redirects to `https://app.pandai.org/app/game?game=<folder>&score=<n>&token=<random>` per §6.5.
 
 ---
 
@@ -413,6 +414,7 @@ one). Casing is **uppercase** for all five.
 | Run ended for any reason other than the timer (crash with no Continue, board fail, etc.) | `GAME OVER` | `PERMAINAN TAMAT` |
 | Audio is currently playing (tap to mute) | `AUDIO ON` | `AUDIO ON` |
 | Audio is currently muted (tap to enable) | `AUDIO OFF` | `AUDIO OFF` |
+| End-of-game CTA (only CTA on the final modal — see §6.5) | `CLAIM SCORE` | `TUNTUT SKOR` |
 
 **`TIME'S UP!` and `GAME OVER` are different states.** Use `TIME'S UP!`
 only when the round timer hits zero — the natural end-of-round. Use
@@ -455,6 +457,57 @@ const COPY = {
 Any unrecognized `lang` value falls back to English. Don't persist the
 language choice across visits — the URL is the source of truth so links
 shared between players carry the intended language.
+
+### 6.5 End-of-game flow: CLAIM SCORE, not retry
+
+When a run truly ends — whether the modal headline is `TIME'S UP!` (timer
+expired) or `GAME OVER` (run ended for any other reason) — the final
+modal **must not** offer an in-game "Play Again" / "Try Again" /
+"Restart" / "Main Semula" / "Repeat" button. There is **one CTA** on the
+end-of-game modal, and it sends the player back to the Pandai app:
+
+| Moment | English (default) | Bahasa Melayu (`?lang=ms`) |
+|---|---|---|
+| End-of-game CTA | `CLAIM SCORE` | `TUNTUT SKOR` |
+
+Tapping the CTA redirects to:
+
+```
+https://app.pandai.org/app/game?game=<game-folder>&score=<final-score>&token=<random-token>
+```
+
+| Param | Value | Notes |
+|---|---|---|
+| `game`  | kebab-case folder name, matching the `path` field in `games.js` (e.g. `flying-ruby`, `tap-tap-match`, `tic-tac-toe`) | URL-encode it |
+| `score` | integer final score (0–500 per §1.4) | No commas, no padding, no formatting |
+| `token` | random nonce generated client-side at end-of-round — UUID v4 or 16+ random hex chars is fine | Generate one per run, at the moment the modal opens. Not at boot. URL-encode it |
+
+Minimum implementation:
+
+```js
+const GAME_NAME = 'flying-ruby';   // the kebab-case folder name for this game
+function claimScore(finalScore) {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const url = `https://app.pandai.org/app/game`
+            + `?game=${encodeURIComponent(GAME_NAME)}`
+            + `&score=${finalScore}`
+            + `&token=${encodeURIComponent(token)}`;
+  location.href = url;
+}
+```
+
+**Continue ≠ CLAIM SCORE.** Games that offer a `CONTINUE` prompt when the
+player crashes with time remaining still show that prompt as before
+(§1.2 — time is a shared budget across continues). CLAIM SCORE only
+appears on the **final** end-of-game modal — after `TIME'S UP!`, or
+after the player declines `CONTINUE` on a crash with no time left.
+
+**No in-page restart.** The player replays by relaunching the game from
+the Pandai app, not by tapping a button inside the game. Don't ship a
+hidden "?retry=1" or keyboard shortcut for restart either — the rule is
+the same for every input path.
 
 ---
 
@@ -552,6 +605,7 @@ A game is shippable when it satisfies **all** of:
 - [ ] Visuals reconciled against [`DESIGN.md`](./DESIGN.md) (palette, typography, button/pill/progress-bar anatomy)
 - [ ] Mute toggle + best score persistence working
 - [ ] Standardized end-of-game / audio copy used (§6.4); `?lang=ms` switches the game to Bahasa Melayu
+- [ ] End-of-game modal follows §6.5 — single `CLAIM SCORE` CTA (no retry button), redirect URL includes `game`, `score`, and a freshly-generated random `token`
 - [ ] Dev jump via `?scene=` / `?phase=` query param wired from day one
 - [ ] Listed in `games.js` with `author: '<github-username>'` set
 

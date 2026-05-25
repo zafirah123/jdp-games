@@ -163,10 +163,16 @@
       <p class="lede">Static game previews hosted on GitHub Pages. Approved games will appear here separately from the pending ones.</p>
     </header>
 
-    <section class="section" aria-labelledby="approved-title">
-      <h2 id="approved-title">Approved</h2>
-      <ul id="approved-games" class="grid"></ul>
-      <p id="approved-empty" class="empty" hidden>Nothing has been approved yet.</p>
+    <section class="section" aria-labelledby="approved-dev-title">
+      <h2 id="approved-dev-title">Approved — For Development</h2>
+      <ul id="approved-dev-games" class="grid"></ul>
+      <p id="approved-dev-empty" class="empty" hidden>No games approved for development yet.</p>
+    </section>
+
+    <section class="section" aria-labelledby="approved-design-title">
+      <h2 id="approved-design-title">Approved — For Design</h2>
+      <ul id="approved-design-games" class="grid"></ul>
+      <p id="approved-design-empty" class="empty" hidden>No games approved for design yet.</p>
     </section>
 
     <section class="section" aria-labelledby="pending-title">
@@ -178,10 +184,16 @@
 
   <script src="./games.js"></script>
   <script>
-    const approvedList = document.getElementById('approved-games');
-    const pendingList = document.getElementById('pending-games');
-    const approvedEmpty = document.getElementById('approved-empty');
-    const pendingEmpty = document.getElementById('pending-empty');
+    const lists = {
+      'approved-dev':    document.getElementById('approved-dev-games'),
+      'approved-design': document.getElementById('approved-design-games'),
+      'pending':         document.getElementById('pending-games'),
+    };
+    const empties = {
+      'approved-dev':    document.getElementById('approved-dev-empty'),
+      'approved-design': document.getElementById('approved-design-empty'),
+      'pending':         document.getElementById('pending-empty'),
+    };
 
     function renderGame(game) {
       const li = document.createElement('li');
@@ -200,14 +212,23 @@
       return li;
     }
 
-    const approvedGames = window.GAMES.filter((game) => game.status === 'approved');
-    const pendingGames = window.GAMES.filter((game) => game.status !== 'approved');
+    // Unknown / legacy status values fall through to "pending" so a typo in
+    // games.js doesn't drop a game off the landing page entirely.
+    function bucketFor(status) {
+      if (status === 'approved-dev' || status === 'approved-design') return status;
+      return 'pending';
+    }
 
-    approvedGames.forEach((game) => approvedList.appendChild(renderGame(game)));
-    pendingGames.forEach((game) => pendingList.appendChild(renderGame(game)));
+    const counts = { 'approved-dev': 0, 'approved-design': 0, 'pending': 0 };
+    window.GAMES.forEach((game) => {
+      const bucket = bucketFor(game.status);
+      lists[bucket].appendChild(renderGame(game));
+      counts[bucket] += 1;
+    });
 
-    approvedEmpty.hidden = approvedGames.length > 0;
-    pendingEmpty.hidden = pendingGames.length > 0;
+    Object.keys(empties).forEach((key) => {
+      empties[key].hidden = counts[key] > 0;
+    });
   </script>
 </body>
 </html>

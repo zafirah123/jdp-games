@@ -1,3 +1,9 @@
+// status values:
+//   'pending'          — default starting state
+//   'approved-dev'     — promoted to "Approved — For Development" list
+//   'approved-design'  — promoted to "Approved — For Design" list
+// Developers request a move to either approved list once their game has
+// progressed far enough; see CLAUDE.md §7 for the publishing flow.
 window.GAMES = [
   { name: 'Bubble Shooter', path: './bubble-shooter/', status: 'pending' },
   { name: 'Flying Ruby', path: './flying-ruby/', status: 'pending' },

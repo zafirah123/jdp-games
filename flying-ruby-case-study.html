@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Flying Ruby — Case Study & Game Dev Patterns</title>
+<style>
+  :root {
+    --navy:      #020d26;
+    --navy-2:    #0a1638;
+    --royal:     #1535a8;
+    --darkRed:   #a21520;
+    --ruby:      #b81c26;
+    --yellow:    #fdd83d;
+    --orange:    #ffb800;
+    --gold:      #d89900;
+    --ink:       #0c0f1a;
+    --paper:     #fbfaf6;
+    --line:      rgba(2, 13, 38, 0.12);
+    --muted:     #4a5168;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- slide-style sections ---- */
+  .deck { max-width: 1080px; margin: 0 auto; padding: 0 32px 80px; }
+  section {
+    border-bottom: 1px solid var(--line);
+    padding: 64px 0;
+    page-break-inside: avoid;
+  }
+  section:last-child { border-bottom: 0; }
+
+  /* ---- hero ---- */
+  .hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--royal) 100%);
+    color: var(--paper);
+    padding: 96px 32px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    right: -120px; bottom: -120px;
+    width: 360px; height: 360px;
+    background: radial-gradient(circle, var(--yellow) 0%, transparent 70%);
+    opacity: 0.18;
+  }
+  .hero-inner { max-width: 1080px; margin: 0 auto; position: relative; z-index: 1; }
+  .eyebrow {
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--yellow);
+    padding: 6px 12px;
+    border: 1px solid rgba(253, 216, 61, 0.4);
+    border-radius: 999px;
+  }
+  h1 {
+    font-size: 56px;
+    line-height: 1.05;
+    margin: 24px 0 12px;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+  }
+  h1 .accent { color: var(--yellow); }
+  .lede {
+    font-size: 20px;
+    max-width: 720px;
+    color: rgba(251, 250, 246, 0.85);
+    margin: 0 0 32px;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 24px;
+    font-size: 13px;
+    color: rgba(251, 250, 246, 0.7);
+  }
+  .meta b { color: var(--yellow); font-weight: 600; }
+
+  /* ---- section headings ---- */
+  h2 {
+    font-size: 36px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    color: var(--navy);
+  }
+  .h2-num {
+    display: inline-block;
+    font-size: 13px; font-weight: 700;
+    color: var(--ruby);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .section-lede {
+    font-size: 17px;
+    color: var(--muted);
+    max-width: 760px;
+    margin: 0 0 32px;
+  }
+  h3 { font-size: 20px; margin: 24px 0 8px; color: var(--navy); }
+  h4 { font-size: 14px; margin: 0 0 6px; color: var(--ruby); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 16px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+
+  code {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.88em;
+    background: rgba(21, 53, 168, 0.08);
+    color: var(--navy);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--navy);
+    color: #e6ecff;
+    padding: 18px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 12px 0 20px;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  pre .c  { color: #7e8aa8; }   /* comment */
+  pre .k  { color: #ffb800; }   /* keyword */
+  pre .s  { color: #fdd83d; }   /* string */
+  pre .n  { color: #ff9aa2; }   /* number */
+  pre .fn { color: #8fb6ff; }   /* function */
+
+  /* ---- cards ---- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 0 rgba(2, 13, 38, 0.02);
+  }
+  .card h4 { margin-bottom: 8px; }
+  .card p { margin: 0; font-size: 14px; color: var(--muted); }
+  .card.accent-ruby   { border-left: 4px solid var(--ruby); }
+  .card.accent-yellow { border-left: 4px solid var(--yellow); }
+  .card.accent-royal  { border-left: 4px solid var(--royal); }
+  .card.accent-orange { border-left: 4px solid var(--orange); }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x: auto; margin: 16px 0 24px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    background: var(--navy);
+    color: var(--paper);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  tr:last-child td { border-bottom: 0; }
+  tr:nth-child(even) td { background: rgba(21, 53, 168, 0.025); }
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .pill.good { background: rgba(76, 217, 100, 0.18); color: #1f7a3a; }
+  .pill.warn { background: rgba(255, 184, 0, 0.22); color: #8a5a00; }
+  .pill.bad  { background: rgba(184, 28, 38, 0.15); color: var(--ruby); }
+  .pill.rec  { background: var(--yellow); color: var(--navy); }
+
+  /* ---- callouts ---- */
+  .callout {
+    background: linear-gradient(180deg, rgba(253, 216, 61, 0.12), rgba(253, 216, 61, 0.04));
+    border-left: 4px solid var(--yellow);
+    padding: 18px 20px;
+    border-radius: 6px;
+    margin: 20px 0;
+  }
+  .callout.ruby {
+    background: linear-gradient(180deg, rgba(184, 28, 38, 0.08), rgba(184, 28, 38, 0.02));
+    border-left-color: var(--ruby);
+  }
+  .callout h4 { margin-bottom: 8px; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* ---- patterns list ---- */
+  .pattern {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 20px;
+    align-items: start;
+    padding: 20px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .pattern:last-child { border-bottom: 0; }
+  .pattern-num {
+    font-size: 32px; font-weight: 800;
+    color: var(--ruby);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .pattern h3 { margin-top: 0; }
+  .pattern .why { font-size: 13px; color: var(--muted); }
+  .pattern .why b { color: var(--navy); text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+
+  /* ---- checklist ---- */
+  .checklist {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px 28px;
+    list-style: none;
+    padding-left: 28px;
+  }
+  .checklist li {
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 10px;
+    font-size: 15px;
+  }
+  .checklist li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 4px;
+    width: 16px; height: 16px;
+    border: 2px solid var(--ruby);
+    border-radius: 4px;
+  }
+
+  /* ---- visuals ---- */
+  .sprite-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px;
+    margin: 20px 0 28px;
+  }
+  .sprite-card {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--royal) 100%);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    color: var(--paper);
+    position: relative;
+    overflow: hidden;
+  }
+  .sprite-card .frame {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.18);
+    border-radius: 6px;
+    margin-bottom: 10px;
+    padding: 8px;
+  }
+  .sprite-card .frame img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast;
+  }
+  .sprite-card .name {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--yellow);
+    margin-bottom: 2px;
+  }
+  .sprite-card .stat {
+    font-size: 11px;
+    color: rgba(251, 250, 246, 0.65);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* In-game mockup */
+  .mockup {
+    margin: 24px 0;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .mockup-frame {
+    width: 320px; height: 568px;
+    background: url('flying-ruby/assets/backgrounds/bg.webp') center/cover no-repeat;
+    border-radius: 16px;
+    border: 6px solid var(--navy);
+    box-shadow: 0 20px 60px rgba(2, 13, 38, 0.35);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .mockup-frame::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: rgba(2, 13, 38, 0.28);
+  }
+  .mockup-hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 48px;
+    background: rgba(2, 13, 38, 0.65);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px;
+    color: var(--yellow);
+    font-weight: 700;
+    z-index: 2;
+  }
+  .mockup-hud .left { display: flex; align-items: center; gap: 8px; }
+  .mockup-hud img { height: 22px; }
+  .mockup-hud .time-label { font-size: 9px; color: #fff; opacity: 0.7; letter-spacing: 0.1em; }
+  .mockup-hud .time-val { font-size: 18px; }
+  .mockup-pbot {
+    position: absolute; top: 220px; left: 70px;
+    width: 80px; z-index: 3;
+    transform: rotate(8deg);
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.4));
+  }
+  .mockup-pillar {
+    position: absolute; width: 44px;
+    background: linear-gradient(90deg, #9a6e00 0%, #d89900 16%, #ffd633 42%, #d89900 74%, #9a6e00 100%);
+    z-index: 2;
+  }
+  .mockup-pillar.top    { top: 48px; bottom: 320px; right: 60px; border-radius: 0 0 4px 4px; }
+  .mockup-pillar.bottom { top: 460px; bottom: 0;    right: 60px; border-radius: 4px 4px 0 0; }
+  .mockup-ruby {
+    position: absolute;
+    width: 28px;
+    z-index: 3;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+  .mockup-floor {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 50px;
+    background: rgba(2, 13, 38, 0.55);
+    border-top: 2px solid var(--yellow);
+    z-index: 2;
+  }
+  .mockup-caption {
+    flex: 1; min-width: 260px;
+  }
+  .mockup-caption h4 { color: var(--navy); margin-bottom: 12px; font-size: 14px; }
+  .mockup-caption ol { padding-left: 18px; font-size: 14px; color: var(--muted); }
+  .mockup-caption ol li { margin-bottom: 8px; }
+  .mockup-caption ol li b { color: var(--navy); }
+
+  /* size bar */
+  .sizebar {
+    display: grid;
+    grid-template-columns: 140px 1fr 70px;
+    gap: 12px;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 13px;
+  }
+  .sizebar .label { font-weight: 600; color: var(--navy); }
+  .sizebar .track {
+    height: 18px;
+    background: rgba(21, 53, 168, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .sizebar .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--ruby), var(--orange));
+    border-radius: 4px;
+  }
+  .sizebar .fill.cool {
+    background: linear-gradient(90deg, var(--royal), var(--yellow));
+  }
+  .sizebar .num {
+    text-align: right;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--navy);
+    font-weight: 600;
+  }
+
+  /* folder tree */
+  .tree {
+    background: var(--navy);
+    color: #e6ecff;
+    padding: 20px 24px;
+    border-radius: 10px;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    margin: 16px 0 24px;
+  }
+  .tree .dir { color: var(--yellow); font-weight: 700; }
+  .tree .file { color: #b8c4e0; }
+  .tree .note { color: #7e8aa8; font-style: italic; }
+  .tree .size { color: var(--orange); margin-left: 8px; }
+
+  /* total bundle badge */
+  .bundle-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--ruby), var(--orange));
+    color: #fff;
+    padding: 16px 24px;
+    border-radius: 12px;
+    margin: 16px 0;
+    box-shadow: 0 8px 24px rgba(184, 28, 38, 0.25);
+  }
+  .bundle-badge .big { font-size: 36px; font-weight: 800; letter-spacing: -0.02em; }
+  .bundle-badge .label { font-size: 14px; opacity: 0.9; }
+
+  /* ---- footer ---- */
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 40px 16px;
+  }
+
+  /* ---- print ---- */
+  @media print {
+    body { background: #fff; }
+    section { page-break-after: always; border-bottom: 0; }
+    .hero { page-break-after: always; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+  }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 36px; }
+    h2 { font-size: 26px; }
+    .hero { padding: 64px 24px; }
+    .deck { padding: 0 20px 60px; }
+    section { padding: 48px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- HERO                                                          -->
+<!-- ============================================================ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Case Study · Pandai JDP Games</span>
+    <h1>Flying Ruby<br/><span class="accent">— a pattern library for time-boxed arcade games</span></h1>
+    <p class="lede">
+      How a 3-minute, Flappy-style arcade game balances endless gameplay,
+      gentle difficulty, hidden economy caps, and Pandai-brand polish — and
+      what to copy when building the next one.
+    </p>
+    <div class="meta">
+      <span><b>Engine</b> Phaser 3 (CDN, zero build)</span>
+      <span><b>Pattern</b> Endless within a timer</span>
+      <span><b>Round</b> 3:00 shared budget</span>
+      <span><b>Currency</b> Rubies · 1 pt each</span>
+    </div>
+  </div>
+</header>
+
+<main class="deck">
+
+<!-- ============================================================ -->
+<!-- 01 OVERVIEW                                                   -->
+<!-- ============================================================ -->
+<section id="overview">
+  <span class="h2-num">01 — Overview</span>
+  <h2>What Flying Ruby actually is</h2>
+  <p class="section-lede">
+    A Flappy-Bird descendant with the Pandai mascot <code>pbot</code>. The player
+    flaps through gold pillars, vacuums rubies, and rides power-ups inside a
+    single, continuous 3-minute round. There are no levels, no boss, no
+    progression screens — just one long survival arc you fully spend.
+  </p>
+
+  <div class="grid">
+    <div class="card accent-ruby">
+      <h4>Format</h4>
+      <p>Single endless round of <b>3:00</b>. Crashing doesn't end the run if time remains — you "Continue" with the same score and the leftover timer.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>Goal</h4>
+      <p>Collect as many <b>rubies</b> as possible before the clock hits zero. One currency. One number to beat.</p>
+    </div>
+    <div class="card accent-royal">
+      <h4>Feel</h4>
+      <p>Tap-to-flap, gravity 1200, jump <code>-380</code>. Tilt-toward-velocity, squash on flap, glass-crack death sequence.</p>
+    </div>
+    <div class="card accent-orange">
+      <h4>Tech</h4>
+      <p>Phaser 3 loaded from CDN. ES modules. Static site. No build step, no bundler, no dependencies to update.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 02 ARCHITECTURE                                               -->
+<!-- ============================================================ -->
+<section id="architecture">
+  <span class="h2-num">02 — Architecture</span>
+  <h2>Four scenes, one config file</h2>
+  <p class="section-lede">
+    Everything that designers and PMs care about — tuning, difficulty, drop
+    rates, palette — lives in a single file. Scenes stay lean and focused on
+    one responsibility each.
+  </p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>File</th><th>Responsibility</th><th>Why it's split this way</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/config.js</code></td><td>Palette, round length, gravity, drop rates, power-up tuning</td><td>One source of truth. Designers tune here without touching scenes.</td></tr>
+      <tr><td><code>BootScene.js</code></td><td>Preload assets · generate placeholder textures · honour mute pref · dev <code>?scene=</code> jump</td><td>Lets gameplay be built before final art exists.</td></tr>
+      <tr><td><code>StartScene.js</code></td><td>Logo, mascot idle, Start Game button (Pandai DS spec)</td><td>Title screen is mostly brand presentation, not logic.</td></tr>
+      <tr><td><code>GameScene.js</code></td><td>Full gameplay loop, difficulty ramp, spawning, power-ups, crash FX</td><td>One big scene is fine when the game has one round.</td></tr>
+      <tr><td><code>GameOverScene.js</code></td><td>Score count-up, best-score persistence, Continue vs Home routing</td><td>Continue logic lives where time/score state arrives.</td></tr>
+      <tr><td><code>muteButton.js</code></td><td>Shared mute toggle + <code>localStorage</code> preference</td><td>Shared widget extracted because every scene needs it.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Config that designers can read</h3>
+  <pre><code><span class="c">// src/config.js — the only file most tuning ever needs to touch</span>
+<span class="k">export const</span> GAME = {
+  width: <span class="n">480</span>, height: <span class="n">854</span>,
+  roundDurationMs: <span class="n">3</span> * <span class="n">60</span> * <span class="n">1000</span>,   <span class="c">// 3-minute round</span>
+  gravity: <span class="n">1200</span>, flapVelocity: <span class="n">-380</span>,
+  rubyValue: <span class="n">1</span>,
+};
+
+<span class="k">export const</span> DIFFICULTY = {
+  rampCompleteAt:   <span class="n">0.85</span>,                  <span class="c">// peak by 85% of round</span>
+  pipeSpeed:        { start: <span class="n">234</span>,  end: <span class="n">410</span>  },
+  pipeGap:          { start: <span class="n">230</span>,  end: <span class="n">160</span>  },
+  pipeSpawnEveryMs: { start: <span class="n">1700</span>, end: <span class="n">1100</span> },
+};
+
+<span class="k">export const</span> MAGNET = { spawnEveryMs: <span class="n">8000</span>, spawnChance: <span class="n">0.7</span>, durationMs: <span class="n">5000</span>, pullSpeed: <span class="n">560</span> };
+<span class="k">export const</span> RUSH   = { spawnEveryMs: <span class="n">21000</span>, spawnChance: <span class="n">0.6</span>, durationMs: <span class="n">7000</span>, speedMultiplier: <span class="n">1.6</span>, rubyCount: <span class="n">50</span> };</code></pre>
+
+  <div class="callout">
+    <h4>Pattern</h4>
+    <p>A flat <code>config.js</code> with named ranges (<code>{ start, end }</code>) makes the difficulty ramp self-documenting. Anyone can re-tune the game in 30 seconds without reading scene code.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 03 ENDLESS WITHIN A TIMER                                     -->
+<!-- ============================================================ -->
+<section id="endless">
+  <span class="h2-num">03 — The Core Loop</span>
+  <h2>Endless gameplay, time-boxed run</h2>
+  <p class="section-lede">
+    "Endless but with a fixed clock" is the structural backbone. There are no
+    stages or level transitions. Difficulty is a smooth interpolation across
+    the round. The "Continue" mechanic is what makes the 3:00 feel like a
+    budget the player wants to spend completely — not a sudden-death wall.
+  </p>
+
+  <div class="grid">
+    <div class="card accent-royal">
+      <h4>Round = budget</h4>
+      <p>The 3-minute timer is a <i>shared budget across continues</i>, not a per-life timer. Crash early, resume with whatever time you had left.</p>
+    </div>
+    <div class="card accent-ruby">
+      <h4>Two exit conditions</h4>
+      <p>Only <b>Time's Up</b> permanently ends a run. <b>Crash</b> with time remaining shows Continue. Once budget is spent, only Home remains.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>Difficulty arc</h4>
+      <p>Linear ramp from start values to end values, finished at <b>85%</b> of the round so the final ~27s sits at peak — natural climax.</p>
+    </div>
+  </div>
+
+  <h3>How the ramp is computed</h3>
+  <pre><code><span class="k">_rampProgress</span>() {
+  <span class="k">const</span> rampMs = GAME.roundDurationMs * DIFFICULTY.rampCompleteAt;
+  <span class="k">return</span> Phaser.Math.Clamp(<span class="k">this</span>.elapsedMs / rampMs, <span class="n">0</span>, <span class="n">1</span>);
+}
+<span class="k">_ramp</span>(range) {
+  <span class="k">return</span> Phaser.Math.Linear(range.start, range.end, <span class="k">this</span>._rampProgress());
+}</code></pre>
+
+  <div class="callout ruby">
+    <h4>Why no stages?</h4>
+    <p>Stages create friction for short-session play. A 3-minute window is short enough that the player can finish a satisfying arc in one sitting; long enough that the difficulty ramp has somewhere to go. Use stages when sessions are longer than ~5 minutes or when you want narrative beats.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 04 GAMIFICATION                                               -->
+<!-- ============================================================ -->
+<section id="gamification">
+  <span class="h2-num">04 — Gamification</span>
+  <h2>One currency, two power-ups, many shapes</h2>
+  <p class="section-lede">
+    Flying Ruby keeps the scoring legible (one number, one icon) but injects
+    variety through <i>how</i> rubies appear — formations, gap rewards, magnet
+    pulls, and a screen-shaking Power Rush — so the same scoring system feels
+    different minute-to-minute.
+  </p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Element</th><th>Mechanic</th><th>Player benefit</th><th>Designer lever</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ruby (currency)</b></td><td>+1 on overlap</td><td>Single, legible goal</td><td><code>GAME.rubyValue</code></td></tr>
+      <tr><td><b>Gap reward</b></td><td>Per-pillar-pair: empty / single / trio</td><td>Risk-vs-reward through the gap</td><td>Drop probabilities</td></tr>
+      <tr><td><b>Lane collectibles</b></td><td>Between pillars: empty / single / line / wave / circle</td><td>Visual rhythm and choreographed beats</td><td>Spawn odds + formations</td></tr>
+      <tr><td><b>Magnet</b></td><td>5s pull on every on-screen ruby</td><td>Collection aid — turns near-misses into pickups</td><td><code>MAGNET</code> config</td></tr>
+      <tr><td><b>Power Rush</b></td><td>7s frenzy: pillars retract, world speeds up ×1.6, sine-line of 50 rubies</td><td>Big payout window, momentum reset</td><td><code>RUSH</code> config</td></tr>
+      <tr><td><b>Best score</b></td><td><code>localStorage['flying-ruby:best']</code></td><td>Meta-progression hook</td><td>Storage key</td></tr>
+      <tr><td><b>Continue</b></td><td>Resume after crash with leftover time</td><td>Reduces frustration, encourages full 3:00 use</td><td>Time budget logic</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Formations turn one ruby into a moment</h3>
+  <p>Three formations — <code>line5</code>, <code>wave</code>, <code>circle</code> — all share a single velocity so the shape holds together as it scrolls. This is much cheaper than authoring real animations and produces the "ribbon of rubies" feel that defines the game.</p>
+
+  <pre><code><span class="c">// Lane spawn odds — most lanes empty so the rare formations feel special</span>
+<span class="k">const</span> roll = Math.random();
+<span class="k">if</span> (roll &lt; <span class="n">0.73</span>) <span class="k">return</span>;                <span class="c">// 73% empty (breather)</span>
+<span class="k">if</span> (roll &lt; <span class="n">0.85</span>) spawnSingle();         <span class="c">// 12% single ruby</span>
+<span class="k">else if</span> (roll &lt; <span class="n">0.91</span>) spawnFormation(<span class="s">'line5'</span>);
+<span class="k">else if</span> (roll &lt; <span class="n">0.96</span>) spawnFormation(<span class="s">'wave'</span>);
+<span class="k">else</span>                  spawnFormation(<span class="s">'circle'</span>);</code></pre>
+</section>
+
+<!-- ============================================================ -->
+<!-- 05 HIDDEN CAP                                                 -->
+<!-- ============================================================ -->
+<section id="cap">
+  <span class="h2-num">05 — Economy Control</span>
+  <h2>The 500-ruby cap that the player must not see</h2>
+  <p class="section-lede">
+    Flying Ruby currently has <b>no cap</b> — score is unbounded. To enforce a
+    soft ceiling of 500 without breaking the fantasy, do <i>not</i> clamp the
+    counter. Instead, taper supply so the world organically thins as the
+    player approaches the cap.
+  </p>
+
+  <h3>Why a visible clamp fails</h3>
+  <div class="grid">
+    <div class="card accent-ruby">
+      <h4>Stuck counter</h4>
+      <p>Score stops moving while sparkle "+1" pops keep playing. Players notice instantly and feel cheated.</p>
+    </div>
+    <div class="card accent-ruby">
+      <h4>Empty world</h4>
+      <p>Killing all spawns above 500 leaves the player flying through nothing for the final minute. Reads as a bug.</p>
+    </div>
+    <div class="card accent-ruby">
+      <h4>Hard freeze</h4>
+      <p>Ending the round early at 500 breaks the "spend the full 3:00" contract the game made on the title screen.</p>
+    </div>
+  </div>
+
+  <h3>Approaches ranked by how invisible they are</h3>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Approach</th><th>How it works</th><th>Visibility</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Hard clamp</td>
+        <td><code>score = Math.min(500, score + 1)</code></td>
+        <td><span class="pill bad">Very obvious</span></td>
+      </tr>
+      <tr>
+        <td>Stop all spawns past threshold</td>
+        <td>Lane &amp; gap rolls return empty after 500</td>
+        <td><span class="pill bad">Obvious</span></td>
+      </tr>
+      <tr>
+        <td><b>Soft taper (recommended)</b></td>
+        <td>Multiply spawn probabilities by <code>1 − smoothstep(420, 520, score)</code>. Suppress new Power Rush bubbles within ~70 of cap.</td>
+        <td><span class="pill rec">Invisible</span></td>
+      </tr>
+      <tr>
+        <td>Pre-rolled per-round budget</td>
+        <td>Pick a target 460–500 at round start; spread spawns via inverse-CDF across the timeline</td>
+        <td><span class="pill good">Invisible but rigid</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>The soft-taper pattern</h3>
+  <pre><code><span class="c">// Add to config.js</span>
+<span class="k">export const</span> ECONOMY = {
+  softCap:       <span class="n">500</span>,
+  taperStart:    <span class="n">420</span>,   <span class="c">// begin thinning supply at this score</span>
+  taperEnd:      <span class="n">520</span>,   <span class="c">// effectively no spawns past this</span>
+  rushBlockedAt: <span class="n">430</span>,   <span class="c">// don't arm new Power Rush bubbles here</span>
+};
+
+<span class="c">// In GameScene — a single multiplier applied to every spawn roll</span>
+<span class="k">_supplyMultiplier</span>() {
+  <span class="k">const</span> { taperStart, taperEnd } = ECONOMY;
+  <span class="k">const</span> t = Phaser.Math.Clamp(
+    (<span class="k">this</span>.score - taperStart) / (taperEnd - taperStart), <span class="n">0</span>, <span class="n">1</span>
+  );
+  <span class="k">return</span> <span class="n">1</span> - (t * t * (<span class="n">3</span> - <span class="n">2</span> * t));   <span class="c">// smoothstep</span>
+}
+
+<span class="c">// Then in _spawnGapReward / _spawnLaneCollectible:</span>
+<span class="k">if</span> (Math.random() &gt; <span class="k">this</span>._supplyMultiplier()) <span class="k">return</span>;
+<span class="c">// ...existing odds roll continues here</span></code></pre>
+
+  <div class="callout">
+    <h4>Why this works</h4>
+    <p>From the player's perspective the world simply "calms down" near the end — which already happens naturally with the difficulty ramp. Empty lanes during the final stretch feel like difficulty, not deprivation. The HUD keeps counting up; sparkles keep popping; the game keeps its promise.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 06 ASSET MANAGEMENT                                           -->
+<!-- ============================================================ -->
+<section id="assets">
+  <span class="h2-num">06 — Asset Management &amp; Optimization</span>
+  <h2>Every kilobyte is a deliberate choice</h2>
+  <p class="section-lede">
+    The entire game — five sprites, one background, seven SFX, three BGM tracks
+    — fits in <b>2.8 MB</b>. Folder structure mirrors load order, formats are
+    chosen per-asset-type, and runtime-generated textures sidestep shipping art
+    that maths can produce.
+  </p>
+
+  <div class="bundle-badge">
+    <span class="big">2.8 MB</span>
+    <span class="label">total payload · 16 files · first-load complete</span>
+  </div>
+
+  <h3>Folder layout — sorted by load order &amp; intent</h3>
+  <div class="tree">
+<span class="dir">flying-ruby/</span>
+├── <span class="file">index.html</span>                       <span class="note"># entry · loads Phaser from CDN + src/main.js</span>
+├── <span class="dir">src/</span>                              <span class="note"># scenes + config — code only, no bundler</span>
+├── <span class="dir">assets/</span>
+│   ├── <span class="dir">sprites/</span>                      <span class="note"># character art with transparency</span>
+│   │   ├── <span class="file">pbot.webp</span>                <span class="size">80 KB · 432×578</span>
+│   │   ├── <span class="file">ruby.webp</span>                <span class="size">68 KB · 512×512</span>
+│   │   ├── <span class="file">magnet.webp</span>              <span class="size">52 KB · 1024×1024</span>
+│   │   ├── <span class="file">pwr.webp</span>                 <span class="size">76 KB · 1024×1024</span>
+│   │   └── <span class="file">game_logo.webp</span>           <span class="size">80 KB · 350×338</span>
+│   └── <span class="dir">backgrounds/</span>                  <span class="note"># solid art, no transparency channel</span>
+│       └── <span class="file">bg.webp</span>                  <span class="size">720 KB · 768×1376</span>
+├── <span class="dir">sfx/</span>                              <span class="note"># short, one-shot AAC clips</span>
+│   ├── <span class="file">jump.m4a</span>                     <span class="size">16 KB</span>
+│   ├── <span class="file">collect.m4a</span>                  <span class="size">20 KB</span>
+│   ├── <span class="file">on-hit.m4a</span>                   <span class="size">12 KB</span>
+│   └── <span class="file">... (4 more)</span>                 <span class="size">~200 KB total</span>
+└── <span class="dir">bgm/</span>                              <span class="note"># looping AAC tracks per scene</span>
+    ├── <span class="file">start-bgm.m4a</span>                <span class="size">128 KB</span>
+    ├── <span class="file">game-bgm.m4a</span>                 <span class="size">1.3 MB</span>
+    └── <span class="file">pwr-up.m4a</span>                   <span class="size">116 KB</span>
+  </div>
+
+  <div class="callout">
+    <h4>Foldering principle</h4>
+    <p>Folder name = file family + lifecycle. <code>sprites/</code> = drawn-frequently with alpha. <code>backgrounds/</code> = drawn-once, no alpha. <code>sfx/</code> = one-shot. <code>bgm/</code> = looped. A new engineer never has to ask where to put a new file.</p>
+  </div>
+
+  <h3>Format choices — and what each one saved us</h3>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Asset family</th><th>Format</th><th>Alternative</th><th>Saving</th><th>Why this format</th></tr></thead>
+    <tbody>
+      <tr><td>Sprites &amp; logo</td><td><b>WebP (lossless, RGBA)</b></td><td>PNG-24</td><td><span class="pill good">~30–50%</span></td><td>Same crisp transparency as PNG, smaller file. Universal browser support since 2020.</td></tr>
+      <tr><td>Background</td><td><b>WebP (lossy, RGB)</b></td><td>JPEG</td><td><span class="pill good">~25–35%</span></td><td>No alpha needed; lossy WebP beats JPEG at the same perceptual quality.</td></tr>
+      <tr><td>SFX (short clips)</td><td><b>AAC / m4a</b></td><td>WAV / MP3</td><td><span class="pill good">~10× vs WAV</span></td><td>Sounds identical at gameplay volumes; plays on every browser without licensing.</td></tr>
+      <tr><td>BGM (long loops)</td><td><b>AAC / m4a</b></td><td>MP3</td><td><span class="pill good">~15% smaller</span></td><td>Better quality-per-byte than MP3 at the same bitrate; loops cleanly.</td></tr>
+      <tr><td>Pillars, sparkles, vignette</td><td><b>Generated at runtime</b></td><td>PNG</td><td><span class="pill good">~100% saved</span></td><td>A gradient or a 4-point star is cheaper to draw than to download.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Actual file sizes (sorted)</h3>
+  <div class="sizebar"><span class="label">on-hit.m4a</span>      <div class="track"><div class="fill cool" style="width:0.9%"></div></div><span class="num">12 KB</span></div>
+  <div class="sizebar"><span class="label">jump.m4a</span>        <div class="track"><div class="fill cool" style="width:1.2%"></div></div><span class="num">16 KB</span></div>
+  <div class="sizebar"><span class="label">collect.m4a</span>     <div class="track"><div class="fill cool" style="width:1.5%"></div></div><span class="num">20 KB</span></div>
+  <div class="sizebar"><span class="label">magnet.webp</span>     <div class="track"><div class="fill" style="width:3.9%"></div></div><span class="num">52 KB</span></div>
+  <div class="sizebar"><span class="label">ruby.webp</span>       <div class="track"><div class="fill" style="width:5.1%"></div></div><span class="num">68 KB</span></div>
+  <div class="sizebar"><span class="label">pwr.webp</span>        <div class="track"><div class="fill" style="width:5.7%"></div></div><span class="num">76 KB</span></div>
+  <div class="sizebar"><span class="label">pbot.webp</span>       <div class="track"><div class="fill" style="width:6.0%"></div></div><span class="num">80 KB</span></div>
+  <div class="sizebar"><span class="label">game_logo.webp</span>  <div class="track"><div class="fill" style="width:6.0%"></div></div><span class="num">80 KB</span></div>
+  <div class="sizebar"><span class="label">start-bgm.m4a</span>   <div class="track"><div class="fill cool" style="width:9.6%"></div></div><span class="num">128 KB</span></div>
+  <div class="sizebar"><span class="label">bg.webp</span>         <div class="track"><div class="fill" style="width:54%"></div></div><span class="num">720 KB</span></div>
+  <div class="sizebar"><span class="label">game-bgm.m4a</span>    <div class="track"><div class="fill cool" style="width:100%"></div></div><span class="num">1.3 MB</span></div>
+
+  <h3>Six optimization tactics in play</h3>
+  <div class="grid">
+    <div class="card accent-yellow">
+      <h4>1 · WebP everywhere</h4>
+      <p>Every image is WebP. Lossless for sprites, lossy for the background. No PNG, no JPEG anywhere in the bundle.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>2 · Generate before download</h4>
+      <p>Pillars, sparkles, dust, and the rush vignette are drawn in code at boot. <b>Zero bytes</b> shipped for any of them.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>3 · Mirror to tile</h4>
+      <p>The background ships as a single image. BootScene mirrors it horizontally in a canvas to produce a seamless loop — no second image, no artist-authored tile.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>4 · Source sprites stay oversized</h4>
+      <p>Power-up orbs are 1024×1024 source; rendered at 58–68 px via <code>setDisplaySize()</code>. Authoring once at high-res means no swapping per device.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>5 · AAC over WAV</h4>
+      <p>Seven SFX total ~200 KB. The same clips as WAV would push past 2 MB on their own.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>6 · No bundler, no framework</h4>
+      <p>Phaser loads from a CDN. ES modules import directly. <b>0 KB of build tooling, polyfills, or dependency duplication</b> ships to the player.</p>
+    </div>
+  </div>
+
+  <h3>How runtime generation looks in code</h3>
+  <pre><code><span class="c">// BootScene · zero-byte texture, drawn once at boot</span>
+<span class="k">_makePipe</span>() {
+  <span class="k">const</span> w = <span class="n">64</span>, h = <span class="k">this</span>.scale.height;
+  <span class="k">const</span> tex = <span class="k">this</span>.textures.createCanvas(<span class="s">'pipe'</span>, w, h);
+  <span class="k">const</span> ctx = tex.context;
+
+  <span class="c">// gold cylinder: dark edges → bright highlight band ~42% across</span>
+  <span class="k">const</span> grad = ctx.createLinearGradient(<span class="n">0</span>, <span class="n">0</span>, w, <span class="n">0</span>);
+  grad.addColorStop(<span class="n">0.00</span>, <span class="s">'#9a6e00'</span>);
+  grad.addColorStop(<span class="n">0.42</span>, <span class="s">'#ffd633'</span>);
+  grad.addColorStop(<span class="n">1.00</span>, <span class="s">'#9a6e00'</span>);
+  ctx.fillStyle = grad; ctx.fillRect(<span class="n">0</span>, <span class="n">0</span>, w, h);
+  tex.refresh();
+}</code></pre>
+
+  <div class="callout">
+    <h4>Pattern: shared keys for placeholder &amp; final art</h4>
+    <p>Placeholder textures use the same key the real file will use (<code>'pipe'</code>, <code>'star'</code>, <code>'sparkle'</code>). Swapping in real art is a one-line change in <code>BootScene.preload()</code> — every scene that uses the key picks it up automatically. Gameplay can be built and tested before any artist delivers a final asset.</p>
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 06b VISUAL REFERENCE                                          -->
+<!-- ============================================================ -->
+<section id="visuals">
+  <span class="h2-num">06b — Visual Reference</span>
+  <h2>The actual art, and how it composes on screen</h2>
+  <p class="section-lede">
+    The five sprites below are the entire visible cast of the game. Everything
+    else — pillars, particles, glows, vignettes — is drawn from code.
+  </p>
+
+  <h3>Sprite cast</h3>
+  <div class="sprite-gallery">
+    <div class="sprite-card">
+      <div class="frame"><img src="flying-ruby/assets/sprites/pbot.webp" alt="pbot mascot" /></div>
+      <div class="name">pbot</div>
+      <div class="stat">432×578 · 80 KB</div>
+    </div>
+    <div class="sprite-card">
+      <div class="frame"><img src="flying-ruby/assets/sprites/ruby.webp" alt="ruby pickup" /></div>
+      <div class="name">ruby</div>
+      <div class="stat">512×512 · 68 KB</div>
+    </div>
+    <div class="sprite-card">
+      <div class="frame"><img src="flying-ruby/assets/sprites/magnet.webp" alt="magnet power-up" /></div>
+      <div class="name">magnet</div>
+      <div class="stat">1024×1024 · 52 KB</div>
+    </div>
+    <div class="sprite-card">
+      <div class="frame"><img src="flying-ruby/assets/sprites/pwr.webp" alt="power rush orb" /></div>
+      <div class="name">pwr</div>
+      <div class="stat">1024×1024 · 76 KB</div>
+    </div>
+    <div class="sprite-card">
+      <div class="frame"><img src="flying-ruby/assets/sprites/game_logo.webp" alt="game logo" /></div>
+      <div class="name">logo</div>
+      <div class="stat">350×338 · 80 KB</div>
+    </div>
+  </div>
+
+  <h3>In-game scene composition</h3>
+  <div class="mockup">
+    <div class="mockup-frame">
+      <div class="mockup-hud">
+        <span class="left">
+          <img src="flying-ruby/assets/sprites/ruby.webp" alt="" />
+          <span>247</span>
+        </span>
+        <span style="text-align: right;">
+          <div class="time-label">TIME</div>
+          <div class="time-val">1:42</div>
+        </span>
+      </div>
+      <div class="mockup-pillar top"></div>
+      <div class="mockup-pillar bottom"></div>
+      <img src="flying-ruby/assets/sprites/pbot.webp" class="mockup-pbot" alt="" />
+      <img src="flying-ruby/assets/sprites/ruby.webp" class="mockup-ruby" style="top: 280px; right: 130px;" alt="" />
+      <img src="flying-ruby/assets/sprites/ruby.webp" class="mockup-ruby" style="top: 320px; right: 110px;" alt="" />
+      <img src="flying-ruby/assets/sprites/ruby.webp" class="mockup-ruby" style="top: 360px; right: 130px;" alt="" />
+      <div class="mockup-floor"></div>
+    </div>
+    <div class="mockup-caption">
+      <h4>What you see, layer by layer</h4>
+      <ol>
+        <li><b>Background</b> — single WebP, mirrored at runtime into a seamless scrolling tile.</li>
+        <li><b>Navy dim overlay</b> — 28% opacity rectangle. Pure code, makes the playfield pop.</li>
+        <li><b>HUD strip</b> — translucent navy bar. Ruby count (left), TIME (right). Brand colors, no chrome.</li>
+        <li><b>Gold pillars</b> — generated canvas gradient. Same texture, scaled to gap position.</li>
+        <li><b>pbot</b> — single sprite, tilted toward velocity, squashed on flap.</li>
+        <li><b>Rubies</b> — single sprite, spawned in singles or in line / wave / circle formations.</li>
+        <li><b>Floor band</b> — translucent navy + yellow trim line. Two rectangles.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="callout ruby">
+    <h4>Observation</h4>
+    <p>Of the seven visible layers above, only three are loaded from disk (background, pbot, ruby). The remaining four are constructed in code. This is what keeps the bundle under 3 MB and the first frame fast.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 07 POLISH                                                     -->
+<!-- ============================================================ -->
+<section id="polish">
+  <span class="h2-num">07 — Game Feel</span>
+  <h2>The polish budget</h2>
+  <p class="section-lede">
+    Almost every interaction has a small response. None of it is expensive,
+    but the cumulative effect is the difference between a prototype and a
+    shippable game.
+  </p>
+
+  <div class="grid">
+    <div class="card accent-ruby">
+      <h4>Tilt-to-velocity</h4>
+      <p>pbot rotates toward its vertical velocity each frame, clamped −25° to +70°. Sells the arc of a flap.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>Squash on flap</h4>
+      <p>80ms scale yoyo (1.08 × / 0.92 ×). Free, but makes the input feel tactile.</p>
+    </div>
+    <div class="card accent-royal">
+      <h4>Sparkle + "+1"</h4>
+      <p>Every ruby pickup emits a fading sparkle pop and a floating "+1". Reinforces the scoring loop visually.</p>
+    </div>
+    <div class="card accent-orange">
+      <h4>Multi-phase crash</h4>
+      <p>Flash → pillar white-out → cracks → shatter → mascot flies into camera → glass screen-crack → fade to Game Over. ~1.9s of pure drama.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>Magnet aura</h4>
+      <p>Pulsing concentric rings around pbot while the power-up is active. Status that doesn't need HUD real estate.</p>
+    </div>
+    <div class="card accent-ruby">
+      <h4>Rush visuals</h4>
+      <p>Red vignette + speed lines + faint red mascot afterimages + the background races at 10× scroll speed.</p>
+    </div>
+    <div class="card accent-royal">
+      <h4>Mirrored bg loop</h4>
+      <p>BootScene bakes a horizontal mirror so any background image loops seamlessly — no artist needs to author a tileable version.</p>
+    </div>
+    <div class="card accent-orange">
+      <h4>Generous hit pads</h4>
+      <p>Buttons have ~40px invisible hit padding on every side. Edge taps still register on mobile.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 08 REPLICATION GUIDELINES                                     -->
+<!-- ============================================================ -->
+<section id="patterns">
+  <span class="h2-num">08 — Replication Patterns</span>
+  <h2>Ten patterns to copy into your next game</h2>
+  <p class="section-lede">
+    Each pattern below is a self-contained design or engineering choice that
+    travelled well in Flying Ruby and should transplant cleanly to any
+    short-session arcade game.
+  </p>
+
+  <div class="pattern">
+    <div class="pattern-num">01</div>
+    <div>
+      <h3>One config file, named ranges</h3>
+      <p>Put every tuning value in <code>config.js</code>. Use <code>{ start, end }</code> for anything that ramps. Designers should never need to read scene code to re-tune.</p>
+      <p class="why"><b>Why</b> &nbsp;Decouples designers from engineers. Most arguments about "make it harder" become a one-line PR.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">02</div>
+    <div>
+      <h3>Endless within a fixed timer</h3>
+      <p>Avoid stages for short sessions. Use one continuous round with a smooth difficulty interpolation that peaks at ~85% of the round.</p>
+      <p class="why"><b>Why</b> &nbsp;Players in a 3-minute window want one satisfying arc, not a fragmented one with loading screens between bites.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">03</div>
+    <div>
+      <h3>Time as shared budget, not per-life cap</h3>
+      <p>When the player crashes, give them a "Continue" that resumes with the same score and the leftover clock. End the run only when the clock hits zero.</p>
+      <p class="why"><b>Why</b> &nbsp;Reduces frustration; ensures the player always spends the full advertised round; produces comparable leaderboard scores.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">04</div>
+    <div>
+      <h3>One currency, one number on the HUD</h3>
+      <p>Resist multiple scores, tiers, or multipliers. Variety belongs in <i>how</i> the currency appears, not in the currency itself.</p>
+      <p class="why"><b>Why</b> &nbsp;A single legible goal beats five competing ones. Players brag about one number.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">05</div>
+    <div>
+      <h3>Cap the economy by tapering supply, never by clamping the counter</h3>
+      <p>If you must cap a score for fairness or brand reasons, thin out spawn probabilities as the player approaches the cap. Never freeze the counter while pickups still spawn.</p>
+      <p class="why"><b>Why</b> &nbsp;The world calming down feels like difficulty. A frozen counter feels like a bug.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">06</div>
+    <div>
+      <h3>Formations as cheap content</h3>
+      <p>Build a handful of formation shapes (line, wave, circle) that share one velocity. Rotate which one spawns. You get visual variety from a single sprite.</p>
+      <p class="why"><b>Why</b> &nbsp;Ten formations × one ruby sprite = ten distinct "moments" with no extra art.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">07</div>
+    <div>
+      <h3>Two power-ups, two purposes</h3>
+      <p>One <i>aid</i> power-up (magnet — makes the existing loop easier) and one <i>frenzy</i> power-up (Power Rush — changes the loop briefly). Don't ship four.</p>
+      <p class="why"><b>Why</b> &nbsp;Two power-ups can be balanced and explained on a title screen. Four becomes a tutorial problem.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">08</div>
+    <div>
+      <h3>Placeholder textures with final keys</h3>
+      <p>Generate stand-in textures in <code>BootScene</code> using the exact texture keys the final art will use. Swapping later is a single <code>this.load.image()</code> line.</p>
+      <p class="why"><b>Why</b> &nbsp;Gameplay can ship and be playtested before final art arrives. Art and code parallelise.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">09</div>
+    <div>
+      <h3>Polish budget on every interaction</h3>
+      <p>Every input gets a tactile response (squash, flash, sparkle, +1 float). Death sequences earn 1–2 seconds of drama. Magnet and Rush each get a distinct visual language.</p>
+      <p class="why"><b>Why</b> &nbsp;The gap between "prototype" and "shippable" is mostly tiny tweens. They're cheap; ship them.</p>
+    </div>
+  </div>
+
+  <div class="pattern">
+    <div class="pattern-num">10</div>
+    <div>
+      <h3>Dev shortcuts inside BootScene</h3>
+      <p>Read a <code>?scene=</code> query param and jump straight to any scene with mocked data. Persist user prefs (mute) before any audio plays.</p>
+      <p class="why"><b>Why</b> &nbsp;Saves hours of click-through during testing. Costs four lines of code.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 09 CHECKLIST                                                  -->
+<!-- ============================================================ -->
+<section id="checklist">
+  <span class="h2-num">09 — Build Checklist</span>
+  <h2>Starting a new arcade game? Walk this list.</h2>
+  <p class="section-lede">
+    Use this as a pre-implementation worksheet. Each item maps directly to a
+    pattern from the previous section.
+  </p>
+
+  <ul class="checklist">
+    <li>Decide the session length first. Under 5 minutes? Use endless-with-timer; skip stages.</li>
+    <li>Stand up <code>config.js</code> with palette, gravity, round duration, and <code>{start, end}</code> ranges before writing any scene.</li>
+    <li>Pick one currency. Name it. That's the only number on the HUD.</li>
+    <li>Define two exit conditions: a soft one (crash with time remaining → continue) and a hard one (time up → final).</li>
+    <li>Specify the difficulty arc: which values ramp, and at what % of the round they peak.</li>
+    <li>List your power-ups. Cap at two: one aid, one frenzy. Each gets a distinct visual language.</li>
+    <li>Decide drop odds as a probability table. Most rolls should be empty so the rare drops feel special.</li>
+    <li>Specify any economy caps now. Implement as a taper on spawn probability, not as a counter clamp.</li>
+    <li>Identify which textures are art (mascot, currency, power-ups, background) and which are generated (obstacles, particles, glows).</li>
+    <li>Reserve a polish budget per interaction: flap response, pickup feedback, death sequence, power-up activation.</li>
+    <li>Add a <code>?scene=</code> dev jump in BootScene from day one.</li>
+    <li>Persist best score and mute preference in <code>localStorage</code>; guard with try/catch for sandboxed webviews.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10 TL;DR                                                      -->
+<!-- ============================================================ -->
+<section id="tldr">
+  <span class="h2-num">10 — TL;DR</span>
+  <h2>If you remember three things</h2>
+
+  <div class="grid">
+    <div class="card accent-ruby">
+      <h4>1 · Time-box, don't stage</h4>
+      <p>Short-session arcade games belong in one endless round with a smooth difficulty ramp. Stages are friction.</p>
+    </div>
+    <div class="card accent-yellow">
+      <h4>2 · One currency, one HUD number</h4>
+      <p>Make variety come from <i>how</i> rewards appear (formations, power-ups), not from competing score systems.</p>
+    </div>
+    <div class="card accent-royal">
+      <h4>3 · Cap economies by thinning supply</h4>
+      <p>Never freeze a visible counter. Taper spawn probabilities as the player nears the cap — the world simply "calms down".</p>
+    </div>
+  </div>
+
+  <div class="callout ruby">
+    <h4>Closing thought</h4>
+    <p>Flying Ruby is small on purpose. Four scenes, one config file, two power-ups, one currency. The discipline of <i>not adding more</i> is what lets the polish budget land — and it's what makes the game feel finished in a way most prototypes never do.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Pandai · JDP Games · Flying Ruby case study · prepared for internal presentation
+</footer>
+
+</body>
+</html>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -306,21 +306,21 @@
 <body>
 
     <div class="game-wrapper">
-        <button class="rules-btn" onclick="toggleRules(true)">ℹ️ INFO SKOR</button>
+        <button class="rules-btn" id="rulesBtn" onclick="toggleRules(true)"></button>
 
         <div class="header">
             <h1>Juara<br>Digital</h1>
-            <h2>TANTANGAN 5x5 TANPA BATAS</h2>
+            <h2 id="subtitle"></h2>
         </div>
 
         <div class="dashboard">
             <div class="stat">
-                WAKTU TERSISA
+                <span id="timerLabel"></span>
                 <span class="stat-value" id="timer">03:00</span>
             </div>
             <div class="stat" style="text-align: right;">
-                SKOR TERKUMPUL
-                <span class="stat-value score-gold"><span id="score">0</span> / 500</span>
+                <span id="scoreLabel"></span>
+                <span class="stat-value score-gold"><span id="score">0</span></span>
             </div>
         </div>
 
@@ -357,35 +357,132 @@
             <div id="roundResultOverlay" class="round-result-overlay"></div>
         </div>
 
-        <div class="status-message" id="statusMsg">Klik kotak mana saja untuk memulai!</div>
+        <div class="status-message" id="statusMsg"></div>
 
         <!-- Modal Aturan / Informasi Skor -->
         <div class="rules-modal" id="rulesModal">
             <div class="rules-box">
-                <h3>Aturan Edisi 5x5</h3>
-                <p>Waktu yang diberikan: <span>3 Menit</span></p>
-                <p>Syarat Kemenangan: Susun <span>4 SEBARIS</span> (Mendatar, Tegak, atau Diagonal)</p>
-                <p>Setiap babak yang <span>MENANG</span>: <span>+20 Poin</span></p>
-                <p>Setiap babak yang <span>SERI</span>: <span>+10 Poin</span></p>
-                <p>Setiap babak yang <span>KALAH</span>: <span>0 Poin (Tidak ada pengurangan)</span></p>
-                <p>Tujuan: Kumpulkan hingga <span>500 Poin</span> sebelum waktu habis untuk menjadi Juara Digital 5x5 Sejati!</p>
-                <button class="close-rules-btn" onclick="toggleRules(false)">TUTUP</button>
+                <h3 id="rulesTitle"></h3>
+                <p id="rulesTime"></p>
+                <p id="rulesWinCond"></p>
+                <p id="rulesWinPts"></p>
+                <p id="rulesDrawPts"></p>
+                <p id="rulesLosePts"></p>
+                <p id="rulesGoal"></p>
+                <button class="close-rules-btn" id="closeRulesBtn" onclick="toggleRules(false)"></button>
             </div>
         </div>
 
         <!-- Overlay Selesai Permainan Keseluruhan -->
         <div class="overlay" id="gameOverModal">
-            <h2 id="endTitle">Waktu Habis!</h2>
+            <h2 id="endTitle"></h2>
             <div class="overlay-score">
-                SKOR KESELURUHAN
+                <span id="finalScoreLabel"></span>
                 <span id="finalScore">0</span>
             </div>
-            <p class="overlay-msg" id="endMsg">Terus berlatih untuk menjadi Juara Digital!</p>
-            <button class="btn" onclick="initGame()">Main Lagi</button>
+            <p class="overlay-msg" id="endMsg"></p>
+            <button class="btn" id="playAgainBtn" onclick="initGame()"></button>
         </div>
     </div>
 
     <script>
+        // --- i18n: default English, ?lang=ms switches to Bahasa Melayu ---
+        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+        const COPY = {
+            en: {
+                // Canonical (§6.4)
+                start: 'START GAME',
+                timeUp: "TIME'S UP!",
+                gameOver: 'GAME OVER',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                // Game-specific
+                infoScore: 'INFO SCORE',
+                subtitle: '5x5 ENDLESS CHALLENGE',
+                timerLabel: 'TIME LEFT',
+                scoreLabel: 'SCORE',
+                clickToStart: 'Tap any square to begin!',
+                aiThinking: 'AI is plotting...',
+                yourTurn: 'Your turn 💎',
+                roundWin: 'WIN!',
+                roundLose: 'LOSE!',
+                roundDraw: 'DRAW!',
+                youWon: '🔥 You won! (+20)',
+                aiWon: '💀 AI won! (Lose: +0)',
+                drawMsg: 'Draw! (+10)',
+                newRound: 'New round! Find the best space.',
+                champion: 'Congrats, Champion!',
+                rulesTitle: '5x5 Edition Rules',
+                rulesTime: 'Time given: <span>3 Minutes</span>',
+                rulesWinCond: 'Win condition: Line up <span>4 IN A ROW</span> (Horizontal, Vertical, or Diagonal)',
+                rulesWinPts: 'Each round <span>WON</span>: <span>+20 Points</span>',
+                rulesDrawPts: 'Each round <span>DRAW</span>: <span>+10 Points</span>',
+                rulesLosePts: 'Each round <span>LOST</span>: <span>0 Points (no deduction)</span>',
+                rulesGoal: 'Goal: Collect as many points as you can before time runs out to become a true 5x5 Juara Digital!',
+                closeRules: 'CLOSE',
+                finalScoreLabel: 'FINAL SCORE',
+                playAgain: 'PLAY AGAIN',
+                endMsgChampion: 'Amazing score!<br>True <b>JUARA DIGITAL 5x5</b> status confirmed! 👑💎',
+                endMsgGreat: 'Great tactics! You almost claimed the Champion title.',
+                endMsgKeepGoing: "Was the AI's defense too strong? Keep practicing to break through!"
+            },
+            ms: {
+                // Canonical (§6.4)
+                start: 'MULA MAIN',
+                timeUp: 'MASA TAMAT!',
+                gameOver: 'PERMAINAN TAMAT',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                // Game-specific
+                infoScore: 'INFO SKOR',
+                subtitle: 'CABARAN 5x5 TANPA BATAS',
+                timerLabel: 'MASA TINGGAL',
+                scoreLabel: 'SKOR TERKUMPUL',
+                clickToStart: 'Klik kotak mana saja untuk memulai!',
+                aiThinking: 'AI sedang menyusun taktik...',
+                yourTurn: 'Giliran Anda 💎',
+                roundWin: 'MENANG!',
+                roundLose: 'KALAH!',
+                roundDraw: 'SERI!',
+                youWon: '🔥 Anda Menang! (+20)',
+                aiWon: '💀 AI Menang! (Kalah: +0)',
+                drawMsg: 'Seri! (+10)',
+                newRound: 'Babak Baru! Cari ruang terbaik.',
+                champion: 'Tahniah, Juara!',
+                rulesTitle: 'Aturan Edisi 5x5',
+                rulesTime: 'Waktu yang diberikan: <span>3 Minit</span>',
+                rulesWinCond: 'Syarat Kemenangan: Susun <span>4 SEBARIS</span> (Mendatar, Tegak, atau Diagonal)',
+                rulesWinPts: 'Setiap babak yang <span>MENANG</span>: <span>+20 Poin</span>',
+                rulesDrawPts: 'Setiap babak yang <span>SERI</span>: <span>+10 Poin</span>',
+                rulesLosePts: 'Setiap babak yang <span>KALAH</span>: <span>0 Poin (tiada pengurangan)</span>',
+                rulesGoal: 'Tujuan: Kumpulkan seberapa banyak poin sebelum waktu habis untuk menjadi Juara Digital 5x5 Sejati!',
+                closeRules: 'TUTUP',
+                finalScoreLabel: 'SKOR AKHIR',
+                playAgain: 'MAIN LAGI',
+                endMsgChampion: 'Skor yang hebat!<br>Status <b>JUARA DIGITAL 5x5</b> Sejati dikonfirmasi! 👑💎',
+                endMsgGreat: 'Taktik yang hebat! Hampir membuat Anda bergelar Juara.',
+                endMsgKeepGoing: 'Pertahanan AI terlalu kuat? Teruskan latihan untuk menembus taktik AI!'
+            }
+        }[LANG];
+
+        // --- Apply static UI copy on load ---
+        function applyStaticCopy() {
+            document.getElementById('rulesBtn').innerHTML = 'ℹ️ ' + COPY.infoScore;
+            document.getElementById('subtitle').textContent = COPY.subtitle;
+            document.getElementById('timerLabel').textContent = COPY.timerLabel;
+            document.getElementById('scoreLabel').textContent = COPY.scoreLabel;
+            document.getElementById('rulesTitle').textContent = COPY.rulesTitle;
+            document.getElementById('rulesTime').innerHTML = COPY.rulesTime;
+            document.getElementById('rulesWinCond').innerHTML = COPY.rulesWinCond;
+            document.getElementById('rulesWinPts').innerHTML = COPY.rulesWinPts;
+            document.getElementById('rulesDrawPts').innerHTML = COPY.rulesDrawPts;
+            document.getElementById('rulesLosePts').innerHTML = COPY.rulesLosePts;
+            document.getElementById('rulesGoal').innerHTML = COPY.rulesGoal;
+            document.getElementById('closeRulesBtn').textContent = COPY.closeRules;
+            document.getElementById('finalScoreLabel').textContent = COPY.finalScoreLabel;
+            document.getElementById('playAgainBtn').textContent = COPY.playAgain;
+        }
+
         // --- Aset SVG Ruby Merah (Kekal reka bentuk asal) ---
         const svgGemDiamond = `
             <svg class="icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -471,7 +568,7 @@
             timerEl.textContent = "03:00";
             timerEl.style.color = "white";
             timerEl.style.textShadow = "0 0 10px rgba(255,255,255,0.5)";
-            statusMsgEl.textContent = "Klik kotak mana saja untuk memulai!";
+            statusMsgEl.textContent = COPY.clickToStart;
             statusMsgEl.style.color = "#ffcccc";
             gameOverModal.classList.remove('active');
             isTimerRunning = false;
@@ -485,7 +582,7 @@
             timerInterval = setInterval(() => {
                 timeLeft--;
                 updateTimerUI();
-                if (timeLeft <= 0) endGame("Waktu Habis!");
+                if (timeLeft <= 0) endGame(COPY.timeUp);
             }, 1000);
         }
 
@@ -518,7 +615,7 @@
                 if (checkRoundResult('P')) return;
 
                 isPlayerTurn = false;
-                statusMsgEl.textContent = "AI sedang menyusun taktik...";
+                statusMsgEl.textContent = COPY.aiThinking;
                 statusMsgEl.style.color = "#ffaa00";
 
                 setTimeout(() => {
@@ -585,7 +682,7 @@
 
             makeMove(chosenIdx, 'A');
             isPlayerTurn = true;
-            statusMsgEl.textContent = "Giliran Anda 💎";
+            statusMsgEl.textContent = COPY.yourTurn;
             statusMsgEl.style.color = "#ffcccc";
         }
 
@@ -641,13 +738,13 @@
                 });
 
                 if (lastPlayer === 'P') {
-                    showRoundOverlay("MENANG!", "#ffd700");
-                    statusMsgEl.textContent = "🔥 Anda Menang! (+20)";
+                    showRoundOverlay(COPY.roundWin, "#ffd700");
+                    statusMsgEl.textContent = COPY.youWon;
                     statusMsgEl.style.color = "#ffd700";
                     addScore(20);
                 } else {
-                    showRoundOverlay("KALAH!", "#ff3333");
-                    statusMsgEl.textContent = "💀 AI Menang! (Kalah: +0)";
+                    showRoundOverlay(COPY.roundLose, "#ff3333");
+                    statusMsgEl.textContent = COPY.aiWon;
                     statusMsgEl.style.color = "#ff3333";
                     addScore(0);
                 }
@@ -657,8 +754,8 @@
 
             if (!boardState.includes("")) {
                 isGameActive = false;
-                showRoundOverlay("SERI!", "#aaaaaa"); 
-                statusMsgEl.textContent = "Seri! (+10)";
+                showRoundOverlay(COPY.roundDraw, "#aaaaaa");
+                statusMsgEl.textContent = COPY.drawMsg;
                 statusMsgEl.style.color = "#aaaaaa";
                 addScore(10);
                 scheduleNextRound();
@@ -669,23 +766,19 @@
         }
 
         function addScore(points) {
-            score = Math.min(score + points, MAX_SCORE);
+            score = score + points;
             scoreEl.textContent = score;
 
             scoreEl.style.transform = "scale(1.4)";
             setTimeout(() => scoreEl.style.transform = "scale(1)", 200);
-
-            if (score >= MAX_SCORE) {
-                setTimeout(() => endGame("Tahniah, Juara!"), 1500);
-            }
         }
 
         function scheduleNextRound() {
-            if (score >= MAX_SCORE || timeLeft <= 0) return;
-            
+            if (timeLeft <= 0) return;
+
             setTimeout(() => {
                 resetBoard();
-                statusMsgEl.textContent = "Babak Baru! Cari ruang terbaik.";
+                statusMsgEl.textContent = COPY.newRound;
                 statusMsgEl.style.color = "#ffcccc";
             }, 1500);
         }
@@ -710,13 +803,13 @@
             finalScoreEl.textContent = score;
 
             if (score >= 500) {
-                endMsgEl.innerHTML = "Anda berhasil melewati 500 poin!<br>Status <b>JUARA DIGITAL 5x5</b> Sejati dikonfirmasi! 👑💎";
+                endMsgEl.innerHTML = COPY.endMsgChampion;
                 endTitleEl.style.color = "var(--gold)";
             } else if (score >= 300) {
-                endMsgEl.textContent = "Taktik yang hebat! Hampir membuat Anda bergelar Juara.";
+                endMsgEl.textContent = COPY.endMsgGreat;
                 endTitleEl.style.color = "#ffaa00";
             } else {
-                endMsgEl.textContent = "Pertahanan AI terlalu kuat? Teruskan latihan untuk menembus taktik AI!";
+                endMsgEl.textContent = COPY.endMsgKeepGoing;
                 endTitleEl.style.color = "#ff3333";
             }
 
@@ -724,6 +817,7 @@
         }
 
         // Memulai permainan saat halaman dimuat
+        applyStaticCopy();
         initGame();
 
     </script>

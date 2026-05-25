@@ -1,5 +1,6 @@
 import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
 import { addMuteButton } from '../muteButton.js';
+import { COPY } from '../copy.js';
 
 const BEST_KEY = 'flying-ruby:best';
 
@@ -59,7 +60,7 @@ export class GameOverScene extends Phaser.Scene {
   _drawHeader(width, height) {
     const cx = width / 2;
     const isTimeUp = this.cause === 'time';
-    const heading  = isTimeUp ? "TIME'S UP!" : 'GAME OVER';
+    const heading  = isTimeUp ? COPY.timeUp : COPY.gameOver;
     const color    = isTimeUp ? PALETTE_CSS.yellow : PALETTE_CSS.ruby;
     const strokeC  = isTimeUp ? PALETTE_CSS.darkRed : PALETTE_CSS.yellow;
 
@@ -82,8 +83,8 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     const subtitle = this.canContinue
-      ? `${this._mmss(GAME.roundDurationMs - this.timeUsedMs)} left of your 3:00`
-      : 'Your full 3:00 is up — nice flying!';
+      ? COPY.timeLeft(this._mmss(GAME.roundDurationMs - this.timeUsedMs))
+      : COPY.fullRoundDone;
     this.add.text(cx, height * 0.18 + 50, subtitle, {
       fontFamily: FONTS.ui,
       fontSize:   '14px',
@@ -110,7 +111,7 @@ export class GameOverScene extends Phaser.Scene {
     panel.strokeRoundedRect(cx - pw / 2, py - ph / 2, pw, ph, 18);
 
     // "RUBIES" label
-    this.add.text(cx, py - 80, 'RUBIES COLLECTED', {
+    this.add.text(cx, py - 80, COPY.rubiesCollected, {
       fontFamily: FONTS.ui,
       fontSize:   '13px',
       color:      PALETTE_CSS.white,
@@ -140,7 +141,7 @@ export class GameOverScene extends Phaser.Scene {
     });
 
     // best
-    this.add.text(cx, py + 28, 'BEST', {
+    this.add.text(cx, py + 28, COPY.best, {
       fontFamily: FONTS.ui,
       fontSize:   '12px',
       color:      PALETTE_CSS.white,
@@ -155,7 +156,7 @@ export class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     if (this.isNewBest) {
-      const badge = this.add.text(cx, py + 88, 'NEW BEST!', {
+      const badge = this.add.text(cx, py + 88, COPY.newBest, {
         fontFamily: FONTS.ui,
         fontSize:   '14px',
         fontStyle:  'bold',
@@ -173,7 +174,7 @@ export class GameOverScene extends Phaser.Scene {
       const totalSec = Math.floor(this.timeUsedMs / 1000);
       const mm = Math.floor(totalSec / 60);
       const ss = (totalSec % 60).toString().padStart(2, '0');
-      this.add.text(cx, py + 88, `Time flown: ${mm}:${ss}`, {
+      this.add.text(cx, py + 88, COPY.timeFlown(`${mm}:${ss}`), {
         fontFamily: FONTS.ui,
         fontSize:   '13px',
         color:      PALETTE_CSS.white,
@@ -187,20 +188,20 @@ export class GameOverScene extends Phaser.Scene {
 
     if (this.canContinue) {
       // resume the run — carries the score and the time already flown
-      this._makeButton(cx, by, 220, 64, 'CONTINUE',
+      this._makeButton(cx, by, 220, 64, COPY.continueBtn,
         PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
         () => this.scene.start('GameScene', {
           score:      this.score,
           timeUsedMs: this.timeUsedMs,
         }));
 
-      this._makeButton(cx, by + 96, 200, 52, 'HOME',
+      this._makeButton(cx, by + 96, 200, 52, COPY.homeBtn,
         PALETTE.navy, PALETTE_CSS.yellow, PALETTE.yellow,
         () => this.scene.start('StartScene'),
         /* outlined */ true);
     } else {
       // the full 3-minute budget is spent — the only way on is home
-      this._makeButton(cx, by + 32, 220, 64, 'HOME',
+      this._makeButton(cx, by + 32, 220, 64, COPY.homeBtn,
         PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
         () => this.scene.start('StartScene'));
     }

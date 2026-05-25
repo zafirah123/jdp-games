@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -108,15 +108,15 @@
             <!-- Top Bar: Score, Time, Speed, Pause -->
             <div class="glass-panel rounded-xl p-3 flex justify-between items-center shadow-lg gap-2 pointer-events-auto">
                 <div class="text-center flex-1 border-r border-white/10">
-                    <p class="text-[10px] text-rose-400 font-bold uppercase tracking-wider" style="margin: 0;">Score</p>
+                    <p id="hudScoreLabel" class="text-[10px] text-rose-400 font-bold uppercase tracking-wider" style="margin: 0;">Score</p>
                     <p id="scoreDisplay" class="text-xl font-black text-white" style="margin: 0; font-weight: 900;">0</p>
                 </div>
                 <div class="text-center flex-1 border-r border-white/10">
-                    <p class="text-[10px] text-blue-300 font-bold uppercase tracking-wider" style="margin: 0;">Time</p>
+                    <p id="hudTimeLabel" class="text-[10px] text-blue-300 font-bold uppercase tracking-wider" style="margin: 0;">Time</p>
                     <p id="timeDisplay" class="text-xl font-black text-white" style="margin: 0; font-weight: 900;">3:00</p>
                 </div>
                 <div class="text-center flex-1">
-                    <p class="text-[10px] text-purple-300 font-bold uppercase tracking-wider" style="margin: 0;">Speed</p>
+                    <p id="hudSpeedLabel" class="text-[10px] text-purple-300 font-bold uppercase tracking-wider" style="margin: 0;">Speed</p>
                     <p id="levelDisplay" class="text-xl font-black text-white" style="margin: 0; font-weight: 900;">1</p>
                 </div>
                 <button id="pauseBtn" class="flex-none bg-white/5 hover:bg-white/15 p-2 rounded-lg transition border border-white/10 ml-1 pointer-events-auto">
@@ -134,7 +134,7 @@
             <!-- Combo & Rating Display -->
             <div class="text-center">
                 <div id="comboDisplayContainer" class="hidden relative inline-block mx-auto">
-                    <p class="text-2xl text-yellow-300 font-black italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] combo-anim" style="margin: 0; font-weight: 900;">COMBO x<span id="comboDisplay">0</span></p>
+                    <p class="text-2xl text-yellow-300 font-black italic drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] combo-anim" style="margin: 0; font-weight: 900;"><span id="comboLabelText">COMBO x</span><span id="comboDisplay">0</span></p>
                     <p id="bonusPopup" class="absolute left-0 right-0 -top-8 text-lg text-green-400 font-black hidden drop-shadow-lg" style="font-weight: 900;">+5 BONUS!</p>
                 </div>
                 <!-- Hit Rating Feedback -->
@@ -153,7 +153,7 @@
 
             <!-- Song/Track Info -->
             <div class="mt-4 text-center glass-panel rounded-full py-2 px-4 w-full shadow-md overflow-hidden pointer-events-auto" style="margin-top: 16px;">
-                <p id="songDisplay" class="text-xs font-semibold text-gray-200 truncate" style="margin: 0;">🎵 Ready to play...</p>
+                <p id="songDisplay" class="text-xs font-semibold text-gray-200 truncate" style="margin: 0;"></p>
             </div>
         </div>
 
@@ -162,9 +162,9 @@
             <!-- PBot Sleep Illustration -->
             <div id="pausePBot" class="w-24 h-24 mb-4 flex items-center justify-center"></div>
             
-            <h2 class="text-4xl font-black text-rose-500 mb-2 tracking-widest uppercase" style="font-weight: 900;">PAUSED</h2>
-            <p class="text-gray-400 mb-8 text-sm text-center font-medium">The game has been temporarily paused.</p>
-            
+            <h2 id="pausedHeading" class="text-4xl font-black text-rose-500 mb-2 tracking-widest uppercase" style="font-weight: 900;">PAUSED</h2>
+            <p id="pausedSubtitle" class="text-gray-400 mb-8 text-sm text-center font-medium">The game has been temporarily paused.</p>
+
             <div class="flex flex-col gap-3 w-full max-w-[260px]">
                 <button id="resumeBtn" class="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white font-bold py-3 px-12 rounded-full text-lg shadow-lg transform transition hover:scale-105 pointer-events-auto" style="font-weight: bold;">
                     Resume
@@ -185,26 +185,26 @@
             <!-- PBot Greeting Illustration -->
             <div id="startPBot" class="w-24 h-24 mb-3 flex items-center justify-center flex-shrink-0"></div>
             
-            <h1 class="text-3xl font-black text-center bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-rose-500 to-pink-500 uppercase tracking-tight" style="font-weight: 900; margin: 0;">Juara Digital</h1>
-            <h2 class="text-xl font-bold text-white mb-5 tracking-wide" style="font-weight: 700;">Ruby Rhythm</h2>
-            
+            <h1 id="titleBrand" class="text-3xl font-black text-center bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-rose-500 to-pink-500 uppercase tracking-tight" style="font-weight: 900; margin: 0;">Juara Digital</h1>
+            <h2 id="titleName" class="text-xl font-bold text-white mb-5 tracking-wide" style="font-weight: 700;">Ruby Rhythm</h2>
+
             <!-- How to Play Section -->
             <div class="glass-panel p-5 rounded-xl mb-6 text-xs text-gray-300 space-y-4 w-full max-w-sm" style="line-height: 1.5;">
-                <p class="border-b border-white/10 pb-2 text-white font-bold text-center tracking-wider uppercase text-sm">⚙️ HOW TO PLAY</p>
-                
+                <p id="howToPlayHeading" class="border-b border-white/10 pb-2 text-white font-bold text-center tracking-wider uppercase text-sm">⚙️ HOW TO PLAY</p>
+
                 <!-- Desktop Controls -->
                 <div class="flex items-start gap-3">
                     <span class="text-lg flex-shrink-0">💻</span>
                     <div>
-                        <p class="font-semibold text-white">Computer / Laptop</p>
-                        <p class="text-gray-400 mt-1">Press the physical keys:</p>
+                        <p id="computerLabel" class="font-semibold text-white">Computer / Laptop</p>
+                        <p id="pressKeysLabel" class="text-gray-400 mt-1">Press the physical keys:</p>
                         <div class="flex gap-1.5 mt-1">
                             <kbd class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-bold">A</kbd>
                             <kbd class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded font-bold">S</kbd>
                             <kbd class="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded font-bold">K</kbd>
                             <kbd class="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded font-bold">L</kbd>
                         </div>
-                        <p class="text-gray-400 mt-1">Or <span class="text-blue-300 font-medium">click directly</span> on any track lane.</p>
+                        <p class="text-gray-400 mt-1"><span id="orClickPart1"></span><span id="orClickPart2" class="text-blue-300 font-medium"></span><span id="orClickPart3"></span></p>
                     </div>
                 </div>
 
@@ -212,8 +212,8 @@
                 <div class="flex items-start gap-3 border-t border-white/5 pt-3">
                     <span class="text-lg flex-shrink-0">📱</span>
                     <div>
-                        <p class="font-semibold text-white">Phone / Tablet</p>
-                        <p class="text-gray-400 mt-0.5"><span class="text-blue-300 font-medium">Tap directly</span> on the track lanes on screen as the gems overlap the targets.</p>
+                        <p id="phoneLabel" class="font-semibold text-white">Phone / Tablet</p>
+                        <p class="text-gray-400 mt-0.5"><span id="tapPart1" class="text-blue-300 font-medium"></span><span id="tapPart2"></span></p>
                     </div>
                 </div>
 
@@ -221,8 +221,8 @@
                 <div class="flex items-start gap-3 border-t border-white/5 pt-3">
                     <span class="text-lg flex-shrink-0">⚡</span>
                     <div>
-                        <p class="font-semibold text-white">Scoring & Combos</p>
-                        <p class="text-gray-400 mt-0.5">Perfect timing pays! Every <span class="text-yellow-400 font-bold">50 Combo</span> awards <span class="text-green-400 font-medium">+5 Bonus Points</span>, and every <span class="text-yellow-400 font-bold">100 Combo</span> awards <span class="text-green-400 font-medium">+10 Bonus Points!</span></p>
+                        <p id="scoringHeading" class="font-semibold text-white">Scoring & Combos</p>
+                        <p class="text-gray-400 mt-0.5"><span id="scoringSeg1"></span><span id="scoringSeg2" class="text-yellow-400 font-bold"></span><span id="scoringSeg3"></span><span id="scoringSeg4" class="text-green-400 font-medium"></span><span id="scoringSeg5"></span><span id="scoringSeg6" class="text-yellow-400 font-bold"></span><span id="scoringSeg7"></span><span id="scoringSeg8" class="text-green-400 font-medium"></span></p>
                     </div>
                 </div>
 
@@ -230,14 +230,14 @@
                 <div class="flex items-start gap-3 border-t border-white/5 pt-3 text-rose-300">
                     <span class="text-lg flex-shrink-0">⚠️</span>
                     <div>
-                        <p class="font-semibold text-rose-400">Miss Penalty</p>
-                        <p class="text-rose-400/80 mt-0.5">Letting a gem slide past or tapping empty lanes will <span class="font-bold">deduct 5 points</span>!</p>
+                        <p id="missPenaltyHeading" class="font-semibold text-rose-400">Miss Penalty</p>
+                        <p class="text-rose-400/80 mt-0.5"><span id="missPart1"></span><span id="missPart2" class="font-bold"></span><span id="missPart3"></span></p>
                     </div>
                 </div>
             </div>
-            
+
             <button id="startBtn" class="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white font-bold py-4 px-14 rounded-full text-lg shadow-[0_0_25px_rgba(244,63,94,0.4)] transform transition hover:scale-105 pointer-events-auto flex-shrink-0" style="font-weight: 800;">
-                START PLAYING
+                START GAME
             </button>
         </div>
 
@@ -246,11 +246,11 @@
             <!-- PBot Game Over Illustration -->
             <div id="endPBot" class="w-24 h-24 mb-4 flex items-center justify-center"></div>
             
-            <h1 class="text-4xl font-black text-center text-white uppercase tracking-wider" style="font-weight: 900; margin: 0;">GAME OVER</h1>
+            <h1 id="endHeading" class="text-4xl font-black text-center text-white uppercase tracking-wider" style="font-weight: 900; margin: 0;">TIME'S UP!</h1>
             <p id="endGameStatus" class="text-rose-400 font-semibold mt-1 mb-6 tracking-widest uppercase text-xs">GREAT PERFORMANCE!</p>
-            
+
             <div class="glass-panel w-full max-w-sm rounded-xl p-6 mb-8 text-center space-y-2">
-                <span class="text-gray-400 uppercase tracking-widest text-xs font-bold">FINAL SCORE</span>
+                <span id="finalScoreLabel" class="text-gray-400 uppercase tracking-widest text-xs font-bold">FINAL SCORE</span>
                 <div id="finalScore" class="text-6xl font-black text-yellow-400 drop-shadow-[0_4px_10px_rgba(250,204,21,0.4)]">0</div>
                 
                 <!-- Hidden elements kept to preserve original JS queries cleanly -->
@@ -272,11 +272,147 @@
                     Main Menu
                 </button>
             </div>
+            </div>
         </div>
     </div>
 
     <!-- Complete Procedural Audio Game Engine Logic -->
     <script>
+        // i18n: ?lang=ms switches to Bahasa Melayu. Default English.
+        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+        const COPY = {
+            en: {
+                // Canonical (§6.4)
+                start: 'START GAME',
+                timeUp: "TIME'S UP!",
+                gameOver: 'GAME OVER',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                // Title screen
+                titleBrand: 'Juara Digital',
+                titleName: 'Ruby Rhythm',
+                howToPlay: 'HOW TO PLAY',
+                computer: 'Computer / Laptop',
+                pressKeys: 'Press the physical keys:',
+                orClickLanes1: 'Or ',
+                orClickLanes2: 'click directly',
+                orClickLanes3: ' on any track lane.',
+                phone: 'Phone / Tablet',
+                tapDirectly1: 'Tap directly',
+                tapDirectly2: ' on the track lanes on screen as the gems overlap the targets.',
+                scoringCombos: 'Scoring & Combos',
+                scoringLine1: 'Perfect timing pays! Every ',
+                scoringLine2: '50 Combo',
+                scoringLine3: ' awards ',
+                scoringLine4: '+5 Bonus Points',
+                scoringLine5: ', and every ',
+                scoringLine6: '100 Combo',
+                scoringLine7: ' awards ',
+                scoringLine8: '+10 Bonus Points!',
+                missPenalty: 'Miss Penalty',
+                missPenaltyLine1: 'Letting a gem slide past or tapping empty lanes will ',
+                missPenaltyLine2: 'deduct 5 points',
+                missPenaltyLine3: '!',
+                // HUD
+                hudScore: 'Score',
+                hudTime: 'Time',
+                hudSpeed: 'Speed',
+                songWaiting: '🎵 Waiting to start...',
+                songReady: '🎵 Ready to play...',
+                songTrack: (bpm) => `🎵 Procedural Track: Ruby Wave (BPM: ${bpm})`,
+                // Combo / rating
+                comboLabel: 'COMBO x',
+                bonusPopupDefault: '+5 BONUS!',
+                bonus5: '+5 BONUS!',
+                bonus10: '+10 BONUS!',
+                levelUp: (lvl) => `LEVEL ${lvl}! SPEED UP!`,
+                ratePerfect: 'PERFECT!',
+                rateGreat: 'GREAT!',
+                rateGood: 'GOOD',
+                rateMiss: 'MISS',
+                rateMissBang: 'MISS!',
+                // Pause
+                paused: 'PAUSED',
+                pausedSubtitle: 'The game has been temporarily paused.',
+                resume: 'Resume',
+                endGameBtn: 'End Game',
+                // End screen
+                endSubtitle: 'GREAT PERFORMANCE!',
+                finalScore: 'FINAL SCORE',
+                playAgain: 'Play Again',
+                mainMenu: 'Main Menu',
+                // End-screen rating bands
+                rankBeginner: 'BEGINNER SPEEDSTER',
+                rankSupersonic: 'SUPERSONIC BLAST! 👑',
+                rankMaster: 'DIGITAL RHYTHM MASTER! ⭐',
+                rankEntertainer: 'GREAT ENTERTAINER!',
+                rankSatisfactory: 'SATISFACTORY PERFORMANCE',
+                // Countdown
+                countdownGo: 'GO!',
+            },
+            ms: {
+                start: 'MULA MAIN',
+                timeUp: 'MASA TAMAT!',
+                gameOver: 'PERMAINAN TAMAT',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                titleBrand: 'Juara Digital',
+                titleName: 'Ruby Rhythm',
+                howToPlay: 'CARA MAIN',
+                computer: 'Komputer / Laptop',
+                pressKeys: 'Tekan kekunci fizikal:',
+                orClickLanes1: 'Atau ',
+                orClickLanes2: 'klik terus',
+                orClickLanes3: ' pada mana-mana lorong.',
+                phone: 'Telefon / Tablet',
+                tapDirectly1: 'Ketuk terus',
+                tapDirectly2: ' pada lorong di skrin apabila permata bertindih dengan sasaran.',
+                scoringCombos: 'Markah & Kombo',
+                scoringLine1: 'Masa yang tepat berbaloi! Setiap ',
+                scoringLine2: 'Kombo 50',
+                scoringLine3: ' memberi ',
+                scoringLine4: '+5 Mata Bonus',
+                scoringLine5: ', dan setiap ',
+                scoringLine6: 'Kombo 100',
+                scoringLine7: ' memberi ',
+                scoringLine8: '+10 Mata Bonus!',
+                missPenalty: 'Penalti Tersasar',
+                missPenaltyLine1: 'Membiarkan permata terlepas atau mengetuk lorong kosong akan ',
+                missPenaltyLine2: 'tolak 5 mata',
+                missPenaltyLine3: '!',
+                hudScore: 'Markah',
+                hudTime: 'Masa',
+                hudSpeed: 'Laju',
+                songWaiting: '🎵 Menunggu untuk mula...',
+                songReady: '🎵 Sedia untuk main...',
+                songTrack: (bpm) => `🎵 Trek Prosedural: Ruby Wave (BPM: ${bpm})`,
+                comboLabel: 'KOMBO x',
+                bonusPopupDefault: '+5 BONUS!',
+                bonus5: '+5 BONUS!',
+                bonus10: '+10 BONUS!',
+                levelUp: (lvl) => `TAHAP ${lvl}! LEBIH LAJU!`,
+                ratePerfect: 'SEMPURNA!',
+                rateGreat: 'HEBAT!',
+                rateGood: 'BAIK',
+                rateMiss: 'TERSASAR',
+                rateMissBang: 'TERSASAR!',
+                paused: 'JEDA',
+                pausedSubtitle: 'Permainan dijedakan sementara.',
+                resume: 'Sambung',
+                endGameBtn: 'Tamat Permainan',
+                endSubtitle: 'PERSEMBAHAN HEBAT!',
+                finalScore: 'MARKAH AKHIR',
+                playAgain: 'Main Semula',
+                mainMenu: 'Menu Utama',
+                rankBeginner: 'PELARI BAHARU',
+                rankSupersonic: 'LEDAKAN SUPERSONIK! 👑',
+                rankMaster: 'JAGUH RENTAK DIGITAL! ⭐',
+                rankEntertainer: 'PENGHIBUR HEBAT!',
+                rankSatisfactory: 'PERSEMBAHAN MEMUASKAN',
+                countdownGo: 'MULA!',
+            },
+        }[LANG];
+
         // Setup Canvas Context
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -493,8 +629,65 @@
             `;
         }
 
+        // Apply localized copy to static DOM nodes.
+        function applyI18n() {
+            const root = document.getElementById('htmlRoot');
+            if (root) root.setAttribute('lang', LANG);
+
+            // HUD labels
+            const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+            set('hudScoreLabel', COPY.hudScore);
+            set('hudTimeLabel', COPY.hudTime);
+            set('hudSpeedLabel', COPY.hudSpeed);
+            set('comboLabelText', COPY.comboLabel);
+            set('bonusPopup', COPY.bonusPopupDefault);
+            set('songDisplay', COPY.songReady);
+
+            // Start screen
+            set('titleBrand', COPY.titleBrand);
+            set('titleName', COPY.titleName);
+            const howEl = document.getElementById('howToPlayHeading');
+            if (howEl) howEl.textContent = `⚙️ ${COPY.howToPlay}`;
+            set('computerLabel', COPY.computer);
+            set('pressKeysLabel', COPY.pressKeys);
+            set('orClickPart1', COPY.orClickLanes1);
+            set('orClickPart2', COPY.orClickLanes2);
+            set('orClickPart3', COPY.orClickLanes3);
+            set('phoneLabel', COPY.phone);
+            set('tapPart1', COPY.tapDirectly1);
+            set('tapPart2', COPY.tapDirectly2);
+            set('scoringHeading', COPY.scoringCombos);
+            set('scoringSeg1', COPY.scoringLine1);
+            set('scoringSeg2', COPY.scoringLine2);
+            set('scoringSeg3', COPY.scoringLine3);
+            set('scoringSeg4', COPY.scoringLine4);
+            set('scoringSeg5', COPY.scoringLine5);
+            set('scoringSeg6', COPY.scoringLine6);
+            set('scoringSeg7', COPY.scoringLine7);
+            set('scoringSeg8', COPY.scoringLine8);
+            set('missPenaltyHeading', COPY.missPenalty);
+            set('missPart1', COPY.missPenaltyLine1);
+            set('missPart2', COPY.missPenaltyLine2);
+            set('missPart3', COPY.missPenaltyLine3);
+            set('startBtn', COPY.start);
+
+            // Pause screen
+            set('pausedHeading', COPY.paused);
+            set('pausedSubtitle', COPY.pausedSubtitle);
+            set('resumeBtn', COPY.resume);
+            set('exitBtn', COPY.endGameBtn);
+
+            // End screen (default heading is TIME'S UP! — overridden by exitGameHalfway)
+            set('endHeading', COPY.timeUp);
+            set('endGameStatus', COPY.endSubtitle);
+            set('finalScoreLabel', COPY.finalScore);
+            set('restartBtn', COPY.playAgain);
+            set('menuBtn', COPY.mainMenu);
+        }
+
         // Initialize state vectors for screens on startup
         window.addEventListener('DOMContentLoaded', () => {
+            applyI18n();
             renderPBot('startPBot', 'hello');
         });
 
@@ -590,7 +783,7 @@
             const beatDuration = 60 / bpm;
             const stepDuration = beatDuration / 2; // Eighth note scheduling
 
-            songDisplay.innerText = `🎵 Procedural Track: Ruby Wave (BPM: ${bpm})`;
+            songDisplay.innerText = COPY.songTrack(bpm);
 
             if (synthInterval) clearInterval(synthInterval);
 
@@ -836,7 +1029,7 @@
                 }
             } else {
                 applyMissPenalty();
-                showRating('MISS!', '#fbb7b7');
+                showRating(COPY.rateMissBang, '#fbb7b7');
                 playHitSound('miss');
             }
         }
@@ -860,19 +1053,19 @@
                 score += 3;
                 combo++;
                 stats.perfect++;
-                showRating('PERFECT!', '#facc15');
+                showRating(COPY.ratePerfect, '#facc15');
                 playHitSound('perfect');
             } else if (rating === 'great') {
                 score += 2;
                 combo++;
                 stats.great++;
-                showRating('GREAT!', '#4ade80');
+                showRating(COPY.rateGreat, '#4ade80');
                 playHitSound('great');
             } else if (rating === 'good') {
                 score += 1;
                 combo++;
                 stats.good++;
-                showRating('GOOD', '#60a5fa');
+                showRating(COPY.rateGood, '#60a5fa');
                 playHitSound('good');
             } else {
                 triggerMiss();
@@ -893,10 +1086,10 @@
 
                 if (combo % 100 === 0) {
                     score += 10;
-                    triggerBonusAnimation('+10 BONUS KO!');
+                    triggerBonusAnimation(COPY.bonus10);
                 } else if (combo % 50 === 0) {
                     score += 5;
-                    triggerBonusAnimation('+5 BONUS!');
+                    triggerBonusAnimation(COPY.bonus5);
                 }
             }
 
@@ -908,7 +1101,7 @@
             stats.miss++;
             stats.totalAttempts++;
             comboDisplayContainer.classList.add('hidden');
-            showRating('MISS', '#f43f5e');
+            showRating(COPY.rateMiss, '#f43f5e');
             applyMissPenalty();
             playHitSound('miss');
 
@@ -969,7 +1162,7 @@
                 
                 startProceduralMusic();
                 
-                triggerBonusAnimation(`LEVEL ${gameLevel}! SPEED UP!`);
+                triggerBonusAnimation(COPY.levelUp(gameLevel));
             }
         }
 
@@ -1022,7 +1215,7 @@
                     count--;
                     setTimeout(tick, 1000);
                 } else if (count === 0) {
-                    countdownText.innerText = "GO!";
+                    countdownText.innerText = COPY.countdownGo;
                     countdownText.style.color = "#4ade80"; 
                     playCountdownTone(true);
                     
@@ -1114,13 +1307,16 @@
 
             document.getElementById('finalScore').innerText = score;
 
-            let ratingStatus = "BEGINNER SPEEDSTER";
-            if (score > 400) ratingStatus = "SUPERSONIC BLAST! 👑";
-            else if (score > 250) ratingStatus = "DIGITAL RHYTHM MASTER! ⭐";
-            else if (score > 120) ratingStatus = "GREAT ENTERTAINER!";
-            else if (score > 50) ratingStatus = "SATISFACTORY PERFORMANCE";
-            
+            let ratingStatus = COPY.rankBeginner;
+            if (score > 400) ratingStatus = COPY.rankSupersonic;
+            else if (score > 250) ratingStatus = COPY.rankMaster;
+            else if (score > 120) ratingStatus = COPY.rankEntertainer;
+            else if (score > 50) ratingStatus = COPY.rankSatisfactory;
+
             document.getElementById('endGameStatus').innerText = ratingStatus;
+
+            // User chose to end mid-run via pause-menu "End Game" — non-timer exit.
+            document.getElementById('endHeading').innerText = COPY.gameOver;
 
             // Render matching performance PBot
             if (score >= 150) {
@@ -1149,13 +1345,16 @@
             document.getElementById('statGood').innerText = stats.good;
             document.getElementById('statMiss').innerText = stats.miss;
 
-            let ratingStatus = "BEGINNER SPEEDSTER";
-            if (score > 400) ratingStatus = "SUPERSONIC BLAST! 👑";
-            else if (score > 250) ratingStatus = "DIGITAL RHYTHM MASTER! ⭐";
-            else if (score > 120) ratingStatus = "GREAT ENTERTAINER!";
-            else if (score > 50) ratingStatus = "SATISFACTORY PERFORMANCE";
-            
+            let ratingStatus = COPY.rankBeginner;
+            if (score > 400) ratingStatus = COPY.rankSupersonic;
+            else if (score > 250) ratingStatus = COPY.rankMaster;
+            else if (score > 120) ratingStatus = COPY.rankEntertainer;
+            else if (score > 50) ratingStatus = COPY.rankSatisfactory;
+
             document.getElementById('endGameStatus').innerText = ratingStatus;
+
+            // Round timer hit zero — canonical TIME'S UP! state per §6.4.
+            document.getElementById('endHeading').innerText = COPY.timeUp;
 
             // Render matching performance PBot
             if (score >= 150) {
@@ -1374,7 +1573,7 @@
             endScreen.style.display = 'none';
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            songDisplay.innerText = '🎵 Waiting to start...';
+            songDisplay.innerText = COPY.songWaiting;
         });
 
     </script>

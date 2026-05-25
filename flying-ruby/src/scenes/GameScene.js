@@ -1,5 +1,6 @@
 import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
 import { addMuteButton } from '../muteButton.js';
+import { COPY } from '../copy.js';
 
 const FLOOR_HEIGHT       = 80;
 const HUD_HEIGHT         = 70;
@@ -220,7 +221,7 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(51);
 
     // timer (right) — inset to leave the corner free for the mute button
-    this.add.text(width - 58, HUD_HEIGHT / 2 - 13, 'TIME', {
+    this.add.text(width - 58, HUD_HEIGHT / 2 - 13, COPY.hudTime, {
       fontFamily: FONTS.ui,
       fontSize:   '11px',
       color:      PALETTE_CSS.white,
@@ -254,13 +255,13 @@ export class GameScene extends Phaser.Scene {
     plaque.strokeRoundedRect(-150, -40, 300, 80, 16);
     this.promptContainer.add(plaque);
 
-    const heading = this.add.text(0, -14, 'TAP TO FLY', {
+    const heading = this.add.text(0, -14, COPY.tapToFly, {
       fontFamily: FONTS.ui,
       fontSize:   '22px',
       fontStyle:  'bold',
       color:      PALETTE_CSS.yellow,
     }).setOrigin(0.5);
-    const sub = this.add.text(0, 14, 'avoid obstacles  •  grab rubies', {
+    const sub = this.add.text(0, 14, COPY.tapSub, {
       fontFamily: FONTS.ui,
       fontSize:   '12px',
       color:      PALETTE_CSS.white,
@@ -714,7 +715,7 @@ export class GameScene extends Phaser.Scene {
       duration: 380, ease: 'Cubic.easeOut',
       onComplete: () => ring.destroy(),
     });
-    const label = this.add.text(bubble.x, bubble.y, 'MAGNET!', {
+    const label = this.add.text(bubble.x, bubble.y, COPY.magnetLabel, {
       fontFamily: FONTS.ui,
       fontSize:   '18px',
       fontStyle:  'bold',
@@ -854,7 +855,7 @@ export class GameScene extends Phaser.Scene {
       targets: ring, scale: 3.1, alpha: 0,
       duration: 460, ease: 'Cubic.easeOut', onComplete: () => ring.destroy(),
     });
-    const label = this.add.text(bubble.x, bubble.y, 'POWER RUSH!', {
+    const label = this.add.text(bubble.x, bubble.y, COPY.rushLabel, {
       fontFamily: FONTS.ui, fontSize: '24px', fontStyle: 'bold',
       color: PALETTE_CSS.yellow, stroke: PALETTE_CSS.darkRed, strokeThickness: 6,
     }).setOrigin(0.5).setDepth(47);

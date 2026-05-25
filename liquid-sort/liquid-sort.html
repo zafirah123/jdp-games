@@ -178,8 +178,8 @@
         </svg>
       </div>
       
-      <h2 class="text-3xl font-extrabold mb-1 tracking-tight">Time's Up!</h2>
-      <p class="text-red-100 mb-6 text-sm">Don't worry, every try makes your brain sharper.</p>
+      <h2 class="text-3xl font-extrabold mb-1 tracking-tight"></h2>
+      <p class="text-red-100 mb-6 text-sm"></p>
       
       <!-- Displaying ONLY the score earned -->
       <div class="bg-white/10 rounded-2xl p-6 mb-6 border border-white/10 text-center">
@@ -223,6 +223,143 @@
 
   <!-- Main Game Script -->
   <script>
+    // --- LANGUAGE / I18N (§6.4) ---
+    const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+    const COPY = {
+      en: {
+        start: 'START GAME',
+        timeUp: "TIME'S UP!",
+        gameOver: 'GAME OVER',
+        audioOn: 'AUDIO ON',
+        audioOff: 'AUDIO OFF',
+        // Game-specific
+        title: 'Liquid Sort Challenge',
+        subtitle: '7 Tubes, 5 Colors. Match any tube to instantly get',
+        subtitleSuffix: '!',
+        plusTen: '+10 pts',
+        scoreLabel: 'Score:',
+        moves: 'Moves:',
+        resetLevel: 'Reset Level',
+        howToPlay: 'How to Play',
+        howStep1: 'Tap a tube containing liquid to select it. It will raise up.',
+        howStep2: 'Tap another tube to pour. You can only pour onto matching colors or into empty tubes.',
+        howStep3Pre: 'The very bottom layer of each tube is hidden as a grey ',
+        howStep3Post: '. Reveal it by pouring off the top liquids!',
+        howStep4Pre: 'Match a complete tube during the game to instantly get ',
+        howStep4Bold: '+10 points',
+        howStep4Post: '!',
+        letsGo: "Let's Go!",
+        winTitle: 'Spectacular Job!',
+        winSubtitle: 'You completed the level successfully!',
+        scoreEarned: 'Score Earned',
+        playAgain: 'Play Again',
+        loseSubtitle: "Don't worry, every try makes your brain sharper.",
+        tryAgain: 'Try Another Level',
+        resetTitle: 'Reset current mixed tubes layout',
+      },
+      ms: {
+        start: 'MULA MAIN',
+        timeUp: 'MASA TAMAT!',
+        gameOver: 'PERMAINAN TAMAT',
+        audioOn: 'AUDIO ON',
+        audioOff: 'AUDIO OFF',
+        // Game-specific
+        title: 'Cabaran Susun Cecair',
+        subtitle: '7 Tabung, 5 Warna. Padankan mana-mana tabung untuk segera dapat',
+        subtitleSuffix: '!',
+        plusTen: '+10 mata',
+        scoreLabel: 'Markah:',
+        moves: 'Langkah:',
+        resetLevel: 'Mula Semula',
+        howToPlay: 'Cara Main',
+        howStep1: 'Tekan tabung yang berisi cecair untuk memilihnya. Ia akan terangkat.',
+        howStep2: 'Tekan tabung lain untuk menuang. Anda hanya boleh tuang ke warna yang sama atau ke tabung kosong.',
+        howStep3Pre: 'Lapisan paling bawah setiap tabung disembunyikan sebagai kelabu ',
+        howStep3Post: '. Dedahkannya dengan menuang cecair atas keluar!',
+        howStep4Pre: 'Padankan satu tabung penuh semasa permainan untuk segera dapat ',
+        howStep4Bold: '+10 mata',
+        howStep4Post: '!',
+        letsGo: 'Jom Mula!',
+        winTitle: 'Hebat Sungguh!',
+        winSubtitle: 'Anda telah berjaya menyelesaikan tahap ini!',
+        scoreEarned: 'Markah Diperoleh',
+        playAgain: 'Main Lagi',
+        loseSubtitle: 'Jangan risau, setiap percubaan menajamkan minda anda.',
+        tryAgain: 'Cuba Tahap Lain',
+        resetTitle: 'Set semula susunan tabung sedia ada',
+      },
+    }[LANG];
+
+    // Apply COPY to static DOM strings before game boot
+    function applyCopyToDOM() {
+      // Header score label
+      const scoreLabelEl = document.querySelector('.bg-gradient-to-r.from-amber-400 span:first-child');
+      if (scoreLabelEl) scoreLabelEl.textContent = `🏆 ${COPY.scoreLabel}`;
+      // Title + subtitle
+      const titleEl = document.querySelector('h1.text-3xl');
+      if (titleEl) titleEl.textContent = COPY.title;
+      const subtitleEl = document.querySelector('h1.text-3xl + p');
+      if (subtitleEl) {
+        subtitleEl.innerHTML =
+          `${COPY.subtitle} <span class="text-yellow-300 font-bold">${COPY.plusTen}</span>${COPY.subtitleSuffix}`;
+      }
+      // Moves label — keep the existing #move-counter span intact, only swap leading text
+      const movesEl = document.querySelector('footer .text-center.text-blue-100');
+      const moveSpan = document.getElementById('move-counter');
+      if (movesEl && moveSpan) {
+        // Replace the leading text node (everything before #move-counter) with COPY.moves + ' '
+        const first = movesEl.firstChild;
+        if (first && first.nodeType === Node.TEXT_NODE) {
+          first.nodeValue = COPY.moves + ' ';
+        }
+      }
+      // Reset button (preserve svg + add label)
+      const resetBtn = document.querySelector('button[onclick="resetCurrentLevel()"]');
+      if (resetBtn) {
+        // Replace trailing text node only
+        const svg = resetBtn.querySelector('svg');
+        resetBtn.innerHTML = '';
+        if (svg) resetBtn.appendChild(svg);
+        resetBtn.appendChild(document.createTextNode(' ' + COPY.resetLevel));
+        resetBtn.title = COPY.resetTitle;
+      }
+      // How-to-play modal heading
+      const howHeading = document.querySelector('#instruction-modal h3');
+      if (howHeading) howHeading.textContent = COPY.howToPlay;
+      // How-to-play steps
+      const steps = document.querySelectorAll('#instruction-modal li span');
+      if (steps[0]) steps[0].textContent = COPY.howStep1;
+      if (steps[1]) steps[1].textContent = COPY.howStep2;
+      if (steps[2]) {
+        steps[2].innerHTML = `${COPY.howStep3Pre}<strong>"?"</strong>${COPY.howStep3Post}`;
+      }
+      if (steps[3]) {
+        steps[3].innerHTML =
+          `${COPY.howStep4Pre}<strong class="text-yellow-300">${COPY.howStep4Bold}</strong>${COPY.howStep4Post}`;
+      }
+      // Let's Go button
+      const letsGoBtn = document.querySelector('button[onclick="closeInstructionModal()"]');
+      if (letsGoBtn) letsGoBtn.textContent = COPY.letsGo;
+      // Win modal
+      const winHeading = document.querySelector('#win-modal h2');
+      if (winHeading) winHeading.textContent = COPY.winTitle;
+      const winSub = document.querySelector('#win-modal p');
+      if (winSub) winSub.textContent = COPY.winSubtitle;
+      const winScoreLabel = document.querySelector('#win-modal .uppercase');
+      if (winScoreLabel) winScoreLabel.textContent = COPY.scoreEarned;
+      const winBtn = document.querySelector('#win-modal button');
+      if (winBtn) winBtn.textContent = COPY.playAgain;
+      // Lose modal — uses the canonical timer-expired heading
+      const loseHeading = document.querySelector('#lose-modal h2');
+      if (loseHeading) loseHeading.textContent = COPY.timeUp;
+      const loseSub = document.querySelector('#lose-modal p');
+      if (loseSub) loseSub.textContent = COPY.loseSubtitle;
+      const loseScoreLabel = document.querySelector('#lose-modal .uppercase');
+      if (loseScoreLabel) loseScoreLabel.textContent = COPY.scoreEarned;
+      const loseBtn = document.querySelector('#lose-modal button');
+      if (loseBtn) loseBtn.textContent = COPY.tryAgain;
+    }
+
     // Theme presets offering 5 diverse colors each and unique background gradients
     const THEMES = [
       {
@@ -778,6 +915,7 @@
 
     // Start on mount
     window.onload = function() {
+      applyCopyToDOM();
       startNewLevel();
     };
   </script>

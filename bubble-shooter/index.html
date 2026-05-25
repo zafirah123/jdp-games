@@ -103,9 +103,7 @@
                 <!-- Sad PBot character! -->
                 <img src="PBot - Sad.png" alt="Sad Robot" onerror="this.style.display='none'" class="w-24 h-24 md:w-28 md:h-28 mx-auto mb-2 object-contain animate-pulse">
                 
-                <h2 id="result-title" class="text-4xl font-extrabold text-red-500 title-font mb-2">
-                    TIME'S UP!
-                </h2>
+                <h2 id="result-title" class="text-4xl font-extrabold text-red-500 title-font mb-2"></h2>
                 <p id="result-desc" class="text-indigo-200 text-sm mb-4">
                     Awesome effort! Here is how you did:
                 </p>
@@ -165,6 +163,131 @@
 
     <!-- Web Audio & Core Game Engine Code -->
     <script>
+        // --- LANGUAGE / I18N (§6.4) ---
+        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+        const COPY = {
+            en: {
+                start: 'START GAME',
+                timeUp: "TIME'S UP!",
+                gameOver: 'GAME OVER',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                // Game-specific
+                title: '3-MIN BLITZ',
+                hudScore: 'Score',
+                hudTime: 'Time Remaining',
+                hudHigh: 'High Score',
+                hudNext: 'Next',
+                dangerLine: 'Danger Line',
+                warningBreach: 'WARNING! BREACH IMMINENT',
+                introBlurb: 'Clear the board before the time runs out! Bubbles descend faster as the clock ticks down.',
+                howAim: 'Aim & Shoot:',
+                howAimDesc: 'Tap/Drag to aim, release to shoot.',
+                howMatch: 'Match 3:',
+                howMatchDesc: 'Connect 3+ bubbles of same color to pop them.',
+                howClock: 'Clock is Ticking:',
+                howClockDesc: 'Clear as much as you can in 3 minutes!',
+                resultsBlurb: 'Awesome effort! Here is how you did:',
+                statFinal: 'Final Score',
+                statPopped: 'Bubbles Popped',
+                statCombos: 'Combos Achieved',
+                playAgain: 'PLAY AGAIN',
+                lineBreached: 'LINE BREACHED!',
+                lineBreachedDesc: 'The bubbles descended past the danger line. Clear them faster next time!',
+                gameOverDesc: 'Great effort! Can you beat your best score in the next try?',
+                victory: 'VICTORY!',
+                victoryDesc: 'Incredible! You cleared the board before the time ran out!',
+                speedUp: 'SPEED UP!',
+                drop: 'DROP!',
+                paused: 'PAUSED',
+            },
+            ms: {
+                start: 'MULA MAIN',
+                timeUp: 'MASA TAMAT!',
+                gameOver: 'PERMAINAN TAMAT',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                // Game-specific
+                title: 'BLITZ 3-MINIT',
+                hudScore: 'Markah',
+                hudTime: 'Masa Berbaki',
+                hudHigh: 'Markah Tertinggi',
+                hudNext: 'Seterusnya',
+                dangerLine: 'Garisan Bahaya',
+                warningBreach: 'AMARAN! GARISAN HAMPIR DILANGGAR',
+                introBlurb: 'Bersihkan papan sebelum masa tamat! Buih akan turun lebih laju apabila masa berkurang.',
+                howAim: 'Bidik & Tembak:',
+                howAimDesc: 'Tekan/seret untuk bidik, lepas untuk tembak.',
+                howMatch: 'Padan 3:',
+                howMatchDesc: 'Sambung 3+ buih warna sama untuk meletupkannya.',
+                howClock: 'Masa Berdetik:',
+                howClockDesc: 'Bersihkan sebanyak mungkin dalam 3 minit!',
+                resultsBlurb: 'Usaha yang hebat! Inilah pencapaian anda:',
+                statFinal: 'Markah Akhir',
+                statPopped: 'Buih Diletupkan',
+                statCombos: 'Kombo Dicapai',
+                playAgain: 'MAIN LAGI',
+                lineBreached: 'GARISAN DILANGGAR!',
+                lineBreachedDesc: 'Buih telah melepasi garisan bahaya. Bersihkan lebih pantas pada cubaan seterusnya!',
+                gameOverDesc: 'Usaha yang baik! Boleh anda atasi markah terbaik anda kali nanti?',
+                victory: 'KEMENANGAN!',
+                victoryDesc: 'Hebat! Anda telah bersihkan papan sebelum masa tamat!',
+                speedUp: 'LEBIH LAJU!',
+                drop: 'JATUH!',
+                paused: 'DIJEDA',
+            },
+        }[LANG];
+
+        // Apply COPY to static DOM strings before game boot
+        function applyCopyToDOM() {
+            const setText = (sel, txt) => {
+                const el = document.querySelector(sel);
+                if (el) el.textContent = txt;
+            };
+            // HUD labels
+            const hudLabels = document.querySelectorAll('.glass span.text-xs, .glass span.text-\\[10px\\]');
+            // More targeted: use specific elements by content
+            document.querySelectorAll('span').forEach(span => {
+                const t = span.textContent.trim();
+                if (t === 'Score') span.textContent = COPY.hudScore;
+                else if (t === 'Time Remaining') span.textContent = COPY.hudTime;
+                else if (t === 'High Score') span.textContent = COPY.hudHigh;
+                else if (t === 'Next') span.textContent = COPY.hudNext;
+                else if (t === 'Final Score') span.textContent = COPY.statFinal;
+                else if (t === 'Bubbles Popped') span.textContent = COPY.statPopped;
+                else if (t === 'Combos Achieved') span.textContent = COPY.statCombos;
+            });
+            // Danger line label
+            const dangerText = document.getElementById('danger-text');
+            if (dangerText) dangerText.textContent = COPY.dangerLine;
+            // Title
+            const titleEl = document.querySelector('#start-overlay h1');
+            if (titleEl) titleEl.textContent = COPY.title;
+            // Intro paragraph
+            const introP = document.querySelector('#start-overlay p');
+            if (introP) introP.textContent = COPY.introBlurb;
+            // How-to-play rows
+            const howRows = document.querySelectorAll('#start-overlay .space-y-3 > div');
+            if (howRows[0]) howRows[0].innerHTML = `<span class="text-amber-400 font-bold">🎯 ${COPY.howAim}</span> ${COPY.howAimDesc}`;
+            if (howRows[1]) howRows[1].innerHTML = `<span class="text-emerald-400 font-bold">💥 ${COPY.howMatch}</span> ${COPY.howMatchDesc}`;
+            if (howRows[2]) howRows[2].innerHTML = `<span class="text-pink-400 font-bold">⏱️ ${COPY.howClock}</span> ${COPY.howClockDesc}`;
+            // Start button
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) startBtn.textContent = COPY.start;
+            // Game-over title (default to the timer-expired string)
+            const resultTitle = document.getElementById('result-title');
+            if (resultTitle) resultTitle.textContent = COPY.timeUp;
+            // Game-over description default
+            const resultDesc = document.getElementById('result-desc');
+            if (resultDesc) resultDesc.textContent = COPY.resultsBlurb;
+            // Restart button
+            const restartBtn = document.getElementById('restart-btn');
+            if (restartBtn) restartBtn.textContent = COPY.playAgain;
+            // Sound button label/title — uses title attr only (icon-driven)
+            const soundBtn = document.getElementById('sound-btn');
+            if (soundBtn) soundBtn.title = COPY.audioOn;
+        }
+
         // --- SOUND SYNTHESIS USING WEB AUDIO API ---
         const SoundSystem = {
             audioCtx: null,
@@ -521,6 +644,7 @@
                     SoundSystem.muted = !SoundSystem.muted;
                     document.getElementById('sound-on-icon').classList.toggle('hidden', SoundSystem.muted);
                     document.getElementById('sound-off-icon').classList.toggle('hidden', !SoundSystem.muted);
+                    soundBtn.title = SoundSystem.muted ? COPY.audioOff : COPY.audioOn;
                     SoundSystem.playClick();
                     
                     if (SoundSystem.muted) {
@@ -611,7 +735,7 @@
                 if (dangerTextEl) {
                     dangerTextEl.classList.remove('text-red-500', 'scale-110');
                     dangerTextEl.classList.add('text-red-400');
-                    dangerTextEl.innerText = "Danger Line";
+                    dangerTextEl.innerText = COPY.dangerLine;
                 }
 
                 this.nextBubbleColor = COLOR_KEYS[Math.floor(Math.random() * COLOR_KEYS.length)];
@@ -659,12 +783,12 @@
                     if (this.timeSinceLastDrop >= this.dropInterval) {
                         this.dropGrid();
                         this.timeSinceLastDrop = 0;
-                        this.addFloatingText('SPEED UP!', this.width / 2, this.height / 3, '#f43f5e');
+                        this.addFloatingText(COPY.speedUp, this.width / 2, this.height / 3, '#f43f5e');
                     }
 
                     // Out of time check
                     if (this.timer <= 0) {
-                        this.endGame(false, "TIME'S UP!");
+                        this.endGame(false, COPY.timeUp);
                     }
                 }, 1000);
 
@@ -814,7 +938,7 @@
                             const pos = this.getBubbleCoord(r, c);
                             // If the bottom boundary of any snapped bubble crosses or touches the danger line
                             if (pos.y + this.bubbleRadius >= dangerY) {
-                                this.endGame(false, "LINE BREACHED!");
+                                this.endGame(false, COPY.lineBreached);
                                 return false;
                             }
                         }
@@ -984,7 +1108,7 @@
                         });
 
                         this.score += dropScore;
-                        this.addFloatingText(`DROP! +${dropScore}`, this.width / 2, this.height / 2, '#34d399');
+                        this.addFloatingText(`${COPY.drop} +${dropScore}`, this.width / 2, this.height / 2, '#34d399');
                     }
                 }
 
@@ -995,7 +1119,7 @@
 
                 // Check victory condition
                 if (this.getColorsOnBoard().length === 0) {
-                    this.endGame(true, "VICTORY!");
+                    this.endGame(true, COPY.victory);
                 } else {
                     this.spawnShooterBubble();
                 }
@@ -1152,13 +1276,13 @@
                         dangerLineEl.classList.remove('border-red-500/60');
                         dangerTextEl.classList.add('text-red-500', 'scale-110');
                         dangerTextEl.classList.remove('text-red-400');
-                        dangerTextEl.innerText = "WARNING! BREACH IMMINENT";
+                        dangerTextEl.innerText = COPY.warningBreach;
                     } else {
                         dangerLineEl.classList.remove('border-red-500', 'animate-pulse');
                         dangerLineEl.classList.add('border-red-500/60');
                         dangerTextEl.classList.remove('text-red-500', 'scale-110');
                         dangerTextEl.classList.add('text-red-400');
-                        dangerTextEl.innerText = "Danger Line";
+                        dangerTextEl.innerText = COPY.dangerLine;
                     }
                 }
             },
@@ -1241,7 +1365,7 @@
                     this.ctx.fillStyle = '#ffffff';
                     this.ctx.font = '900 24px "Poppins", sans-serif';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText('PAUSED', this.width / 2, this.height / 2);
+                    this.ctx.fillText(COPY.paused, this.width / 2, this.height / 2);
                 }
             },
 
@@ -1363,7 +1487,7 @@
                 this.ctx.restore();
             },
 
-            endGame(victory = false, reason = "GAME OVER") {
+            endGame(victory = false, reason = COPY.gameOver) {
                 this.isPlaying = false;
                 if (this.timerInterval) clearInterval(this.timerInterval);
                 
@@ -1383,16 +1507,16 @@
                 const desc = document.getElementById('result-desc');
 
                 if (victory) {
-                    title.innerText = "VICTORY!";
+                    title.innerText = COPY.victory;
                     title.className = "text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 title-font mb-2";
-                    desc.innerText = "Incredible! You cleared the board before the time ran out!";
+                    desc.innerText = COPY.victoryDesc;
                 } else {
                     title.innerText = reason;
                     title.className = "text-4xl font-extrabold text-rose-500 title-font mb-2 uppercase";
-                    if (reason === "LINE BREACHED!") {
-                        desc.innerText = "The bubbles descended past the danger line. Clear them faster next time!";
+                    if (reason === COPY.lineBreached) {
+                        desc.innerText = COPY.lineBreachedDesc;
                     } else {
-                        desc.innerText = "Great effort! Can you beat your best score in the next try?";
+                        desc.innerText = COPY.gameOverDesc;
                     }
                 }
 
@@ -1408,6 +1532,7 @@
 
         // Fire engine initializers
         window.addEventListener('load', () => {
+            applyCopyToDOM();
             Game.init();
         });
     </script>

@@ -1,5 +1,6 @@
 import { PALETTE, PALETTE_CSS, FONTS } from '../config.js';
 import { addMuteButton } from '../muteButton.js';
+import { COPY } from '../copy.js';
 
 export class StartScene extends Phaser.Scene {
   constructor() {
@@ -58,7 +59,7 @@ export class StartScene extends Phaser.Scene {
 
     // tagline below the logo — stroked + shadowed so it reads on the
     // detailed background without a dimming overlay
-    this.add.text(cx, height * 0.42, 'Tap to fly  •  Collect rubies  •  Beat 3:00', {
+    this.add.text(cx, height * 0.42, COPY.tagline, {
       fontFamily: FONTS.ui,
       fontSize:   '16px',
       fontStyle:  'bold',
@@ -208,7 +209,7 @@ export class StartScene extends Phaser.Scene {
 
     // Text centred between the two icons
     const textX = (leftIconX + iconSize / 2 + rightIconX - iconSize / 2) / 2;
-    const label = this.add.text(textX, innerCenterY, 'Start Game', {
+    const label = this.add.text(textX, innerCenterY, COPY.start, {
       fontFamily: '"Poppins", "Segoe UI", Tahoma, sans-serif',
       fontSize:   '28px',
       fontStyle:  'bold',

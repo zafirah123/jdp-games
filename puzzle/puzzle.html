@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juara Digital Puzzle - Mod Infiniti</title>
+    <title>Juara Digital Puzzle - Infinity Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap');
@@ -107,8 +107,8 @@
     <div class="text-center mb-4 sm:mb-6 mt-2 relative w-full max-w-2xl">
         <div class="absolute top-0 left-4 text-3xl gem hidden lg:block">💎</div>
         <div class="absolute top-0 right-4 text-3xl gem hidden lg:block">💎</div>
-        <h1 class="text-3xl sm:text-5xl md:text-6xl title-font text-gold mb-1 sm:mb-2 tracking-wide uppercase">Juara Digital</h1>
-        <h2 class="text-sm sm:text-lg md:text-2xl font-bold text-yellow-200 uppercase tracking-widest bg-black/40 inline-block px-4 sm:px-6 py-1 rounded-full border border-yellow-500/50">Cabaran Infiniti 5x5</h2>
+        <h1 id="titleHeading" class="text-3xl sm:text-5xl md:text-6xl title-font text-gold mb-1 sm:mb-2 tracking-wide uppercase">Juara Digital</h1>
+        <h2 id="subtitleHeading" class="text-sm sm:text-lg md:text-2xl font-bold text-yellow-200 uppercase tracking-widest bg-black/40 inline-block px-4 sm:px-6 py-1 rounded-full border border-yellow-500/50">Infinity Challenge 5x5</h2>
     </div>
 
     <!-- Wadah Utama Game -->
@@ -117,18 +117,18 @@
         <!-- Bar Statistik Game (Sekarang fleksibel & rapi di telefon pintar) -->
         <div class="flex items-center justify-between sm:justify-center gap-2 sm:gap-8 md:gap-12 bg-black/50 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-3 rounded-full gold-border mb-4 sm:mb-6 w-full max-w-xl text-xs sm:text-base md:text-xl">
             <div class="flex items-center gap-1 sm:gap-2">
-                <span class="text-gray-300">Pusingan:</span>
+                <span id="hudRoundLabel" class="text-gray-300">Round:</span>
                 <span id="roundDisplay" class="text-blue-400 font-bold">1</span>
             </div>
             <div class="h-6 w-px bg-yellow-500/50"></div>
             <div class="flex items-center gap-1 sm:gap-2">
-                <span class="text-gray-300">Masa:</span>
+                <span id="hudTimeLabel" class="text-gray-300">Time:</span>
                 <span id="timerDisplay" class="text-red-400 font-mono tracking-wider font-bold">03:00</span>
             </div>
             <div class="h-6 w-px bg-yellow-500/50"></div>
             <div class="flex items-center gap-1 sm:gap-2">
-                <span class="text-gray-300">Skor:</span>
-                <span id="scoreDisplay" class="text-yellow-400 font-mono font-bold">0</span><span class="text-gray-400 text-[10px] sm:text-xs">/500</span>
+                <span id="hudScoreLabel" class="text-gray-300">Score:</span>
+                <span id="scoreDisplay" class="text-yellow-400 font-mono font-bold">0</span>
             </div>
         </div>
 
@@ -138,12 +138,12 @@
             <!-- Gambar Rujukan -->
             <div class="flex flex-row md:flex-col items-center justify-center gap-3 md:gap-2 bg-black/40 p-2 sm:p-3 rounded-xl border border-red-900/50 w-full max-w-[340px] md:max-w-xs">
                 <div class="flex flex-col items-center">
-                    <span class="text-yellow-400 font-bold mb-1 tracking-wide uppercase text-[10px] sm:text-xs">Gambar Rujukan</span>
+                    <span id="referenceLabel" class="text-yellow-400 font-bold mb-1 tracking-wide uppercase text-[10px] sm:text-xs">Reference Image</span>
                     <div id="referenceImg" class="rounded-lg gold-border bg-cover bg-center"></div>
                 </div>
                 <div class="flex-1 md:flex-initial text-left md:text-center">
-                    <p class="text-[11px] sm:text-xs text-gray-300 leading-tight">
-                        Ketik kepingan pada papan untuk saling menukar kedudukan dan menyusun gambar!
+                    <p id="referenceInstruction" class="text-[11px] sm:text-xs text-gray-300 leading-tight">
+                        Tap pieces on the board to swap their positions and assemble the picture!
                     </p>
                 </div>
             </div>
@@ -152,23 +152,23 @@
             <div class="relative">
                 <!-- Tampilan Skrin Mula (Overlay) -->
                 <div id="startOverlay" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 rounded-lg gold-border backdrop-blur-sm p-4 text-center">
-                    <h3 class="text-lg sm:text-2xl title-font text-yellow-400 mb-2 sm:mb-4">Cabaran Infiniti!</h3>
-                    <p class="text-[11px] sm:text-sm max-w-xs mb-4 sm:mb-6 text-gray-200 leading-relaxed">
-                        Selesaikan gambar seberapa banyak yang boleh dalam masa <strong class="text-yellow-300">3 Minit</strong>.<br>
-                        Setiap pusingan selesai memberikan <strong class="text-green-300">+50 Skor Bonus</strong>!<br>
-                        Jom capai sasaran <strong class="text-yellow-300">500 Skor</strong>!
+                    <h3 id="startHeading" class="text-lg sm:text-2xl title-font text-yellow-400 mb-2 sm:mb-4">Infinity Challenge!</h3>
+                    <p id="startInstructions" class="text-[11px] sm:text-sm max-w-xs mb-4 sm:mb-6 text-gray-200 leading-relaxed">
+                        Solve as many pictures as you can in <strong class="text-yellow-300">3 Minutes</strong>.<br>
+                        Each completed round awards <strong class="text-green-300">+50 Bonus Score</strong>!<br>
+                        Aim for a high score!
                     </p>
-                    <button onclick="startGame()" class="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-b from-yellow-300 to-yellow-600 text-red-950 font-bold text-base sm:text-xl rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,215,0,0.4)] border border-white/30 uppercase">
-                        Mula Sekarang
+                    <button id="startBtn" onclick="startGame()" class="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-b from-yellow-300 to-yellow-600 text-red-950 font-bold text-base sm:text-xl rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,215,0,0.4)] border border-white/30 uppercase">
+                        START GAME
                     </button>
                 </div>
 
                 <!-- Notifikasi Terapung Apabila Pusingan Selesai -->
                 <div id="roundCompleteNotice" class="hidden absolute inset-0 flex items-center justify-center z-20 pointer-events-none p-4">
                     <div class="bg-black/95 text-yellow-400 gold-border px-4 py-3 sm:px-6 sm:py-4 rounded-2xl text-center shadow-2xl animate-pulse max-w-[240px]">
-                        <h4 class="text-lg sm:text-2xl title-font uppercase">Pusingan Selesai!</h4>
-                        <p class="text-green-400 font-bold text-sm sm:text-lg">+50 Skor Bonus!</p>
-                        <p class="text-gray-300 text-[10px] sm:text-xs mt-1">Sedia untuk gambar seterusnya...</p>
+                        <h4 id="roundCompleteHeading" class="text-lg sm:text-2xl title-font uppercase">Round Complete!</h4>
+                        <p id="roundCompleteBonus" class="text-green-400 font-bold text-sm sm:text-lg">+50 Bonus Score!</p>
+                        <p id="roundCompleteNext" class="text-gray-300 text-[10px] sm:text-xs mt-1">Get ready for the next picture...</p>
                     </div>
                 </div>
                 
@@ -186,25 +186,109 @@
             <div class="absolute top-[-20px] right-[-20px] text-5xl opacity-10">💎</div>
             <div class="absolute bottom-[-20px] left-[-20px] text-5xl opacity-10">💎</div>
             
-            <h2 id="modalTitle" class="text-3xl sm:text-4xl title-font text-yellow-400 mb-1 mt-2 drop-shadow-lg">MASA TAMAT!</h2>
-            <p id="modalMsg" class="text-sm sm:text-lg text-gray-300 mb-4 sm:mb-6">Hebat! Anda berjaya mengumpul banyak skor.</p>
-            
+            <h2 id="modalTitle" class="text-3xl sm:text-4xl title-font text-yellow-400 mb-1 mt-2 drop-shadow-lg">TIME'S UP!</h2>
+            <p id="modalMsg" class="text-sm sm:text-lg text-gray-300 mb-4 sm:mb-6">Great job! You collected lots of score.</p>
+
             <div class="bg-black/50 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border border-yellow-500/30">
-                <p class="text-xs sm:text-sm mb-1 text-gray-400 uppercase tracking-widest">Jumlah Skor Anda</p>
-                <p class="text-4xl sm:text-6xl title-font text-white drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]"><span id="finalScoreText">0</span><span class="text-xl sm:text-2xl text-yellow-500">/500</span></p>
+                <p id="finalScoreLabel" class="text-xs sm:text-sm mb-1 text-gray-400 uppercase tracking-widest">Your Total Score</p>
+                <p class="text-4xl sm:text-6xl title-font text-white drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]"><span id="finalScoreText">0</span></p>
                 <p id="scoreEvaluation" class="text-xs sm:text-sm mt-3 font-bold"></p>
             </div>
-            
-            <button onclick="closeModalAndReset()" class="w-full py-3 sm:py-4 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 text-red-950 font-bold text-base sm:text-xl rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,215,0,0.5)] uppercase tracking-wider">
-                Main Semula
+
+            <button id="playAgainBtn" onclick="closeModalAndReset()" class="w-full py-3 sm:py-4 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 text-red-950 font-bold text-base sm:text-xl rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,215,0,0.5)] uppercase tracking-wider">
+                Play Again
             </button>
         </div>
     </div>
 
     <script>
+        // i18n — English default, ?lang=ms switches to Bahasa Melayu (per CLAUDE.md §6.4)
+        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+        const COPY = {
+            en: {
+                start: 'START GAME',
+                timeUp: "TIME'S UP!",
+                gameOver: 'GAME OVER',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                pageTitle: 'Juara Digital Puzzle - Infinity Mode',
+                titleHeading: 'Juara Digital',
+                subtitleHeading: 'Infinity Challenge 5x5',
+                hudRound: 'Round:',
+                hudTime: 'Time:',
+                hudScore: 'Score:',
+                referenceLabel: 'Reference Image',
+                referenceInstruction: 'Tap pieces on the board to swap their positions and assemble the picture!',
+                startHeading: 'Infinity Challenge!',
+                startInstructionsHTML: 'Solve as many pictures as you can in <strong class="text-yellow-300">3 Minutes</strong>.<br>Each completed round awards <strong class="text-green-300">+50 Bonus Score</strong>!<br>Aim for a high score!',
+                roundCompleteHeading: 'Round Complete!',
+                roundCompleteBonus: '+50 Bonus Score!',
+                roundCompleteNext: 'Get ready for the next picture...',
+                modalMsgHigh: 'Amazing! You are a true Juara Digital!',
+                modalMsgMid: 'Very good! You almost reached the top score!',
+                modalMsgLow: 'Good effort! Try again to sharpen your skills.',
+                evalHigh: 'OUTSTANDING! A fantastic final score!',
+                evalMid: 'GREAT WORK! Just a little more next time!',
+                evalLow: 'Keep practising to push your score higher!',
+                finalScoreLabel: 'Your Total Score',
+                playAgain: 'Play Again',
+            },
+            ms: {
+                start: 'MULA MAIN',
+                timeUp: 'MASA TAMAT!',
+                gameOver: 'PERMAINAN TAMAT',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                pageTitle: 'Juara Digital Puzzle - Mod Infiniti',
+                titleHeading: 'Juara Digital',
+                subtitleHeading: 'Cabaran Infiniti 5x5',
+                hudRound: 'Pusingan:',
+                hudTime: 'Masa:',
+                hudScore: 'Skor:',
+                referenceLabel: 'Gambar Rujukan',
+                referenceInstruction: 'Ketik kepingan pada papan untuk saling menukar kedudukan dan menyusun gambar!',
+                startHeading: 'Cabaran Infiniti!',
+                startInstructionsHTML: 'Selesaikan gambar seberapa banyak yang boleh dalam masa <strong class="text-yellow-300">3 Minit</strong>.<br>Setiap pusingan selesai memberikan <strong class="text-green-300">+50 Skor Bonus</strong>!<br>Jom kumpul skor setinggi mungkin!',
+                roundCompleteHeading: 'Pusingan Selesai!',
+                roundCompleteBonus: '+50 Skor Bonus!',
+                roundCompleteNext: 'Sedia untuk gambar seterusnya...',
+                modalMsgHigh: 'Hebat sekali! Anda adalah Juara Digital Sebenar!',
+                modalMsgMid: 'Sangat bagus! Anda hampir mencapai skor tertinggi!',
+                modalMsgLow: 'Usaha yang baik! Cuba lagi untuk mengasah kemahiran anda.',
+                evalHigh: 'LUAR BIASA! Skor akhir yang menakjubkan!',
+                evalMid: 'SANGAT BAGUS! Sikit lagi lain kali!',
+                evalLow: 'Terus mencuba untuk meningkatkan skor anda!',
+                finalScoreLabel: 'Jumlah Skor Anda',
+                playAgain: 'Main Semula',
+            },
+        }[LANG];
+
+        // Apply translations to the DOM on load
+        function applyCopy() {
+            document.documentElement.lang = LANG;
+            document.title = COPY.pageTitle;
+            document.getElementById('titleHeading').textContent = COPY.titleHeading;
+            document.getElementById('subtitleHeading').textContent = COPY.subtitleHeading;
+            document.getElementById('hudRoundLabel').textContent = COPY.hudRound;
+            document.getElementById('hudTimeLabel').textContent = COPY.hudTime;
+            document.getElementById('hudScoreLabel').textContent = COPY.hudScore;
+            document.getElementById('referenceLabel').textContent = COPY.referenceLabel;
+            document.getElementById('referenceInstruction').textContent = COPY.referenceInstruction;
+            document.getElementById('startHeading').textContent = COPY.startHeading;
+            document.getElementById('startInstructions').innerHTML = COPY.startInstructionsHTML;
+            document.getElementById('startBtn').textContent = COPY.start;
+            document.getElementById('roundCompleteHeading').textContent = COPY.roundCompleteHeading;
+            document.getElementById('roundCompleteBonus').textContent = COPY.roundCompleteBonus;
+            document.getElementById('roundCompleteNext').textContent = COPY.roundCompleteNext;
+            document.getElementById('finalScoreLabel').textContent = COPY.finalScoreLabel;
+            document.getElementById('playAgainBtn').textContent = COPY.playAgain;
+            // Default the modal title to TIME'S UP — endGame() will override for non-timer endings if needed
+            document.getElementById('modalTitle').textContent = COPY.timeUp;
+        }
+
         const GRID_SIZE = 5;
         const TOTAL_PIECES = GRID_SIZE * GRID_SIZE;
-        const MAX_TIME = 180; // 3 minit dalam satuan saat
+        const MAX_TIME = 180; // 3 minutes in seconds
         
         let boardState = []; // Menyimpan indeks kedudukan kepingan sekarang
         let isLocked = []; // Bernilai true jika kepingan berada di kedudukan yang betul
@@ -589,28 +673,31 @@
         function endGame() {
             isPlaying = false;
             clearInterval(timerInterval);
-            
+
             const finalScoreText = document.getElementById('finalScoreText');
             const scoreEvaluation = document.getElementById('scoreEvaluation');
             const modalMsg = document.getElementById('modalMsg');
+            const modalTitle = document.getElementById('modalTitle');
 
             finalScoreText.textContent = score;
+            // Run only ends via the timer in this game, so the canonical title is TIME'S UP!
+            modalTitle.textContent = COPY.timeUp;
 
-            // Penilaian berdasarkan pencapaian sasaran 500 skor
+            // Score evaluation tiers
             if (score >= 500) {
-                modalMsg.textContent = "Hebat sekali! Anda adalah Juara Digital Sebenar!";
-                scoreEvaluation.textContent = "🎉 LUAR BIASA! Anda Berjaya Melepasi Sasaran 500 Skor!";
+                modalMsg.textContent = COPY.modalMsgHigh;
+                scoreEvaluation.textContent = COPY.evalHigh;
                 scoreEvaluation.className = "text-sm mt-3 font-bold text-green-400 uppercase tracking-wider";
             } else if (score >= 300) {
-                modalMsg.textContent = "Sangat bagus! Anda hampir mencapai sasaran skor penuh!";
-                scoreEvaluation.textContent = "👍 SANGAT BAGUS! Sikit lagi untuk melepasi 500 skor!";
+                modalMsg.textContent = COPY.modalMsgMid;
+                scoreEvaluation.textContent = COPY.evalMid;
                 scoreEvaluation.className = "text-sm mt-3 font-bold text-yellow-400 uppercase tracking-wider";
             } else {
-                modalMsg.textContent = "Usaha yang baik! Cuba lagi untuk mengasah kemahiran anda.";
-                scoreEvaluation.textContent = "💪 Terus mencuba untuk mencapai sasaran 500 skor!";
+                modalMsg.textContent = COPY.modalMsgLow;
+                scoreEvaluation.textContent = COPY.evalLow;
                 scoreEvaluation.className = "text-sm mt-3 font-bold text-red-400 uppercase tracking-wider";
             }
-            
+
             gameOverModal.classList.remove('hidden');
         }
 
@@ -628,9 +715,10 @@
             roundDisplay.textContent = '1';
         }
 
-        // Inisialisasi papan kosong semasa pertama kali dimuatkan
+        // Initialize empty board on first load
+        applyCopy();
         boardState = Array.from({length: TOTAL_PIECES}, (_, i) => i);
-        currentImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='; // piksel lut sinar
+        currentImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='; // transparent pixel
         generateBoard();
     </script>
 </body>

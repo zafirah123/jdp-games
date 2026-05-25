@@ -83,16 +83,22 @@
     top: 16px; right: 16px;
     background: rgba(2, 13, 38, 0.85);
     border: 2px solid #FFD633;
-    border-radius: 50%;
-    width: 40px; height: 40px;
+    border-radius: 999px;
+    height: 40px;
     color: #FFD633;
     cursor: pointer;
-    padding: 8px;
+    padding: 4px 12px 4px 6px;
     display: flex;
     align-items: center; justify-content: center;
+    gap: 6px;
     z-index: 30;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
   }
-  .mute svg { width: 100%; height: 100%; fill: currentColor; }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; flex-shrink: 0; }
+  .mute .mute-label { line-height: 1; white-space: nowrap; }
 
   /* Overlays (menu + game over) */
   .overlay {
@@ -202,6 +208,7 @@
 
 <button id="muteBtn" class="mute" aria-label="Toggle sound">
   <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+  <span class="mute-label" id="muteLabel"></span>
 </button>
 
 <div id="hud" class="hidden">
@@ -209,32 +216,85 @@
     <div id="scorePill" class="pill">0 / 500</div>
     <div id="timerPill" class="pill timer">3:00</div>
   </div>
-  <div id="streakBadge" class="badge hidden">STREAK x5</div>
+  <div id="streakBadge" class="badge hidden"></div>
 </div>
 
 <div id="menu" class="overlay">
   <div class="card">
     <h1>Susun</h1>
-    <p class="sub">Stack as high as you can in 3 minutes.</p>
-    <p class="cap">Max score: <b>500</b></p>
+    <p class="sub" id="menuSub"></p>
+    <p class="cap" id="menuCap"></p>
     <p class="best" id="bestText">&nbsp;</p>
-    <button id="startBtn" class="cta">Start</button>
-    <p class="hint">Tap, click, or press <kbd>Space</kbd></p>
+    <button id="startBtn" class="cta"></button>
+    <p class="hint" id="menuHint"></p>
   </div>
 </div>
 
 <div id="gameOver" class="overlay hidden">
   <div class="card">
-    <h2 id="goTitle">Time's up!</h2>
-    <div id="goNewBest" class="hidden"><span class="new-best">NEW BEST!</span></div>
-    <div id="goMaxBadge" class="hidden"><span class="max-badge">500 / 500 — MAX</span></div>
+    <h2 id="goTitle"></h2>
+    <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
+    <div id="goMaxBadge" class="hidden"><span class="max-badge" id="maxBadgeLabel">500 / 500 — MAX</span></div>
     <div id="finalStats" class="stats"></div>
-    <button id="playAgainBtn" class="cta">Play Again</button>
+    <button id="playAgainBtn" class="cta"></button>
   </div>
 </div>
 
 <script>
 'use strict';
+
+// =============================================================================
+// i18n — ?lang=ms switches the game's copy to Bahasa Melayu, English otherwise.
+// =============================================================================
+const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    start: 'START GAME',
+    timeUp: "TIME'S UP!",
+    gameOver: 'GAME OVER',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    roundMiss: 'MISSED!',
+    menuSub: 'Stack as high as you can in 3 minutes.',
+    menuCap: 'Max score: <b>500</b>',
+    menuHint: 'Tap, click, or press <kbd>Space</kbd>',
+    playAgain: 'PLAY AGAIN',
+    newBest: 'NEW BEST!',
+    maxBadge: '500 / 500 — MAX',
+    streak: 'STREAK',
+    perfectSuffix: 'PERFECT!',
+    bestPrefix: 'Best',
+    statScore: 'Score',
+    statBlocks: 'Blocks placed',
+    statStreak: 'Longest streak',
+    statHeight: 'Tower height',
+    statHeightUnit: 'blocks',
+    statBest: 'Best',
+  },
+  ms: {
+    start: 'MULA MAIN',
+    timeUp: 'MASA TAMAT!',
+    gameOver: 'PERMAINAN TAMAT',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    roundMiss: 'TERLEPAS!',
+    menuSub: 'Susun setinggi mungkin dalam 3 minit.',
+    menuCap: 'Skor maksimum: <b>500</b>',
+    menuHint: 'Ketuk, klik, atau tekan <kbd>Space</kbd>',
+    playAgain: 'MAIN SEMULA',
+    newBest: 'REKOD BAHARU!',
+    maxBadge: '500 / 500 — MAKS',
+    streak: 'RENTETAN',
+    perfectSuffix: 'SEMPURNA!',
+    bestPrefix: 'Terbaik',
+    statScore: 'Skor',
+    statBlocks: 'Blok disusun',
+    statStreak: 'Rentetan terpanjang',
+    statHeight: 'Ketinggian menara',
+    statHeightUnit: 'blok',
+    statBest: 'Terbaik',
+  },
+}[LANG];
 
 // =============================================================================
 // CONFIG — all tunables live here
@@ -278,16 +338,31 @@ const dom = {
   timerPill: document.getElementById('timerPill'),
   streakBadge: document.getElementById('streakBadge'),
   muteBtn: document.getElementById('muteBtn'),
+  muteLabel: document.getElementById('muteLabel'),
   menu: document.getElementById('menu'),
+  menuSub: document.getElementById('menuSub'),
+  menuCap: document.getElementById('menuCap'),
+  menuHint: document.getElementById('menuHint'),
   startBtn: document.getElementById('startBtn'),
   bestText: document.getElementById('bestText'),
   gameOver: document.getElementById('gameOver'),
   goTitle: document.getElementById('goTitle'),
   goNewBest: document.getElementById('goNewBest'),
+  newBestLabel: document.getElementById('newBestLabel'),
   goMaxBadge: document.getElementById('goMaxBadge'),
+  maxBadgeLabel: document.getElementById('maxBadgeLabel'),
   finalStats: document.getElementById('finalStats'),
   playAgainBtn: document.getElementById('playAgainBtn'),
 };
+
+// Apply localized copy into the DOM up front.
+dom.menuSub.textContent = COPY.menuSub;
+dom.menuCap.innerHTML = COPY.menuCap;
+dom.menuHint.innerHTML = COPY.menuHint;
+dom.startBtn.textContent = COPY.start;
+dom.playAgainBtn.textContent = COPY.playAgain;
+dom.newBestLabel.textContent = COPY.newBest;
+dom.maxBadgeLabel.textContent = COPY.maxBadge;
 
 // =============================================================================
 // Sandbox-safe storage
@@ -572,7 +647,7 @@ function onPerfect(block) {
 
   state.floaters.push({
     x: block.x, y: block.y + block.h + 30, z: block.z,
-    text: `+${points} PERFECT!`,
+    text: `+${points} ${COPY.perfectSuffix}`,
     t: 0, color: '#FFE258', size: 20,
   });
   state.flashes.push({ x: block.x, y: block.y + block.h, z: block.z, t: 0 });
@@ -669,7 +744,7 @@ function updateHud() {
   dom.timerPill.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
   if (state.streak >= CONFIG.STREAK_TIER_1) {
     dom.streakBadge.classList.remove('hidden');
-    dom.streakBadge.textContent = `STREAK x${state.streak}`;
+    dom.streakBadge.textContent = `${COPY.streak} x${state.streak}`;
   } else {
     dom.streakBadge.classList.add('hidden');
   }
@@ -823,16 +898,16 @@ function endGame(reason) {
     storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
   }
 
-  dom.goTitle.textContent = reason === 'miss' ? 'Missed!' : "Time's up!";
+  dom.goTitle.textContent = reason === 'miss' ? COPY.roundMiss : COPY.timeUp;
   dom.goMaxBadge.classList.toggle('hidden', state.score < CONFIG.MAX_SCORE);
   dom.goNewBest.classList.toggle('hidden', !isNewBest);
 
   dom.finalStats.innerHTML =
-    `<div class="label">Score</div><div class="value">${state.score}</div>` +
-    `<div class="label">Blocks placed</div><div class="value">${state.blocksPlaced}</div>` +
-    `<div class="label">Longest streak</div><div class="value">${state.bestStreak}</div>` +
-    `<div class="label">Tower height</div><div class="value">${state.blocksPlaced} blocks</div>` +
-    `<div class="label">Best</div><div class="value">${state.best}</div>`;
+    `<div class="label">${COPY.statScore}</div><div class="value">${state.score}</div>` +
+    `<div class="label">${COPY.statBlocks}</div><div class="value">${state.blocksPlaced}</div>` +
+    `<div class="label">${COPY.statStreak}</div><div class="value">${state.bestStreak}</div>` +
+    `<div class="label">${COPY.statHeight}</div><div class="value">${state.blocksPlaced} ${COPY.statHeightUnit}</div>` +
+    `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
 
   // Brief delay on miss so the death animation reads
   setTimeout(() => {
@@ -871,10 +946,12 @@ function updateMuteUI() {
   svg.innerHTML = state.muted
     ? '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3zm17.59-7L17 5.59 13.41 2 12 3.41l3.59 3.59L12 10.59 13.41 12 17 8.41 20.59 12 22 10.59 18.41 7 22 3.41z"/>'
     : '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
+  // Label shows current state — muted == AUDIO OFF, unmuted == AUDIO ON.
+  dom.muteLabel.textContent = state.muted ? COPY.audioOff : COPY.audioOn;
 }
 
 function showBest() {
-  if (state.best > 0) dom.bestText.innerHTML = `Best: <b>${state.best}</b>`;
+  if (state.best > 0) dom.bestText.innerHTML = `${COPY.bestPrefix}: <b>${state.best}</b>`;
   else dom.bestText.innerHTML = '&nbsp;';
 }
 

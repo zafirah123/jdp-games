@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Juara Kata</title>
+    <title>Word Champion</title>
     <!-- Tailwind CSS (Sebagai tambahan, jika disekat pun CSS fallback di bawah akan ambil alih) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700&display=swap" rel="stylesheet">
@@ -217,37 +217,37 @@
         <!-- Header & Scores Panel (shrink-0) -->
         <div class="w-full flex flex-col gap-2 shrink-0">
             <div class="w-full flex justify-between items-center">
-                <h1 class="text-2xl md:text-3xl title-font text-yellow-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wide shrink-0">
-                    JUARA KATA
+                <h1 class="text-2xl md:text-3xl title-font text-yellow-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wide shrink-0" data-i18n="title">
+                    WORD CHAMPION
                 </h1>
-                
+
                 <!-- Syarat & Peraturan Tooltip -->
                 <div class="flex items-center gap-2">
                     <div class="relative tooltip-container">
                         <button class="glass-panel px-3 py-1 rounded-xl text-xs font-bold text-yellow-400 flex items-center gap-1 active:scale-95 transition-transform shadow-md">
-                            <span>ⓘ Syarat</span>
+                            <span data-i18n="rulesBtn">ⓘ Rules</span>
                         </button>
                         <!-- Tooltip Box (Contains all system requirements) -->
                         <div class="tooltip-box absolute right-[-50px] top-9 w-64 p-4 rounded-xl glass-panel text-xs text-white z-50 pointer-events-none opacity-0 transform translate-y-1 transition-all duration-300 shadow-2xl border-yellow-400/50">
-                            <p class="font-bold text-yellow-400 mb-2 border-b border-yellow-400/20 pb-1">📜 SYARAT & PERATURAN PERMAINAN</p>
+                            <p class="font-bold text-yellow-400 mb-2 border-b border-yellow-400/20 pb-1" data-i18n="rulesTitle">📜 GAME RULES</p>
                             <ul class="space-y-1.5 text-gray-200">
-                                <li>⏱️ <strong>Had Masa:</strong> 3 Minit permainan sahaja.</li>
-                                <li>🎯 <strong>Target Skor:</strong> Lebih kurang 500 mata.</li>
-                                <li>💡 <strong>Petunjuk (Hint):</strong> Maksimum <span class="text-yellow-400 font-bold">3 KALI</span> setiap permainan (Kos 5 mata).</li>
-                                <li>📉 <strong>Denda Guna Petunjuk:</strong> Perkataan yang diselesaikan dengan bantuan petunjuk hanya mendapat <span class="text-orange-400 font-bold">+5 mata</span> (Berbanding +15 mata tanpa petunjuk).</li>
-                                <li>⚠️ <strong>Papan Baru:</strong> Denda <span class="text-red-400 font-bold">-30 mata</span> jika ditukar tanpa mencari jawapan pertama.</li>
-                                <li>☘️ <strong>Bonus Kata:</strong> +5 mata untuk perkataan alternatif.</li>
-                                <li>🏆 <strong>Selesai Papan:</strong> +50 mata bonus papan.</li>
+                                <li data-i18n-html="ruleTime">⏱️ <strong>Time Limit:</strong> 3 minutes per round.</li>
+                                <li data-i18n-html="ruleTarget">🎯 <strong>Target Score:</strong> Around 500 points.</li>
+                                <li data-i18n-html="ruleHint">💡 <strong>Hint:</strong> Maximum <span class="text-yellow-400 font-bold">3 TIMES</span> per game (Costs 5 points).</li>
+                                <li data-i18n-html="ruleHintPenalty">📉 <strong>Hint Penalty:</strong> Words solved using a hint only earn <span class="text-orange-400 font-bold">+5 points</span> (vs. +15 without a hint).</li>
+                                <li data-i18n-html="ruleNewBoard">⚠️ <strong>New Board:</strong> <span class="text-red-400 font-bold">-30 points</span> penalty if you skip before finding any word.</li>
+                                <li data-i18n-html="ruleBonus">☘️ <strong>Bonus Words:</strong> +5 points for alternative words.</li>
+                                <li data-i18n-html="ruleComplete">🏆 <strong>Board Complete:</strong> +50 board bonus points.</li>
                             </ul>
                         </div>
                     </div>
 
                     <!-- Regenerate Board Button -->
-                    <button id="regen-btn" class="glass-panel px-3 py-1 rounded-xl text-xs font-bold text-yellow-400 flex items-center gap-1 active:scale-95 transition-transform shadow-md" title="Mula Papan Baru (Denda -30 jika tiada jawapan)">
+                    <button id="regen-btn" class="glass-panel px-3 py-1 rounded-xl text-xs font-bold text-yellow-400 flex items-center gap-1 active:scale-95 transition-transform shadow-md" data-i18n-title="newBoardTooltip" title="Start a new board (-30 penalty if no answers found)">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <span>Papan Baru</span>
+                        <span data-i18n="newBoardBtn">New Board</span>
                     </button>
                 </div>
             </div>
@@ -256,17 +256,17 @@
             <div class="grid grid-cols-3 gap-2">
                 <!-- Board Score -->
                 <div class="glass-panel p-1.5 rounded-xl text-center border-yellow-500/30">
-                    <div class="text-[9px] text-yellow-300 font-bold uppercase tracking-wider">Skor Papan</div>
+                    <div class="text-[9px] text-yellow-300 font-bold uppercase tracking-wider" data-i18n="boardScore">Board Score</div>
                     <div class="text-xs md:text-sm font-black text-white" id="board-score-display">0</div>
                 </div>
                 <!-- Bonus Score -->
                 <div class="glass-panel p-1.5 rounded-xl text-center border-yellow-500/30">
-                    <div class="text-[9px] text-yellow-300 font-bold uppercase tracking-wider">Skor Bonus</div>
+                    <div class="text-[9px] text-yellow-300 font-bold uppercase tracking-wider" data-i18n="bonusScore">Bonus Score</div>
                     <div class="text-xs md:text-sm font-black text-white" id="bonus-score-display">0</div>
                 </div>
                 <!-- Total Score -->
                 <div class="glass-panel p-1.5 rounded-xl text-center border-yellow-400 bg-yellow-950/40">
-                    <div class="text-[9px] text-yellow-400 font-bold uppercase tracking-wider">Jumlah Skor</div>
+                    <div class="text-[9px] text-yellow-400 font-bold uppercase tracking-wider" data-i18n="totalScoreShort">Total Score</div>
                     <div class="text-xs md:text-sm font-black text-yellow-400" id="total-score-display">0</div>
                 </div>
             </div>
@@ -310,19 +310,19 @@
             <div class="flex justify-between items-center w-full max-w-[190px] md:max-w-[215px] px-2 shrink-0 mt-1">
                 
                 <!-- Shuffle Button (Kiri) -->
-                <button id="shuffle-btn" class="w-11 h-11 rounded-full glass-panel flex flex-col items-center justify-center text-white active:scale-90 transition-transform shadow-lg border-yellow-500/40 hover:border-yellow-400" title="Acak Huruf">
+                <button id="shuffle-btn" class="w-11 h-11 rounded-full glass-panel flex flex-col items-center justify-center text-white active:scale-90 transition-transform shadow-lg border-yellow-500/40 hover:border-yellow-400" data-i18n-title="shuffleTooltip" title="Shuffle Letters">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    <span class="text-[7px] font-black text-yellow-400 uppercase tracking-widest mt-0.5">Acak</span>
+                    <span class="text-[7px] font-black text-yellow-400 uppercase tracking-widest mt-0.5" data-i18n="shuffleBtn">Shuffle</span>
                 </button>
 
                 <!-- Hint Button (Kanan - Petunjuk Mendedahkan Huruf) -->
-                <button id="hint-btn" class="w-11 h-11 rounded-full glass-panel flex flex-col items-center justify-center text-yellow-400 active:scale-90 transition-transform shadow-lg border-yellow-400/60 hover:border-yellow-300 relative" title="Petunjuk (Had: 3 kali, Kos: 5 Mata)">
+                <button id="hint-btn" class="w-11 h-11 rounded-full glass-panel flex flex-col items-center justify-center text-yellow-400 active:scale-90 transition-transform shadow-lg border-yellow-400/60 hover:border-yellow-300 relative" data-i18n-title="hintTooltip" title="Hint (Limit: 3 times, Cost: 5 points)">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
-                    <span class="text-[7px] font-black text-yellow-400 uppercase tracking-widest mt-0.5">Petunjuk</span>
+                    <span class="text-[7px] font-black text-yellow-400 uppercase tracking-widest mt-0.5" data-i18n="hintBtn">Hint</span>
                     <!-- Hint Badge Counter -->
                     <span id="hint-counter-badge" class="absolute -top-1 -right-1 font-extrabold text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded-full border border-yellow-400/50 shadow-md">3/3</span>
                 </button>
@@ -335,13 +335,13 @@
     <!-- Alert / Bonus Modal -->
     <div id="message-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 opacity-0 pointer-events-none">
         <div class="glass-panel p-8 rounded-2xl flex flex-col items-center transform scale-90 transition-transform duration-300 mx-4" id="modal-content">
-            <h2 class="text-4xl title-font text-yellow-400 mb-2 drop-shadow-md">TAHNIAH!</h2>
-            <p class="text-white text-lg mb-4">Papan Selesai</p>
-            <div class="bg-yellow-400 text-red-900 font-bold text-3xl px-6 py-3 rounded-full mb-6 shadow-[0_0_15px_rgba(255,215,0,0.5)]">
-                +50 BONUS PAPAN
+            <h2 class="text-4xl title-font text-yellow-400 mb-2 drop-shadow-md" data-i18n="congrats">CONGRATULATIONS!</h2>
+            <p class="text-white text-lg mb-4" data-i18n="boardComplete">Board Complete</p>
+            <div class="bg-yellow-400 text-red-900 font-bold text-3xl px-6 py-3 rounded-full mb-6 shadow-[0_0_15px_rgba(255,215,0,0.5)]" data-i18n="boardBonus">
+                +50 BOARD BONUS
             </div>
-            <button id="next-btn" class="bg-gradient-to-r from-red-600 to-red-800 text-white font-bold py-3 px-8 rounded-full border-2 border-yellow-400 shadow-lg active:scale-95 transition-all">
-                Teruskan
+            <button id="next-btn" class="bg-gradient-to-r from-red-600 to-red-800 text-white font-bold py-3 px-8 rounded-full border-2 border-yellow-400 shadow-lg active:scale-95 transition-all" data-i18n="continueBtn">
+                Continue
             </button>
         </div>
     </div>
@@ -349,40 +349,175 @@
     <!-- Game Over / Time's Up Modal (Kini boleh discrol untuk menyemak jawapan penuh) -->
     <div id="gameover-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 opacity-0 pointer-events-none transition-all duration-300">
         <div class="glass-panel p-6 rounded-2xl flex flex-col items-center transform scale-90 transition-transform duration-300 mx-4 w-full max-w-sm max-h-[90vh] overflow-y-auto custom-scrollbar" id="gameover-content">
-            <h2 class="text-3xl title-font text-red-500 mb-1 drop-shadow-md text-center">TAMAT MASA!</h2>
-            <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-4">Permainan Selesai</p>
-            
+            <h2 class="text-3xl title-font text-red-500 mb-1 drop-shadow-md text-center" data-i18n="timeUp">TIME'S UP!</h2>
+            <p class="text-yellow-400 text-xs font-bold uppercase tracking-widest mb-4" data-i18n="roundComplete">Round Complete</p>
+
             <!-- Result Breakdown -->
             <div class="w-full flex flex-col gap-2 mb-4 bg-black/20 p-3 rounded-xl border border-yellow-500/10 text-xs">
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-300">Skor Papan</span>
+                    <span class="text-gray-300" data-i18n="boardScore">Board Score</span>
                     <span class="text-white font-bold" id="final-board-score">0</span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-gray-300">Skor Bonus</span>
+                    <span class="text-gray-300" data-i18n="bonusScore">Bonus Score</span>
                     <span class="text-white font-bold" id="final-bonus-score">0</span>
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-yellow-500/20">
-                    <span class="text-yellow-400 font-black">JUMLAH SKOR</span>
+                    <span class="text-yellow-400 font-black" data-i18n="totalScore">TOTAL SCORE</span>
                     <span class="text-yellow-400 font-black text-xl" id="final-total-score">0</span>
                 </div>
             </div>
 
             <!-- Jawapan Penuh Section (Boleh Diskrol Secara Menarik) -->
             <div class="w-full text-left mb-6">
-                <h3 class="text-yellow-400 font-bold text-sm mb-2 uppercase tracking-wide border-b border-yellow-500/20 pb-1">🔑 Senarai Jawapan Penuh</h3>
+                <h3 class="text-yellow-400 font-bold text-sm mb-2 uppercase tracking-wide border-b border-yellow-500/20 pb-1" data-i18n="fullAnswerList">🔑 Full Answer List</h3>
                 <div id="final-answers-list" class="max-h-48 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
                     <!-- Dynamic content generated by JS will appear here -->
                 </div>
             </div>
-            
-            <button id="restart-btn" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-red-950 font-black text-lg py-3 px-8 rounded-full border-2 border-white shadow-lg active:scale-95 transition-all">
-                MAIN SEMULA
+
+            <button id="restart-btn" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-red-950 font-black text-lg py-3 px-8 rounded-full border-2 border-white shadow-lg active:scale-95 transition-all" data-i18n="playAgain">
+                PLAY AGAIN
             </button>
         </div>
     </div>
 
     <script>
+        // --- i18n: language switch via ?lang=ms (default: English) ---
+        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+        const COPY = {
+            en: {
+                // Five canonical strings
+                start: 'START GAME',
+                timeUp: "TIME'S UP!",
+                gameOver: 'GAME OVER',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                // Page chrome
+                docTitle: 'Word Champion',
+                title: 'WORD CHAMPION',
+                rulesBtn: 'ⓘ Rules',
+                rulesTitle: '📜 GAME RULES',
+                ruleTime: '⏱️ <strong>Time Limit:</strong> 3 minutes per round.',
+                ruleTarget: '🎯 <strong>Target Score:</strong> Around 500 points.',
+                ruleHint: '💡 <strong>Hint:</strong> Maximum <span class="text-yellow-400 font-bold">3 TIMES</span> per game (Costs 5 points).',
+                ruleHintPenalty: '📉 <strong>Hint Penalty:</strong> Words solved using a hint only earn <span class="text-orange-400 font-bold">+5 points</span> (vs. +15 without a hint).',
+                ruleNewBoard: '⚠️ <strong>New Board:</strong> <span class="text-red-400 font-bold">-30 points</span> penalty if you skip before finding any word.',
+                ruleBonus: '☘️ <strong>Bonus Words:</strong> +5 points for alternative words.',
+                ruleComplete: '🏆 <strong>Board Complete:</strong> +50 board bonus points.',
+                newBoardBtn: 'New Board',
+                newBoardTooltip: 'Start a new board (-30 penalty if no answers found)',
+                boardScore: 'Board Score',
+                bonusScore: 'Bonus Score',
+                totalScoreShort: 'Total Score',
+                totalScore: 'TOTAL SCORE',
+                shuffleBtn: 'Shuffle',
+                shuffleTooltip: 'Shuffle Letters',
+                hintBtn: 'Hint',
+                hintTooltip: 'Hint (Limit: 3 times, Cost: 5 points)',
+                // Board-complete modal
+                congrats: 'CONGRATULATIONS!',
+                boardComplete: 'Board Complete',
+                boardBonus: '+50 BOARD BONUS',
+                continueBtn: 'Continue',
+                // Game-over modal
+                roundComplete: 'Round Complete',
+                fullAnswerList: '🔑 Full Answer List',
+                playAgain: 'PLAY AGAIN',
+                mainAnswers: '🎯 Main Board Answers:',
+                bonusAnswers: '☘️ Alternative Bonus Words:',
+                found: '✓ Found',
+                missed: '✗ Missed',
+                foundBonus: '✓ Found (+5)',
+                notFound: 'Not Found',
+                // Floaters / inline feedback
+                hintLimitReached: 'Hint Limit Reached (Max 3)!',
+                need5Points: 'Need 5 Points!',
+                minus5Hint: '-5 Hint',
+                noEmptySlot: 'No empty slot!',
+                minus30Penalty: '-30 Penalty',
+                newBoard: 'New Board!',
+                plus5BoardHint: '+5 Board (Used Hint)',
+                plus15Board: '+15 Board',
+                plus5Bonus: (word) => `+5 Bonus (${word})`,
+                alreadyFound: 'Already Found',
+            },
+            ms: {
+                // Five canonical strings
+                start: 'MULA MAIN',
+                timeUp: 'MASA TAMAT!',
+                gameOver: 'PERMAINAN TAMAT',
+                audioOn: 'AUDIO ON',
+                audioOff: 'AUDIO OFF',
+                // Page chrome
+                docTitle: 'Juara Kata',
+                title: 'JUARA KATA',
+                rulesBtn: 'ⓘ Syarat',
+                rulesTitle: '📜 SYARAT & PERATURAN PERMAINAN',
+                ruleTime: '⏱️ <strong>Had Masa:</strong> 3 Minit permainan sahaja.',
+                ruleTarget: '🎯 <strong>Target Skor:</strong> Lebih kurang 500 mata.',
+                ruleHint: '💡 <strong>Petunjuk (Hint):</strong> Maksimum <span class="text-yellow-400 font-bold">3 KALI</span> setiap permainan (Kos 5 mata).',
+                ruleHintPenalty: '📉 <strong>Denda Guna Petunjuk:</strong> Perkataan yang diselesaikan dengan bantuan petunjuk hanya mendapat <span class="text-orange-400 font-bold">+5 mata</span> (Berbanding +15 mata tanpa petunjuk).',
+                ruleNewBoard: '⚠️ <strong>Papan Baru:</strong> Denda <span class="text-red-400 font-bold">-30 mata</span> jika ditukar tanpa mencari jawapan pertama.',
+                ruleBonus: '☘️ <strong>Bonus Kata:</strong> +5 mata untuk perkataan alternatif.',
+                ruleComplete: '🏆 <strong>Selesai Papan:</strong> +50 mata bonus papan.',
+                newBoardBtn: 'Papan Baru',
+                newBoardTooltip: 'Mula Papan Baru (Denda -30 jika tiada jawapan)',
+                boardScore: 'Skor Papan',
+                bonusScore: 'Skor Bonus',
+                totalScoreShort: 'Jumlah Skor',
+                totalScore: 'JUMLAH SKOR',
+                shuffleBtn: 'Acak',
+                shuffleTooltip: 'Acak Huruf',
+                hintBtn: 'Petunjuk',
+                hintTooltip: 'Petunjuk (Had: 3 kali, Kos: 5 Mata)',
+                // Board-complete modal
+                congrats: 'TAHNIAH!',
+                boardComplete: 'Papan Selesai',
+                boardBonus: '+50 BONUS PAPAN',
+                continueBtn: 'Teruskan',
+                // Game-over modal
+                roundComplete: 'Permainan Selesai',
+                fullAnswerList: '🔑 Senarai Jawapan Penuh',
+                playAgain: 'MAIN SEMULA',
+                mainAnswers: '🎯 Jawapan Utama Papan:',
+                bonusAnswers: '☘️ Perkataan Bonus Alternatif:',
+                found: '✓ Ditemui',
+                missed: '✗ Terlepas',
+                foundBonus: '✓ Ditemui (+5)',
+                notFound: 'Tidak Ditemui',
+                // Floaters / inline feedback
+                hintLimitReached: 'Had Petunjuk Tamat (Max 3)!',
+                need5Points: 'Perlu 5 Mata!',
+                minus5Hint: '-5 Petunjuk',
+                noEmptySlot: 'Tiada slot kosong!',
+                minus30Penalty: '-30 Penalti',
+                newBoard: 'Papan Baru!',
+                plus5BoardHint: '+5 Papan (Guna Petunjuk)',
+                plus15Board: '+15 Papan',
+                plus5Bonus: (word) => `+5 Bonus (${word})`,
+                alreadyFound: 'Sudah Ditemui',
+            },
+        }[LANG];
+
+        // Apply translations to all static elements marked with data-i18n / data-i18n-html / data-i18n-title
+        function applyI18n() {
+            document.title = COPY.docTitle;
+            document.documentElement.lang = LANG;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (COPY[key] != null) el.textContent = COPY[key];
+            });
+            document.querySelectorAll('[data-i18n-html]').forEach(el => {
+                const key = el.getAttribute('data-i18n-html');
+                if (COPY[key] != null) el.innerHTML = COPY[key];
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const key = el.getAttribute('data-i18n-title');
+                if (COPY[key] != null) el.setAttribute('title', COPY[key]);
+            });
+        }
+
         // Kosa kata meluas bertema sekolah & nilai-nilai murni (Diperkukuh 100% sepadan huruf)
         const levels = [
             { 
@@ -508,6 +643,7 @@
 
         // Initialization
         function initGame() {
+            applyI18n();
             resetGlobalScores();
             generateLevelPool();
             loadNextLevelFromPool();
@@ -603,7 +739,7 @@
             // 1. Kategori Perkataan Utama
             const mainHeader = document.createElement('div');
             mainHeader.className = 'text-yellow-400 font-bold text-[11px] uppercase tracking-wider mb-1 mt-1';
-            mainHeader.innerText = '🎯 Jawapan Utama Papan:';
+            mainHeader.innerText = COPY.mainAnswers;
             finalAnswersList.appendChild(mainHeader);
 
             currentLevel.words.forEach(word => {
@@ -613,7 +749,7 @@
                 row.innerHTML = `
                     <span class="font-bold tracking-wider uppercase ${isFound ? 'text-green-400' : 'text-gray-400 line-through'}">${word}</span>
                     <span class="text-[9px] px-1.5 py-0.5 rounded font-black ${isFound ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}">
-                        ${isFound ? '✓ Ditemui' : '✗ Terlepas'}
+                        ${isFound ? COPY.found : COPY.missed}
                     </span>
                 `;
                 finalAnswersList.appendChild(row);
@@ -622,7 +758,7 @@
             // 2. Kategori Perkataan Bonus
             const bonusHeader = document.createElement('div');
             bonusHeader.className = 'text-green-400 font-bold text-[11px] uppercase tracking-wider mb-1 mt-3';
-            bonusHeader.innerText = '☘️ Perkataan Bonus Alternatif:';
+            bonusHeader.innerText = COPY.bonusAnswers;
             finalAnswersList.appendChild(bonusHeader);
 
             currentLevel.bonusWords.forEach(word => {
@@ -632,7 +768,7 @@
                 row.innerHTML = `
                     <span class="font-bold tracking-wider uppercase ${isFound ? 'text-green-400' : 'text-gray-500'}">${word}</span>
                     <span class="text-[9px] px-1.5 py-0.5 rounded font-black ${isFound ? 'bg-green-500/10 text-green-400' : 'bg-gray-800 text-gray-500'}">
-                        ${isFound ? '✓ Ditemui (+5)' : 'Tidak Ditemui'}
+                        ${isFound ? COPY.foundBonus : COPY.notFound}
                     </span>
                 `;
                 finalAnswersList.appendChild(row);
@@ -766,7 +902,7 @@
             
             // 1. Periksa had baki petunjuk
             if (hintsRemaining <= 0) {
-                showFloatingScore("Had Petunjuk Tamat (Max 3)!", "#EF4444");
+                showFloatingScore(COPY.hintLimitReached, "#EF4444");
                 hintBtn.classList.add('animate-shake');
                 setTimeout(() => hintBtn.classList.remove('animate-shake'), 400);
                 return;
@@ -774,7 +910,7 @@
 
             // 2. Periksa jika mata mencukupi
             if (totalScore < 5) {
-                showFloatingScore("Perlu 5 Mata!", "#EF4444");
+                showFloatingScore(COPY.need5Points, "#EF4444");
                 
                 // Animasi getar pada jumlah skor
                 totalScoreEl.classList.add('animate-shake');
@@ -804,7 +940,7 @@
                 // Tolak 5 mata kos petunjuk
                 totalScore -= 5;
                 updateScoresUI();
-                showFloatingScore("-5 Petunjuk", "#EF4444");
+                showFloatingScore(COPY.minus5Hint, "#EF4444");
 
                 // Pilih satu kotak secara rawak
                 const randomBox = targetBoxes[Math.floor(Math.random() * targetBoxes.length)];
@@ -812,7 +948,7 @@
                 randomBox.classList.add('animate-pop');
                 setTimeout(() => randomBox.classList.remove('animate-pop'), 400);
             } else {
-                showFloatingScore("Tiada slot kosong!", "var(--primary-gold)");
+                showFloatingScore(COPY.noEmptySlot, "var(--primary-gold)");
             }
         }
 
@@ -823,12 +959,12 @@
             if (foundWords.length === 0) {
                 totalScore = Math.max(0, totalScore - 30);
                 updateScoresUI();
-                showFloatingScore("-30 Penalti", "#EF4444");
-                
+                showFloatingScore(COPY.minus30Penalty, "#EF4444");
+
                 regenBtn.classList.add('animate-shake');
                 setTimeout(() => regenBtn.classList.remove('animate-shake'), 400);
             } else {
-                showFloatingScore("Papan Baru!", "#34D399");
+                showFloatingScore(COPY.newBoard, "#34D399");
             }
 
             loadNextLevelFromPool();
@@ -994,9 +1130,9 @@
                     updateScoresUI();
                     
                     if (usedHint) {
-                        showFloatingScore("+5 Papan (Guna Petunjuk)", "var(--primary-gold)");
+                        showFloatingScore(COPY.plus5BoardHint, "var(--primary-gold)");
                     } else {
-                        showFloatingScore("+15 Papan", "var(--primary-gold)");
+                        showFloatingScore(COPY.plus15Board, "var(--primary-gold)");
                     }
 
                     if (foundWords.length === currentLevel.words.length) {
@@ -1014,7 +1150,7 @@
                     bonusScore += 5;
                     totalScore += 5;
                     updateScoresUI();
-                    showFloatingScore(`+5 Bonus (${word})`, "#10B981");
+                    showFloatingScore(COPY.plus5Bonus(word), "#10B981");
                 } else {
                     playAlreadyFoundShake();
                 }
@@ -1029,7 +1165,7 @@
         }
 
         function playAlreadyFoundShake() {
-            previewEl.innerText = "Sudah Ditemui";
+            previewEl.innerText = COPY.alreadyFound;
             previewEl.classList.add('animate-shake');
             previewEl.style.opacity = '1';
             // Dilaraskan kepada 3 saat (3000ms) untuk kemudahan membaca pelajar

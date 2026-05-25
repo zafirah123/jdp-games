@@ -514,6 +514,30 @@ below. Skip the rest of this layout.
 > alpha. `sfx/` = one-shot. `bgm/` = looped. A new engineer never has to
 > ask where to put a new file.
 
+### Assets live inside the game's own folder
+
+**Every sprite, background, SFX, and BGM file a game loads at runtime
+must live inside that game's folder.** No cross-folder references, no
+hotlinks to the open internet, no repo-wide shared asset libraries. Each
+game is a self-contained, deployable unit.
+
+| | Path | Verdict |
+|---|---|---|
+| ❌ Cross-folder | `<img src="../flying-ruby/assets/sprites/pbot.webp">` | Couples two games that shouldn't know about each other. Renaming, moving, or deleting either game silently breaks the other. |
+| ❌ Internet hotlink | `this.load.image('pbot', 'https://example.com/pbot.webp')` | Breaks the moment the host changes a URL. Adds a DNS / TLS hop to the first paint. Risks loading content you haven't reviewed for §0.3 safety. |
+| ❌ Repo-wide shared folder | `<img src="/shared/pbot.webp">` | Same coupling problem as cross-folder, scaled up — a shared-asset rename breaks every consumer. |
+| ✅ In-folder relative | `<img src="./assets/sprites/pbot.webp">` | Self-contained, portable, deletable. What every JDP game already does. |
+
+**To reuse art from another game, copy the file in.** The ~80 KB on disk
+is cheaper than the coupling. Each game stays portable on its own and
+can be moved, renamed, or removed without breaking siblings.
+
+**The narrow exception: third-party libraries and web fonts.** Phaser
+from a CDN, Tailwind from a CDN, Google Fonts from a CDN — those are
+runtime dependencies of the engine / UI layer, not game content, and
+CLAUDE.md §0.1 already permits them. Sprites, backgrounds, SFX, and BGM
+are *not* in that category and must ship from inside the game folder.
+
 ### Format choices — and what each one saves you
 
 | Asset family | Format | Alternative | Saving | Why this format |
@@ -771,6 +795,9 @@ pattern from §08.
       play. Never implement as a counter clamp.
 - [ ] Identify which textures are art (mascot, currency, power-ups,
       background) and which are generated (obstacles, particles, glows).
+- [ ] Confirm every shipped asset (sprites, backgrounds, SFX, BGM) lives
+      inside this game's own folder. No cross-folder references, no
+      hotlinks. Copy assets in when reusing from another game.
 - [ ] Reserve a polish budget per interaction: input response, pickup
       feedback, death sequence, power-up activation.
 - [ ] Add a `?scene=` dev jump in BootScene from day one.

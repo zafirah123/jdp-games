@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#142149"/>
+      <stop offset="1" stop-color="#0A1330"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1F2D5C"/>
+      <stop offset="1" stop-color="#152045"/>
+    </linearGradient>
+    <linearGradient id="tileEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B3C72" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#0C1430" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="320" fill="url(#bg)"/>
+  <rect x="16" y="16" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="116" y="16" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="216" y="16" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="16" y="116" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="116" y="116" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="216" y="116" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="16" y="216" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="116" y="216" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+  <rect x="216" y="216" width="88" height="88" rx="16" fill="url(#tile)" stroke="url(#tileEdge)" stroke-width="1.2"/>
+</svg>

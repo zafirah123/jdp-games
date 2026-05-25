@@ -85,19 +85,31 @@ const CONFIG = {
     danger:    '#AF1726',         // Light Red
   },
 
-  // 3×3 cell colors — rainbow with JDP main colors at 0, 2, 5
-  // Pentatonic-major over 2 octaves (C D E G A C D E G) — cheerful, kid-friendly
+  // 3×3 cells — gem SVG inside a dark navy tile (grid.svg reference).
+  // Rainbow with JDP main colors at 0 (red), 2 (yellow), 5 (blue).
+  // Pentatonic-major over 2 octaves (C D E G A C D E G) — cheerful, kid-friendly.
   cells: [
-    { hue: '#9E131F', dim: '#3a0810', freq: 261.63 }, // 0 JDP Brick Red · C4
-    { hue: '#FF8A1E', dim: '#3a1f08', freq: 293.66 }, // 1 Orange         · D4
-    { hue: '#FFB603', dim: '#3a2a00', freq: 329.63 }, // 2 JDP Dark Yellow· E4
-    { hue: '#22C55E', dim: '#0a3a18', freq: 392.00 }, // 3 Green          · G4
-    { hue: '#14B8A6', dim: '#063a35', freq: 440.00 }, // 4 Teal           · A4
-    { hue: '#133B9F', dim: '#0a1a3a', freq: 523.25 }, // 5 JDP Blue       · C5
-    { hue: '#6366F1', dim: '#1a1a3a', freq: 587.33 }, // 6 Indigo         · D5
-    { hue: '#A855F7', dim: '#2a0a3a', freq: 659.25 }, // 7 Purple         · E5
-    { hue: '#EC4899', dim: '#3a0a26', freq: 783.99 }, // 8 Pink           · G5
+    { gem: 'red',    glow: '#FF4A57', freq: 261.63 }, // 0 JDP Brick Red · C4
+    { gem: 'orange', glow: '#FF8A1E', freq: 293.66 }, // 1 Orange         · D4
+    { gem: 'yellow', glow: '#FFD633', freq: 329.63 }, // 2 JDP Dark Yellow· E4
+    { gem: 'green',  glow: '#22C55E', freq: 392.00 }, // 3 Green          · G4
+    { gem: 'teal',   glow: '#2DD4BF', freq: 440.00 }, // 4 Teal           · A4
+    { gem: 'blue',   glow: '#3B82F6', freq: 523.25 }, // 5 JDP Blue       · C5
+    { gem: 'indigo', glow: '#818CF8', freq: 587.33 }, // 6 Indigo         · D5
+    { gem: 'purple', glow: '#C084FC', freq: 659.25 }, // 7 Purple         · E5
+    { gem: 'pink',   glow: '#F472B6', freq: 783.99 }, // 8 Pink           · G5
   ],
+
+  // Tile palette — matches assets/grid.svg
+  tile: {
+    fillTop:    '#1F2D5C',
+    fillBottom: '#152045',
+    edgeTop:    'rgba(43, 60, 114, 0.9)',
+    edgeBottom: 'rgba(12, 20, 48, 0.9)',
+    radius:     18,
+    gemPad:     0.12, // fraction of cell each side
+    idleAlpha:  0.32, // gem opacity when not lit — preserves spatial-color cue
+  },
 
   // Round timing table — sequence length 3..9, flash & gap shrinking
   rounds: [
@@ -137,6 +149,67 @@ const CONFIG = {
     mute: 'tap-tap-match:mute',
   },
 };
+
+// ============================================================
+// I18N — CLAUDE.md §6.4. ?lang=ms switches to Bahasa Melayu.
+// ============================================================
+const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    // canonical
+    start:    'START GAME',
+    timeUp:   "TIME'S UP!",
+    gameOver: 'GAME OVER',
+    audioOn:  'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    // game-specific
+    title:           'TAP TAP MATCH',
+    tagline1:        'Watch the sequence. Tap it back.',
+    tagline2:        '3 minutes. One number to beat.',
+    bestPrefix:      'Best',
+    scoreLabel:      'SCORE',
+    timeLabel:       'TIME',
+    roundFormat:     (round, len) => `Round ${round}  ·  Length ${len}`,
+    watchSequence:   'Watch the sequence',
+    tapMoreFormat:   (n) => `Tap ${n} more`,
+    nice:            'NICE!',
+    finalScore:      'Final Score',
+    newBest:         'NEW BEST!',
+    playAgain:       'PLAY AGAIN',
+    oops:            'OOPS!',
+    wrongTap:        'Wrong tap.',
+    continueQuestion:'Continue with your score?',
+    secsRemaining:   (s) => `${s}s remaining`,
+    continueBtn:     'CONTINUE',
+    giveUp:          'Tap outside to give up',
+  },
+  ms: {
+    start:    'MULA MAIN',
+    timeUp:   'MASA TAMAT!',
+    gameOver: 'PERMAINAN TAMAT',
+    audioOn:  'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    title:           'TAP TAP MATCH',
+    tagline1:        'Perhati urutan. Ketuk semula.',
+    tagline2:        '3 minit. Satu nombor untuk dikalahkan.',
+    bestPrefix:      'Terbaik',
+    scoreLabel:      'SKOR',
+    timeLabel:       'MASA',
+    roundFormat:     (round, len) => `Pusingan ${round}  ·  Panjang ${len}`,
+    watchSequence:   'Perhati urutan',
+    tapMoreFormat:   (n) => `Ketuk ${n} lagi`,
+    nice:            'BAGUS!',
+    finalScore:      'Skor Akhir',
+    newBest:         'REKOD BAHARU!',
+    playAgain:       'MAIN LAGI',
+    oops:            'ALAMAK!',
+    wrongTap:        'Ketukan salah.',
+    continueQuestion:'Sambung dengan skor anda?',
+    secsRemaining:   (s) => `${s}s tinggal`,
+    continueBtn:     'SAMBUNG',
+    giveUp:          'Ketuk di luar untuk berhenti',
+  },
+}[LANG];
 
 // ============================================================
 // HELPERS
@@ -337,6 +410,7 @@ function drawBackground() {
 
 function drawCell(idx, lit, scale = 1) {
   const c = CONFIG.cells[idx];
+  const t = CONFIG.tile;
   const r = cellRect(idx);
   const cx = r.x + r.w / 2;
   const cy = r.y + r.h / 2;
@@ -346,24 +420,53 @@ function drawCell(idx, lit, scale = 1) {
   ctx.save();
   ctx.translate(cx, cy);
 
+  // Glow halo under the tile when lit — the tile itself stays navy.
   if (lit) {
-    ctx.shadowColor = c.hue;
-    ctx.shadowBlur = 36;
+    ctx.shadowColor = c.glow;
+    ctx.shadowBlur = 38;
   }
-  ctx.fillStyle = lit ? c.hue : c.dim;
-  roundRect(-w / 2, -h / 2, w, h, 18);
+
+  // Tile fill: navy gradient from grid.svg.
+  const fill = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  fill.addColorStop(0, t.fillTop);
+  fill.addColorStop(1, t.fillBottom);
+  ctx.fillStyle = fill;
+  roundRect(-w / 2, -h / 2, w, h, t.radius);
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  if (lit) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
-    roundRect(-w / 2 + 10, -h / 2 + 10, w - 20, h * 0.32, 12);
-    ctx.fill();
+  // Gem inside — visible always (dim at rest, full when lit).
+  const gemImg = gemImages[c.gem];
+  if (gemImg && gemImg.complete && gemImg.naturalWidth > 0) {
+    const pad = w * t.gemPad;
+    const boxW = w - pad * 2;
+    const boxH = h - pad * 2;
+    // Gem viewBox is 1000×900; fit inside the padded box, preserving ratio.
+    const ratio = gemImg.naturalWidth / gemImg.naturalHeight;
+    let gemW = boxW;
+    let gemH = boxW / ratio;
+    if (gemH > boxH) { gemH = boxH; gemW = boxH * ratio; }
+
+    ctx.save();
+    ctx.globalAlpha = lit ? 1 : t.idleAlpha;
+    ctx.drawImage(gemImg, -gemW / 2, -gemH / 2, gemW, gemH);
+    ctx.restore();
+
+    // Lit specular: a small white sheen on top of the gem.
+    if (lit) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      roundRect(-w / 2 + 10, -h / 2 + 10, w - 20, h * 0.22, 10);
+      ctx.fill();
+    }
   }
 
-  ctx.lineWidth = lit ? 3 : 2;
-  ctx.strokeStyle = lit ? '#FFFFFF' : 'rgba(255, 255, 255, 0.08)';
-  roundRect(-w / 2, -h / 2, w, h, 18);
+  // Tile edge.
+  const edge = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  edge.addColorStop(0, lit ? c.glow : t.edgeTop);
+  edge.addColorStop(1, t.edgeBottom);
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = lit ? 2.5 : 1.5;
+  roundRect(-w / 2, -h / 2, w, h, t.radius);
   ctx.stroke();
 
   ctx.restore();
@@ -422,7 +525,7 @@ function drawHUD(time) {
   const urgent = live && secsLeft <= CONFIG.urgentSecs && secsLeft > 0;
 
   // Score pill (left)
-  drawPill(36, 70, 168, 56, CONFIG.palette.chrome, 'SCORE', String(state.score), CONFIG.palette.chromeHi);
+  drawPill(36, 70, 168, 56, CONFIG.palette.chrome, COPY.scoreLabel, String(state.score), CONFIG.palette.chromeHi);
 
   // Timer pill (right)
   const mm = Math.floor(secsLeft / 60);
@@ -431,7 +534,7 @@ function drawHUD(time) {
   const alpha = urgent ? (0.78 + 0.22 * Math.sin(time * 0.012)) : 1;
   ctx.save();
   ctx.globalAlpha = alpha;
-  drawPill(CONFIG.width - 36 - 168, 70, 168, 56, fill, 'TIME', `${mm}:${ss}`, '#FFFFFF');
+  drawPill(CONFIG.width - 36 - 168, 70, 168, 56, fill, COPY.timeLabel, `${mm}:${ss}`, '#FFFFFF');
   ctx.restore();
 
   // Round indicator
@@ -441,7 +544,7 @@ function drawHUD(time) {
     ctx.font = '600 13px Poppins, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`Round ${state.round}  ·  Length ${len}`, CONFIG.width / 2, 150);
+    ctx.fillText(COPY.roundFormat(state.round, len), CONFIG.width / 2, 150);
   }
 
   // Floating "+N" award
@@ -468,12 +571,12 @@ function drawStatusText(time) {
   if (state.scene === 'flashing') {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
     ctx.font = '600 18px Poppins, sans-serif';
-    ctx.fillText('Watch the sequence', CONFIG.width / 2, y);
+    ctx.fillText(COPY.watchSequence, CONFIG.width / 2, y);
   } else if (state.scene === 'input') {
     const remaining = state.sequence.length - state.inputIndex;
     ctx.fillStyle = CONFIG.palette.chromeHi;
     ctx.font = '700 20px Poppins, sans-serif';
-    ctx.fillText(`Tap ${remaining} more`, CONFIG.width / 2, y);
+    ctx.fillText(COPY.tapMoreFormat(remaining), CONFIG.width / 2, y);
   } else if (state.scene === 'between') {
     const pulse = 1 + 0.06 * Math.sin(time * 0.02);
     ctx.save();
@@ -481,7 +584,7 @@ function drawStatusText(time) {
     ctx.scale(pulse, pulse);
     ctx.fillStyle = CONFIG.palette.chromeHi;
     ctx.font = '700 26px Poppins, sans-serif';
-    ctx.fillText('NICE!', 0, 0);
+    ctx.fillText(COPY.nice, 0, 0);
     ctx.restore();
   }
 }
@@ -531,6 +634,13 @@ let pbotReady = false;
 pbotImg.onload = () => { pbotReady = true; };
 pbotImg.src = 'assets/pbot.webp';
 
+const gemImages = {};
+CONFIG.cells.forEach(c => {
+  const img = new Image();
+  img.src = `assets/gems/${c.gem}.svg`;
+  gemImages[c.gem] = img;
+});
+
 function drawPbot(cx, cy, size, time) {
   if (pbotReady) {
     const bob = Math.sin(time * 0.002) * 8;
@@ -558,20 +668,20 @@ function drawStartScreen(time) {
 
   ctx.fillStyle = CONFIG.palette.chromeHi;
   ctx.font = '700 46px Poppins, sans-serif';
-  ctx.fillText('TAP TAP MATCH', CONFIG.width / 2, 380);
+  ctx.fillText(COPY.title, CONFIG.width / 2, 380);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
   ctx.font = '500 16px Poppins, sans-serif';
-  ctx.fillText('Watch the sequence. Tap it back.', CONFIG.width / 2, 425);
-  ctx.fillText('3 minutes. One number to beat.',   CONFIG.width / 2, 450);
+  ctx.fillText(COPY.tagline1, CONFIG.width / 2, 425);
+  ctx.fillText(COPY.tagline2, CONFIG.width / 2, 450);
 
   if (state.best > 0) {
     ctx.fillStyle = CONFIG.palette.accent;
     ctx.font = '600 14px Poppins, sans-serif';
-    ctx.fillText(`Best: ${state.best}`, CONFIG.width / 2, 495);
+    ctx.fillText(`${COPY.bestPrefix}: ${state.best}`, CONFIG.width / 2, 495);
   }
 
-  drawButton(BTN_START.x, BTN_START.y, BTN_START.w, BTN_START.h, 'START GAME');
+  drawButton(BTN_START.x, BTN_START.y, BTN_START.w, BTN_START.h, COPY.start);
 
   ctx.textAlign = 'start';
   ctx.textBaseline = 'alphabetic';
@@ -588,11 +698,11 @@ function drawGameOverScreen(time) {
 
   ctx.fillStyle = CONFIG.palette.chromeHi;
   ctx.font = '700 38px Poppins, sans-serif';
-  ctx.fillText("TIME'S UP!", CONFIG.width / 2, 320);
+  ctx.fillText(COPY.timeUp, CONFIG.width / 2, 320);
 
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '500 16px Poppins, sans-serif';
-  ctx.fillText('Final Score', CONFIG.width / 2, 360);
+  ctx.fillText(COPY.finalScore, CONFIG.width / 2, 360);
 
   ctx.fillStyle = CONFIG.palette.accent;
   ctx.font = '700 78px Poppins, sans-serif';
@@ -605,15 +715,15 @@ function drawGameOverScreen(time) {
     ctx.scale(pulse, pulse);
     ctx.fillStyle = CONFIG.palette.chromeHi;
     ctx.font = '700 26px Poppins, sans-serif';
-    ctx.fillText('NEW BEST!', 0, 0);
+    ctx.fillText(COPY.newBest, 0, 0);
     ctx.restore();
   } else if (state.best > 0) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
     ctx.font = '500 14px Poppins, sans-serif';
-    ctx.fillText(`Best: ${state.best}`, CONFIG.width / 2, 495);
+    ctx.fillText(`${COPY.bestPrefix}: ${state.best}`, CONFIG.width / 2, 495);
   }
 
-  drawButton(BTN_REPLAY.x, BTN_REPLAY.y, BTN_REPLAY.w, BTN_REPLAY.h, 'PLAY AGAIN');
+  drawButton(BTN_REPLAY.x, BTN_REPLAY.y, BTN_REPLAY.w, BTN_REPLAY.h, COPY.playAgain);
 
   ctx.textAlign = 'start';
   ctx.textBaseline = 'alphabetic';
@@ -636,23 +746,23 @@ function drawContinuePrompt(time) {
 
   ctx.fillStyle = CONFIG.palette.chromeHi;
   ctx.font = '700 30px Poppins, sans-serif';
-  ctx.fillText('OOPS!', CONFIG.width / 2, c.y + 56);
+  ctx.fillText(COPY.oops, CONFIG.width / 2, c.y + 56);
 
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '500 16px Poppins, sans-serif';
-  ctx.fillText('Wrong tap.', CONFIG.width / 2, c.y + 100);
-  ctx.fillText('Continue with your score?', CONFIG.width / 2, c.y + 124);
+  ctx.fillText(COPY.wrongTap, CONFIG.width / 2, c.y + 100);
+  ctx.fillText(COPY.continueQuestion, CONFIG.width / 2, c.y + 124);
 
   const secsLeft = Math.max(0, Math.ceil(state.timerMs / 1000));
   ctx.fillStyle = CONFIG.palette.accent;
   ctx.font = '600 14px Poppins, sans-serif';
-  ctx.fillText(`${secsLeft}s remaining`, CONFIG.width / 2, c.y + 160);
+  ctx.fillText(COPY.secsRemaining(secsLeft), CONFIG.width / 2, c.y + 160);
 
-  drawButton(BTN_CONTINUE.x, BTN_CONTINUE.y, BTN_CONTINUE.w, BTN_CONTINUE.h, 'CONTINUE');
+  drawButton(BTN_CONTINUE.x, BTN_CONTINUE.y, BTN_CONTINUE.w, BTN_CONTINUE.h, COPY.continueBtn);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
   ctx.font = '500 13px Poppins, sans-serif';
-  ctx.fillText('Tap outside to give up', CONFIG.width / 2, c.y + c.h - 28);
+  ctx.fillText(COPY.giveUp, CONFIG.width / 2, c.y + c.h - 28);
 
   ctx.textAlign = 'start';
   ctx.textBaseline = 'alphabetic';
@@ -848,6 +958,8 @@ function updateMuteUI() {
   const svg = muteBtn.querySelector('svg');
   svg.innerHTML = state.muted ? ICON_OFF : ICON_ON;
   muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+  muteBtn.setAttribute('aria-label', state.muted ? COPY.audioOff : COPY.audioOn);
+  muteBtn.setAttribute('title', state.muted ? COPY.audioOff : COPY.audioOn);
 }
 
 muteBtn.addEventListener('click', () => {

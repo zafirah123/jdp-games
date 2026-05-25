@@ -241,10 +241,10 @@
             </div>
         </div>
 
-        <!-- Pause / feedback button (audio toggle is fixed top-right per DESIGN.md §5.11) -->
+        <!-- Pause / feedback button -->
         <button id="pause-btn" class="jdp-icon-btn">
-            <svg id="pause-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg id="pause-icon" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9 6h2v12H9zM13 6h2v12h-2z" />
             </svg>
         </button>
     </div>
@@ -766,9 +766,9 @@
                     
                     const icon = document.getElementById('pause-icon');
                     if (this.isPaused) {
-                        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />`;
+                        icon.innerHTML = `<path d="M8 5l11 7-11 7V5z" />`;
                     } else {
-                        icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />`;
+                        icon.innerHTML = `<path d="M9 6h2v12H9zM13 6h2v12h-2z" />`;
                     }
                 });
             },

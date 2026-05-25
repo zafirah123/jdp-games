@@ -106,40 +106,6 @@
   .mult-badge.x20 { background: #ff7a59; color: #fff; }
   @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
 
-  /* Clue / hint row (first 3 puzzles of each run) */
-  .hint {
-    display: flex; align-items: center; justify-content: center;
-    gap: 6px;
-    padding: 6px 8px;
-    margin: 0 auto 4px;
-    max-width: 360px;
-    flex-wrap: wrap;
-  }
-  .hint-label {
-    font-size: 11px; font-weight: 800; letter-spacing: 1px;
-    color: var(--muted);
-    background: rgba(255,255,255,0.06);
-    padding: 4px 8px; border-radius: 10px;
-  }
-  .hint-tile {
-    position: relative;
-    width: 36px; height: 36px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 6px;
-    font-weight: 800;
-    border: 2px solid transparent;
-  }
-  .hint-tile.correct { background: var(--tile-correct); color: #fff; }
-  .hint-tile.absent  { background: var(--tile-absent);  color: #ccc; }
-  .hint-letter { font-size: 18px; line-height: 1; }
-  .hint-pos {
-    position: absolute; right: 2px; bottom: 1px;
-    font-size: 9px; font-weight: 700;
-    background: rgba(0,0,0,0.4); color: #fff;
-    padding: 0 3px; border-radius: 4px;
-    line-height: 1.2;
-  }
-
   /* Board */
   #board-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
   #board {
@@ -325,8 +291,6 @@
     <div class="right"></div>
   </header>
 
-  <div id="hint" class="hint hidden"></div>
-
   <div id="board-wrap" class="hidden">
     <div id="board"></div>
   </div>
@@ -380,12 +344,14 @@ const CONFIG = {
   STREAK_BONUS_CAP: 50,
   SKIP_COST: 15,
   PARTIAL_PER_GREEN: 10,
-  // Free clues for the opening puzzles of each new run.
+  // Free clues for the opening puzzles of each new run. The game picks
+  // a real dictionary word that, when matched against the target, satisfies
+  // the criteria, then drops it into row 0 as a "free first guess".
   // Index 0 = first puzzle, 1 = second, 2 = third. Beyond that: no clue.
   CLUES: [
-    { greens: 2, greys: 1 },
-    { greens: 1, greys: 2 },
-    { greens: 0, greys: 3 },
+    { maxGreens: 2, minYellows: 1 },              // puzzle 1
+    { maxGreens: 1, minYellows: 2 },              // puzzle 2
+    { exactGreens: 0, minYellows: 3 },            // puzzle 3
   ],
   // Time multiplier zones: applied based on time REMAINING at solve
   // (time elapsed from start: 0..90 -> x1, 90..120 -> x1.2, 120..150 -> x1.5, 150..180 -> x2)
@@ -429,7 +395,6 @@ const COPY = {
     answerWas: 'Answer:',
     streakLabel: 'Streak',
     newBest: 'NEW BEST!',
-    hintLabel: 'HINT',
   },
   ms: {
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
@@ -450,7 +415,6 @@ const COPY = {
     answerWas: 'Jawapan:',
     streakLabel: 'Siri',
     newBest: 'TERBAIK BAHARU!',
-    hintLabel: 'PETUNJUK',
   },
 }[lang];
 
@@ -568,7 +532,6 @@ const dom = {
   multBadge: document.getElementById('multBadge'),
   boardWrap: document.getElementById('board-wrap'),
   board: document.getElementById('board'),
-  hint: document.getElementById('hint'),
   message: document.getElementById('message'),
   skipWrap: document.getElementById('skipWrap'),
   skipBtn: document.getElementById('skipBtn'),
@@ -830,14 +793,15 @@ function loadNewPuzzle() {
       t.el.className = 'tile';
     }
   }
-  renderClue();
+  applyClueToRow0();
   paintKeyboard();
   dom.message.textContent = '';
   state.puzzleIndex++;
 }
 
 // =============================================================================
-// Clue (first 3 puzzles of each run)
+// Clue (first 3 puzzles of each run) — finds a real dictionary word that,
+// when matched against the target, satisfies the criteria, then occupies row 0.
 // =============================================================================
 function _shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
@@ -846,31 +810,52 @@ function _shuffle(a) {
   }
   return a;
 }
-function renderClue() {
+
+function _matchesCriteria(result, c) {
+  let greens = 0, yellows = 0;
+  for (const s of result) {
+    if (s === 'correct') greens++;
+    else if (s === 'present') yellows++;
+  }
+  if (c.maxGreens   !== undefined && greens  > c.maxGreens)   return false;
+  if (c.exactGreens !== undefined && greens !== c.exactGreens) return false;
+  if (c.minYellows  !== undefined && yellows < c.minYellows)  return false;
+  return true;
+}
+
+function _findClueWord(target, criteria) {
+  // Search the full dictionary in random order; return the first match.
+  const dict = _shuffle([...DICT]);
+  for (const w of dict) {
+    if (w === target) continue;
+    const r = _evalGuess(w, target);
+    if (_matchesCriteria(r, criteria)) return { word: w, result: r };
+  }
+  return null;
+}
+
+function applyClueToRow0() {
   const cfg = CONFIG.CLUES[state.puzzleIndex];
-  if (!cfg) { dom.hint.classList.add('hidden'); dom.hint.innerHTML = ''; return; }
+  if (!cfg) return;  // puzzle 4+: no clue
 
-  // Greens: pick `cfg.greens` distinct positions from the target word.
-  const positions = _shuffle([0, 1, 2, 3, 4]).slice(0, cfg.greens);
-  const greens = positions.map(i => ({ letter: state.target[i], position: i }));
+  const found = _findClueWord(state.target, cfg);
+  if (!found) return;  // no dictionary word satisfies the criteria → graceful skip
 
-  // Greys: pick `cfg.greys` distinct letters NOT in the target.
-  const inTarget = new Set(state.target.split(''));
-  const candidates = _shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(c => !inTarget.has(c)));
-  const greys = candidates.slice(0, cfg.greys);
-
-  // Build the hint row
-  const parts = [`<span class="hint-label">${COPY.hintLabel}</span>`];
-  for (const g of greens) {
-    parts.push(`<div class="hint-tile correct"><span class="hint-letter">${g.letter}</span><span class="hint-pos">${g.position + 1}</span></div>`);
-    state.keyStatus[g.letter] = 'correct';
+  const rank = { absent: 0, present: 1, correct: 2 };
+  const row = state.rows[0];
+  for (let i = 0; i < CONFIG.WORD_LEN; i++) {
+    const t = row[i];
+    t.ch = found.word[i];
+    t.status = found.result[i];
+    t.el.textContent = found.word[i];
+    t.el.className = 'tile ' + found.result[i];
+    // upgrade keyboard status with the clue's revealed info
+    const cur = state.keyStatus[t.ch];
+    if (!cur || rank[found.result[i]] > rank[cur]) state.keyStatus[t.ch] = found.result[i];
   }
-  for (const ch of greys) {
-    parts.push(`<div class="hint-tile absent"><span class="hint-letter">${ch}</span></div>`);
-    state.keyStatus[ch] = 'absent';
-  }
-  dom.hint.innerHTML = parts.join('');
-  dom.hint.classList.remove('hidden');
+  // The clue counts as the player's first guess; they start typing on row 1.
+  state.curRow = 1;
+  state.totalGuesses++;
 }
 
 function lockAndAdvance() {
@@ -932,22 +917,26 @@ function shakeRow() {
   el.classList.add('shake');
 }
 
-function evaluateRow(guess) {
-  sfx.submit();
-  const target = state.target;
-  const result = new Array(CONFIG.WORD_LEN).fill('absent');
+// Wordle-style evaluation: returns ['correct'|'present'|'absent', ...] for each position.
+function _evalGuess(guess, target) {
+  const N = CONFIG.WORD_LEN;
+  const result = new Array(N).fill('absent');
   const remain = {};
   for (const ch of target) remain[ch] = (remain[ch] || 0) + 1;
-  // first pass: correct
-  for (let i = 0; i < CONFIG.WORD_LEN; i++) {
+  for (let i = 0; i < N; i++) {
     if (guess[i] === target[i]) { result[i] = 'correct'; remain[guess[i]]--; }
   }
-  // second pass: present
-  for (let i = 0; i < CONFIG.WORD_LEN; i++) {
+  for (let i = 0; i < N; i++) {
     if (result[i] === 'correct') continue;
     const ch = guess[i];
     if (remain[ch] > 0) { result[i] = 'present'; remain[ch]--; }
   }
+  return result;
+}
+
+function evaluateRow(guess) {
+  sfx.submit();
+  const result = _evalGuess(guess, state.target);
   // animate
   const rank = { absent: 0, present: 1, correct: 2 };
   for (let i = 0; i < CONFIG.WORD_LEN; i++) {

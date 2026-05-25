@@ -210,6 +210,7 @@ See also the more detailed pre-implementation checklist in
 - [ ] Reserved polish budget per interaction: input response, pickup feedback, death sequence, power-up activation.
 - [ ] Added a `?scene=` / `?phase=` dev jump at boot from day one.
 - [ ] Persisted best score and mute preference in `localStorage` with try/catch for sandboxed webviews.
+- [ ] Used the standardized strings from §6.4 — `START GAME`, `TIME'S UP!`, `GAME OVER`, `AUDIO ON`, `AUDIO OFF` — and wired `?lang=ms` to switch the game's copy to Bahasa Melayu.
 
 ---
 
@@ -399,6 +400,62 @@ shadows, border widths, or easings — they're already specified.
 - Best score saved to `localStorage` under `<game-name>:best`
 - All `localStorage` calls wrapped in try/catch for sandboxed webviews
 
+### 6.4 Standardized UI copy & language switching
+
+Five key strings must read identically across every JDP game. Don't
+invent variants ("Time's up!" vs "TIME'S UP!" vs "Times Up" — pick the
+one). Casing is **uppercase** for all five.
+
+| Moment | English (default) | Bahasa Melayu (`?lang=ms`) |
+|---|---|---|
+| Round-start CTA on the title screen | `START GAME` | `MULA MAIN` |
+| Round timer hit zero | `TIME'S UP!` | `MASA TAMAT!` |
+| Run ended for any reason other than the timer (crash with no Continue, board fail, etc.) | `GAME OVER` | `PERMAINAN TAMAT` |
+| Audio is currently playing (tap to mute) | `AUDIO ON` | `AUDIO ON` |
+| Audio is currently muted (tap to enable) | `AUDIO OFF` | `AUDIO OFF` |
+
+**`TIME'S UP!` and `GAME OVER` are different states.** Use `TIME'S UP!`
+only when the round timer hits zero — the natural end-of-round. Use
+`GAME OVER` when the run ends *for any other reason* (fatal crash with
+no Continue, board fail, lives exhausted). Games that can only end via
+the timer will only ever show `TIME'S UP!`.
+
+**Audio labels show current state**, not the pending action — the icon
+beside the label is what implies the toggle action.
+
+The Bahasa Melayu strings above are the canonical defaults; if a
+designer hands you better translations, update this table first so every
+game converges.
+
+**Language switching is URL-driven.** Default is English. `?lang=ms` on
+the URL switches the entire game's copy (including subtitles, button
+labels, encouragement text — not just the five canonical strings) to
+Bahasa Melayu.
+
+```
+https://zafirah123.github.io/jdp-games/flying-ruby/          → English
+https://zafirah123.github.io/jdp-games/flying-ruby/?lang=ms  → Bahasa Melayu
+```
+
+Minimum implementation (works for vanilla single-file games):
+
+```js
+const lang = new URLSearchParams(location.search).get('lang') === 'ms'
+  ? 'ms' : 'en';
+const COPY = {
+  en: { start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
+        audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF',
+        /* ...game-specific strings... */ },
+  ms: { start: 'MULA MAIN',  timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
+        audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF',
+        /* ...game-specific strings... */ },
+}[lang];
+```
+
+Any unrecognized `lang` value falls back to English. Don't persist the
+language choice across visits — the URL is the source of truth so links
+shared between players carry the intended language.
+
 ---
 
 ## 7. Publishing a new game
@@ -494,6 +551,7 @@ A game is shippable when it satisfies **all** of:
 - [ ] Polish checklist (§6.2) complete
 - [ ] Visuals reconciled against [`DESIGN.md`](./DESIGN.md) (palette, typography, button/pill/progress-bar anatomy)
 - [ ] Mute toggle + best score persistence working
+- [ ] Standardized end-of-game / audio copy used (§6.4); `?lang=ms` switches the game to Bahasa Melayu
 - [ ] Dev jump via `?scene=` / `?phase=` query param wired from day one
 - [ ] Listed in `games.js` with `author: '<github-username>'` set
 

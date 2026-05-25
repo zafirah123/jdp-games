@@ -61,6 +61,21 @@ single-file games alike.
    mute state persisted in `localStorage` and applied **before** any audio
    plays. Don't autoplay BGM until the player has interacted. Format:
    `.m4a` (AAC) for new builds.
+5. **Standardized UI copy with `?lang=ms` switching.** Five key strings
+   must match across every JDP game:
+   - `START GAME` — round-start CTA
+   - `TIME'S UP!` — round timer hit zero
+   - `GAME OVER` — run ended for any other reason (crash, no Continue)
+   - `AUDIO ON` — audio currently playing (tap to mute)
+   - `AUDIO OFF` — audio currently muted (tap to enable)
+
+   Default language is English. `?lang=ms` on the URL (e.g.
+   `…/flying-ruby/?lang=ms`) switches the game's copy to Bahasa Melayu:
+   `MULA MAIN`, `MASA TAMAT!`, `PERMAINAN TAMAT`, `AUDIO ON`, `AUDIO OFF`.
+   Unrecognized `lang` values fall back to English. Don't persist the
+   choice — the URL is the source of truth. See
+   [CLAUDE.md §6.4](CLAUDE.md) for the full string set and reference
+   implementation.
 
 ## Setup
 
@@ -212,6 +227,8 @@ for the design-side checklist; the items below cover the harness/repo side.
       Mute toggle is honoured and applied before any audio plays.
 - [ ] Content reviewed for child-safety: no violence, nudity, gambling,
       ads, or third-party tracking.
+- [ ] Standardized end-of-game / audio strings used (§5 baseline);
+      `?lang=ms` switches the game's copy to Bahasa Melayu.
 - [ ] Layout looks correct at the canvas's intended aspect ratio.
 - [ ] UI matches [DESIGN.md](DESIGN.md) — palette, typography, button
       states, pill/progress-bar anatomy.

@@ -227,6 +227,104 @@ Used for the language toggle in the navbar.
 - `Leaderboard Button` (`657:1656`) — 57×41 large / 39×23 small, all 4 states.
 - `Full leaderboard` (`671:1649`) — 130×17 text-button row, all 4 states.
 
+### 5.11 Audio toggle button
+
+Not a Figma component — codified by the in-repo reference implementation
+[`tap-tap-match/index.html`](tap-tap-match/index.html). Every JDP game ships
+this control in every scene that can make sound (CLAUDE.md §6.3, §0.4).
+It is a DOM `<button>` overlaid on the canvas, not drawn into the canvas,
+so it stays clickable across resizes and survives full-screen flips.
+
+**Anatomy**: fixed-position circular icon button, top-right of the viewport.
+
+| Token | Value |
+|-------|-------|
+| Footprint | 44×44 px (meets the §0.2 ≥44 px touch-target rule) |
+| Shape | circle — `border-radius: 22px` (= 50 %) |
+| Background | Brick Red `#9E131F` |
+| Border | 2 px solid Dark Yellow `#FFB603` |
+| Icon color | Light Yellow `#FFD633` (`fill: currentColor`) |
+| Icon footprint | 22×22 px inside a `0 0 24 24` viewBox |
+| Position | `position: fixed; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));` |
+| Press feedback | `transform: scale(0.92)` on `:active`, `transition: transform 80ms ease` |
+| Stacking | `z-index: 10` (above canvas, below modal overlays) |
+| Padding | `0` (icon is centered via flex) |
+
+**States** — the visible icon and label reflect the *current* audio state;
+the toggle action is implied by the icon, not spelled out (CLAUDE.md §6.4).
+
+| State | Icon glyph | `aria-pressed` | `aria-label` / `title` (EN = BM) |
+|-------|------------|----------------|----------------------------------|
+| Audio playing | speaker + sound waves | `false` | `AUDIO ON` |
+| Muted | speaker + ✕ | `true` | `AUDIO OFF` |
+
+**Canonical icon paths** (`fill="currentColor"`, viewBox `0 0 24 24`):
+
+```
+ICON_ON:
+M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z
+m-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z
+
+ICON_OFF:
+M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4
+L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z
+```
+
+**Behavior**:
+
+- Persist to `localStorage` under `<game-name>:mute` (`'0'` / `'1'`), wrapped
+  in try/catch for sandboxed webviews.
+- Read the persisted value **before** the first `playTone` / `play()` call so a
+  returning muted player never hears a sound.
+- Tap toggles state → write to storage → swap the icon path → update
+  `aria-pressed`, `aria-label`, and `title` → if unmuting, resume the
+  `AudioContext` and play one short feedback tone so the player confirms
+  audio works.
+- Do not autoplay BGM until after the first user gesture (browsers block it
+  anyway).
+
+**Reference CSS** (copy verbatim into new games):
+
+```css
+.mute {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 44px; height: 44px;
+  border-radius: 22px;
+  border: 2px solid #FFB603;
+  background: #9E131F;
+  color: #FFD633;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 80ms ease;
+}
+.mute:active { transform: scale(0.92); }
+.mute svg { width: 22px; height: 22px; fill: currentColor; }
+```
+
+**Reference markup**:
+
+```html
+<button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+  <svg viewBox="0 0 24 24"><!-- ICON_ON path injected at boot --></svg>
+</button>
+```
+
+Phaser games render the same 44×44 circle as a `Container` of `Graphics` +
+icon `Image` pinned to the top-right of the camera, with the same palette
+and press-scale tween — but the DOM-button shape above is preferred where
+possible because it stays accessible to screen readers.
+
+> **Note on pill variants.** A few games (e.g. `2048/`) ship a wider
+> pill-shaped mute control that prints the `AUDIO ON` / `AUDIO OFF`
+> label inline. That variant is permitted for games whose HUD has the
+> horizontal real estate, but the **circular icon** above is the
+> default — choose the pill only when the canonical 44×44 icon would
+> visually clash with an already-crowded HUD.
+
 ## 6. Mascot & illustrations
 
 The **pbot** mascot is used across most JDP games. Existing sprite assets

@@ -828,7 +828,7 @@ function endGame(reason) {
   dom.goNewBest.classList.toggle('hidden', !isNewBest);
 
   dom.finalStats.innerHTML =
-    `<div class="label">Score</div><div class="value">${state.score} / ${CONFIG.MAX_SCORE}</div>` +
+    `<div class="label">Score</div><div class="value">${state.score}</div>` +
     `<div class="label">Blocks placed</div><div class="value">${state.blocksPlaced}</div>` +
     `<div class="label">Longest streak</div><div class="value">${state.bestStreak}</div>` +
     `<div class="label">Tower height</div><div class="value">${state.blocksPlaced} blocks</div>` +

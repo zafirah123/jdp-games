@@ -7,6 +7,14 @@ convention.
 > If you are running **Claude Code**, also read [CLAUDE.md](CLAUDE.md) — it
 > contains the same guidance plus a few Claude-Code-specific tips.
 >
+> Before building or reviewing a game, read [BEST-PRACTICES.md](BEST-PRACTICES.md)
+> — the Flying Ruby case study in Markdown form. It covers the ten
+> replication patterns (§08), the soft-taper economy pattern (§05), the
+> asset-management deep-dive (§06), and a pre-implementation checklist
+> (§09). It is the canonical reference for *how* to build a JDP game; this
+> file is the canonical reference for *what house rules to follow* while
+> doing so.
+>
 > For any UI work — colors, typography, buttons, HUD chips, progress bars,
 > tier badges — read [DESIGN.md](DESIGN.md) **before** writing code. It is
 > the source of truth for visual language across all JDP games.
@@ -110,6 +118,9 @@ Two exceptions:
 
 ## Adding a game
 
+Before writing code, walk the pre-implementation checklist in
+[BEST-PRACTICES.md §09](BEST-PRACTICES.md#09--build-checklist). Then:
+
 1. Create `your-game/` at the repo root (kebab-case).
 2. Put the entry HTML inside. Prefer `index.html`.
 3. Append an entry to [games.js](games.js):
@@ -183,6 +194,9 @@ mapping legacy names to the Figma styles.
   or `ruby-breaker-v2/pbot.png` rather than redrawing.
 
 ## Verification checklist before declaring "done"
+
+Cross-check against [BEST-PRACTICES.md §09](BEST-PRACTICES.md#09--build-checklist)
+for the design-side checklist; the items below cover the harness/repo side.
 
 - [ ] Game loads at `http://localhost:8080/<folder>/` with no console
       errors — and would load identically from any static host (no backend

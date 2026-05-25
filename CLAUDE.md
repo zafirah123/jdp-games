@@ -12,8 +12,14 @@ derived from the Flying Ruby case study, which is the canonical reference.
 The full reasoning, patterns, code samples, and asset-management deep-dive
 live in the case study:
 
-- **Live**: https://zafirah123.github.io/jdp-games/flying-ruby-case-study.html
-- **Local**: [`flying-ruby-case-study.html`](./flying-ruby-case-study.html)
+- **Best practices (canonical)**: [`BEST-PRACTICES.md`](./BEST-PRACTICES.md)
+  — the in-repo, diff-able Markdown version of the Flying Ruby case study.
+  **Read this before starting or reviewing any game.** §08 is the ten
+  replication patterns, §09 is the pre-implementation checklist.
+- **Slideable HTML**: [`flying-ruby-case-study.html`](./flying-ruby-case-study.html)
+  (also live at https://zafirah123.github.io/jdp-games/flying-ruby-case-study.html)
+  — the presentation-format version of the same material. If the two
+  disagree, the Markdown wins.
 - **Reference implementation**: [`flying-ruby/`](./flying-ruby/) — read its
   [`src/config.js`](./flying-ruby/src/config.js) and
   [`src/scenes/GameScene.js`](./flying-ruby/src/scenes/GameScene.js) before
@@ -25,9 +31,9 @@ colors, typography, spacing, radii, effects, and component anatomy. Read it
 tier badges, and mascot usage are all specified there. Per-game `config.js`
 palette overrides must reconcile against the JDP 2026 tokens in DESIGN.md §1.
 
-When this document and the case study disagree, the case study wins — open a
-PR to update this file. When this document and DESIGN.md disagree on visuals,
-DESIGN.md wins.
+**Precedence when docs disagree**: BEST-PRACTICES.md wins over the HTML case
+study; DESIGN.md wins on visuals; BEST-PRACTICES.md wins over this CLAUDE.md
+on design patterns — open a PR to update this file when they drift.
 
 ---
 
@@ -139,7 +145,7 @@ If a score cap is required (currently default cap is **500 rubies / round**):
 - **Do** suppress new heavy-payout power-ups (Power Rush, big drops) once
   within ~70 of the cap; let already-armed ones finish naturally.
 
-See case study §05 for the soft-taper code pattern.
+See [BEST-PRACTICES.md §05](./BEST-PRACTICES.md#05--economy-control) for the soft-taper code pattern.
 
 ### 1.5 Two power-ups maximum
 One **aid** power-up (makes the existing loop easier — e.g. magnet) and one
@@ -151,7 +157,7 @@ a distinct visual language. Three or more becomes a tutorial problem.
 ## 2. The ten replication patterns
 
 Each pattern below is mandatory unless you have a specific reason to deviate.
-Full rationale in case study §08.
+Full rationale in [BEST-PRACTICES.md §08](./BEST-PRACTICES.md#08--replication-patterns).
 
 | # | Pattern | One-line rule |
 |---|---|---|
@@ -169,6 +175,10 @@ Full rationale in case study §08.
 ---
 
 ## 3. Build checklist — walk this before writing code
+
+See also the more detailed pre-implementation checklist in
+[BEST-PRACTICES.md §09](./BEST-PRACTICES.md#09--build-checklist).
+
 
 - [ ] Decided session length. <5 min → endless-with-timer (no stages).
 - [ ] Stood up `src/config.js` with palette, gravity, round duration, and `{ start, end }` ramps before writing any scene.
@@ -323,7 +333,7 @@ The landing page has three lists, each backed by a `status` value in
 1. Build the game in its own top-level folder: `/<game-name>/`.
 2. Verify it serves correctly via `python3 -m http.server` from the game folder.
 3. Add an entry to [`games.js`](./games.js) with `status: 'pending'`.
-4. Open a PR. Reviewers will check this CLAUDE.md and the case study against your work.
+4. Open a PR. Reviewers will check this CLAUDE.md and [BEST-PRACTICES.md](./BEST-PRACTICES.md) against your work.
 
 ### 7.2 Moving a game between lists — reminder steps
 
@@ -336,7 +346,7 @@ the status for you.
 - [ ] The game runs cleanly on the latest `main` (pull, then test).
 - [ ] All §8 "Definition of done" boxes are ticked.
 - [ ] The game's own `CLAUDE.md` (if any) is up to date.
-- [ ] The case study and these guidelines are not contradicted by your build.
+- [ ] [BEST-PRACTICES.md](./BEST-PRACTICES.md) and these guidelines are not contradicted by your build.
 
 **Then:**
 

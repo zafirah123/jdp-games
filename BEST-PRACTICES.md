@@ -1,107 +1,124 @@
-# Best Practices — Flying Ruby Case Study
+# Best Practices for JDP Arcade Games
 
 > The canonical reference for how to design, build, and ship a short-session
-> arcade game in this repo. Derived from the **Flying Ruby** implementation
-> (`flying-ruby/`) and originally published as
-> [`flying-ruby-case-study.html`](./flying-ruby-case-study.html) — that HTML
-> remains the live, slideable version; this Markdown is the in-repo,
-> diff-able source of truth.
+> arcade game in this repo. The patterns below apply to **every new JDP
+> game**; **Flying Ruby** (`flying-ruby/`) is the worked example that proves
+> they hang together end-to-end, and is cited throughout as the reference
+> implementation.
 
-When this document and the HTML disagree, **this Markdown wins** — open a PR
-to update the HTML if the two drift. When [CLAUDE.md](./CLAUDE.md) or
-[AGENTS.md](./AGENTS.md) cite "the case study," they mean this file.
+A slideable HTML version of the original Flying Ruby case study lives at
+[`flying-ruby-case-study.html`](./flying-ruby-case-study.html) — useful for
+presentations, but this Markdown is the in-repo, diff-able source of truth.
+When the two disagree, **this Markdown wins** — open a PR to update the
+HTML if they drift. When [CLAUDE.md](./CLAUDE.md) or [AGENTS.md](./AGENTS.md)
+cite "the case study" or "best practices," they mean this file.
 
 ---
 
 ## Table of contents
 
-1. [Overview — what Flying Ruby actually is](#01--overview)
-2. [Architecture — four scenes, one config file](#02--architecture)
+1. [What "good" looks like for a JDP arcade game](#01--what-good-looks-like)
+2. [Architecture — scenes, one config file](#02--architecture)
 3. [The core loop — endless within a timer](#03--the-core-loop)
 4. [Gamification — one currency, two power-ups, many shapes](#04--gamification)
-5. [Economy control — the cap the player must not see](#05--economy-control)
+5. [Economy control — caps the player must not see](#05--economy-control)
 6. [Asset management & optimization](#06--asset-management--optimization)
-7. [Visual reference — the cast on screen](#06b--visual-reference)
+7. [Visual composition — drawing more than you ship](#06b--visual-composition)
 8. [Game feel — the polish budget](#07--game-feel)
-9. [Replication patterns — ten things to copy](#08--replication-patterns)
+9. [Ten replication patterns](#08--replication-patterns)
 10. [Build checklist](#09--build-checklist)
 11. [TL;DR](#10--tldr)
 
+Throughout, sidebars labeled **Reference: Flying Ruby** show how the
+production game in `flying-ruby/` implements the pattern. Treat those as
+worked examples, not as quotas your game must match.
+
 ---
 
-## 01 — Overview
+## 01 — What "good" looks like
 
-**What Flying Ruby actually is.** A Flappy-Bird descendant starring the
-Pandai mascot `pbot`. The player flaps through gold pillars, vacuums rubies,
-and rides power-ups inside a single, continuous 3-minute round. There are
-no levels, no boss, no progression screens — just one long survival arc you
-fully spend.
+A JDP arcade game is a **short-session, child-safe, browser-native** game
+that loads in seconds, plays cleanly on a phone, and gets out of the way.
+The shape that consistently works:
 
-| | |
+| Dimension | Target |
 |---|---|
-| **Format** | Single endless round of **3:00**. Crashing doesn't end the run if time remains — you "Continue" with the same score and the leftover timer. |
-| **Goal** | Collect as many **rubies** as possible before the clock hits zero. One currency. One number to beat. |
-| **Feel** | Tap-to-flap, gravity `1200`, jump `-380`. Tilt-toward-velocity, squash on flap, glass-crack death sequence. |
-| **Tech** | Phaser 3 loaded from CDN. ES modules. Static site. No build step, no bundler, no dependencies to update. |
+| **Session length** | ~3 minutes of one continuous round (no stages, no loading screens). |
+| **Goal** | Beat a single number. One currency on the HUD, full stop. |
+| **Input** | Single-action core (tap / swipe / drag) that works on touch and on keyboard. |
+| **Difficulty** | A smooth ramp that peaks at ~85% of the round. The final stretch sits at max difficulty. |
+| **Failure** | Soft — crashing with time remaining offers a Continue. Only the clock truly ends a run. |
+| **Tech** | Static HTML / CSS / JS. No backend, no bundler if avoidable, deployable to any static host. |
+| **Polish** | Tactile response on every interaction; multi-phase death; "+1" feedback; mute toggle. |
+
+> **Reference: Flying Ruby.** A Flappy-Bird-shaped game starring the Pandai
+> mascot `pbot`. 3-minute round, ruby currency at +1 each, tap-to-flap with
+> gravity `1200` / jump `-380`, tilt-toward-velocity body, glass-crack death.
+> Phaser 3 from a CDN, ES modules, no build step. Demonstrates every
+> pattern below in roughly 2.8 MB of payload.
 
 ---
 
 ## 02 — Architecture
 
-**Four scenes, one config file.** Everything that designers and PMs care
-about — tuning, difficulty, drop rates, palette — lives in a single file.
-Scenes stay lean and focused on one responsibility each.
+**Scenes for shape, one config file for tuning.** Split your game so the
+people who *tune* it (designers, PMs) never have to read the people who
+*build* it (engineers, scenes). The canonical layout:
 
-| File | Responsibility | Why it's split this way |
-|---|---|---|
-| `src/config.js` | Palette, round length, gravity, drop rates, power-up tuning | One source of truth. Designers tune here without touching scenes. |
-| `BootScene.js` | Preload assets · generate placeholder textures · honour mute pref · dev `?scene=` jump | Lets gameplay be built before final art exists. |
-| `StartScene.js` | Logo, mascot idle, Start Game button (Pandai DS spec) | Title screen is mostly brand presentation, not logic. |
-| `GameScene.js` | Full gameplay loop, difficulty ramp, spawning, power-ups, crash FX | One big scene is fine when the game has one round. |
-| `GameOverScene.js` | Score count-up, best-score persistence, Continue vs Home routing | Continue logic lives where time/score state arrives. |
-| `muteButton.js` | Shared mute toggle + `localStorage` preference | Shared widget extracted because every scene needs it. |
+| File | Responsibility |
+|---|---|
+| `src/config.js` | Palette, round length, gravity, drop rates, power-up tuning. **All tuning.** Designers read this file. |
+| `BootScene` | Preload assets · generate placeholder textures · honour saved mute pref · dev `?scene=` jump. |
+| `StartScene` | Logo, mascot idle, Start button. Brand presentation, not logic. |
+| `GameScene` | Full gameplay loop, difficulty ramp, spawning, power-ups, crash FX. One big scene is fine when the game has one round. |
+| `GameOverScene` | Score count-up, best-score persistence, Continue vs Home routing. |
+| `muteButton` (shared) | Mute toggle + `localStorage` preference. Every scene needs it. |
 
 ### Config that designers can read
+
+Use a flat `config.js` with **named ranges** (`{ start, end }`) for any value
+that changes over the round. The ramp becomes self-documenting; anyone can
+re-tune the game in 30 seconds without reading scene code.
 
 ```js
 // src/config.js — the only file most tuning ever needs to touch
 export const GAME = {
   width: 480, height: 854,
   roundDurationMs: 3 * 60 * 1000,   // 3-minute round
-  gravity: 1200, flapVelocity: -380,
-  rubyValue: 1,
+  // ... game-specific physics constants
+  rubyValue: 1,                      // payout per pickup
 };
 
 export const DIFFICULTY = {
-  rampCompleteAt:   0.85,                  // peak by 85% of round
-  pipeSpeed:        { start: 234,  end: 410  },
-  pipeGap:          { start: 230,  end: 160  },
-  pipeSpawnEveryMs: { start: 1700, end: 1100 },
+  rampCompleteAt: 0.85,              // peak by 85% of round
+  // Each ramping value is a named { start, end } range:
+  obstacleSpeed:   { start: 234,  end: 410  },
+  obstacleGap:     { start: 230,  end: 160  },
+  spawnEveryMs:    { start: 1700, end: 1100 },
 };
 
-export const MAGNET = { spawnEveryMs: 8000,  spawnChance: 0.7, durationMs: 5000, pullSpeed: 560 };
-export const RUSH   = { spawnEveryMs: 21000, spawnChance: 0.6, durationMs: 7000, speedMultiplier: 1.6, rubyCount: 50 };
+// Power-ups follow the same shape — one block per power-up
+export const AID    = { spawnEveryMs: 8000,  spawnChance: 0.7, durationMs: 5000, /* ... */ };
+export const FRENZY = { spawnEveryMs: 21000, spawnChance: 0.6, durationMs: 7000, /* ... */ };
 ```
 
-> **Pattern.** A flat `config.js` with named ranges (`{ start, end }`) makes
-> the difficulty ramp self-documenting. Anyone can re-tune the game in 30
-> seconds without reading scene code.
+> **Reference: Flying Ruby.** Its `config.js` defines `GAME`, `DIFFICULTY`,
+> `MAGNET` (aid), and `RUSH` (frenzy). The pipe-gap / pipe-speed /
+> spawn-interval ramps shown above are the real values from that file.
 
 ---
 
 ## 03 — The core loop
 
 **Endless gameplay, time-boxed run.** "Endless but with a fixed clock" is
-the structural backbone. There are no stages or level transitions.
-Difficulty is a smooth interpolation across the round. The "Continue"
-mechanic is what makes the 3:00 feel like a budget the player wants to
-spend completely — not a sudden-death wall.
+the structural backbone of a JDP arcade game. No stages, no level
+transitions. Difficulty is a smooth interpolation across the round.
 
 | | |
 |---|---|
-| **Round = budget** | The 3-minute timer is a *shared budget across continues*, not a per-life timer. Crash early, resume with whatever time you had left. |
-| **Two exit conditions** | Only **Time's Up** permanently ends a run. **Crash** with time remaining shows Continue. Once budget is spent, only Home remains. |
-| **Difficulty arc** | Linear ramp from start values to end values, finished at **85%** of the round so the final ~27s sits at peak — natural climax. |
+| **Round = budget** | The timer is a *shared budget across continues*, not a per-life timer. Crash early, resume with whatever time you had left. |
+| **Two exit conditions** | Only **Time's Up** permanently ends a run. **Crash** with time remaining shows Continue. Once the time budget is spent, only Home remains. |
+| **Difficulty arc** | Linear ramp from start values to end values, finished at **85%** of the round so the final ~15% sits at peak — a natural climax. |
 
 ### How the ramp is computed
 
@@ -116,74 +133,87 @@ _ramp(range) {
 }
 ```
 
-> **Why no stages?** Stages create friction for short-session play. A
-> 3-minute window is short enough that the player can finish a satisfying
-> arc in one sitting; long enough that the difficulty ramp has somewhere to
-> go. Use stages only when sessions are longer than ~5 minutes or when you
-> want narrative beats.
+Any value declared as `{ start, end }` in `config.js` can be ramped through
+`_ramp(range)` each frame. New tuning ≈ one new field plus one call site.
+
+> **Why no stages?** Stages create friction for short sessions. A 3-minute
+> window is short enough that the player can finish a satisfying arc in one
+> sitting; long enough that the difficulty ramp has somewhere to go. Use
+> stages only when sessions are >5 minutes or when narrative beats demand
+> them.
+
+> **Reference: Flying Ruby.** 3-minute round, ramp peaks at 85% so the last
+> ~27 seconds sit at maximum pipe speed and minimum gap. Crashing mid-round
+> opens a Continue with the leftover clock.
 
 ---
 
 ## 04 — Gamification
 
-**One currency, two power-ups, many shapes.** Flying Ruby keeps the scoring
-legible (one number, one icon) but injects variety through *how* rubies
-appear — formations, gap rewards, magnet pulls, and a screen-shaking Power
-Rush — so the same scoring system feels different minute-to-minute.
+**One currency, two power-ups, many shapes.** Keep scoring legible (one
+number, one icon) but inject variety through *how* the currency appears:
+formations, gap rewards, aid pulls, and a periodic frenzy event.
 
 | Element | Mechanic | Player benefit | Designer lever |
 |---|---|---|---|
-| **Ruby (currency)** | +1 on overlap | Single, legible goal | `GAME.rubyValue` |
-| **Gap reward** | Per-pillar-pair: empty / single / trio | Risk-vs-reward through the gap | Drop probabilities |
-| **Lane collectibles** | Between pillars: empty / single / line / wave / circle | Visual rhythm and choreographed beats | Spawn odds + formations |
-| **Magnet** | 5s pull on every on-screen ruby | Collection aid — turns near-misses into pickups | `MAGNET` config |
-| **Power Rush** | 7s frenzy: pillars retract, world speeds up ×1.6, sine-line of 50 rubies | Big payout window, momentum reset | `RUSH` config |
-| **Best score** | `localStorage['flying-ruby:best']` | Meta-progression hook | Storage key |
-| **Continue** | Resume after crash with leftover time | Reduces frustration, encourages full 3:00 use | Time budget logic |
+| **Currency** | +1 (or +N) on overlap / collect | Single, legible goal | `GAME.<currency>Value` |
+| **Risk reward** | Per-obstacle: empty / single / trio in the danger zone | Risk-vs-reward through the gap | Drop probabilities |
+| **Lane / arena collectibles** | Between obstacles: empty / single / line / wave / circle | Visual rhythm and choreographed beats | Spawn odds + formations |
+| **Aid power-up** | Brief pull / magnet / shield that *makes the existing loop easier* | Turns near-misses into pickups; reduces frustration | One config block |
+| **Frenzy power-up** | Brief mode change: obstacles thin, world speeds up, currency rains | Big payout window, momentum reset | One config block |
+| **Best score** | `localStorage['<game-name>:best']` | Meta-progression hook between sessions | Storage key |
+| **Continue** | Resume after crash with leftover time | Reduces frustration, encourages full round use | Time-budget logic |
 
-### Formations turn one ruby into a moment
+### Formations turn one sprite into a moment
 
-Three formations — `line5`, `wave`, `circle` — all share a single velocity
-so the shape holds together as it scrolls. This is much cheaper than
-authoring real animations and produces the "ribbon of rubies" feel that
-defines the game.
+A handful of formation shapes — line, wave, circle, arc — sharing a single
+velocity is much cheaper than authoring real animations. The shape holds
+together as it scrolls; the player reads each formation as a distinct
+choreographed moment.
 
 ```js
 // Lane spawn odds — most lanes empty so the rare formations feel special
 const roll = Math.random();
 if (roll < 0.73) return;                // 73% empty (breather)
-if (roll < 0.85) spawnSingle();         // 12% single ruby
+if (roll < 0.85) spawnSingle();         // 12% single pickup
 else if (roll < 0.91) spawnFormation('line5');
 else if (roll < 0.96) spawnFormation('wave');
 else                  spawnFormation('circle');
 ```
 
+**Most rolls should be empty.** Empty space is what makes the rare drops
+feel special. If every lane spawns something, nothing is special.
+
+> **Reference: Flying Ruby.** Currency = rubies (+1 each). Aid = Magnet
+> (5s pull). Frenzy = Power Rush (7s, world ×1.6, sine line of 50 rubies).
+> Formations are `line5`, `wave`, `circle` — three shapes, one sprite, a
+> dozen distinct beats per round.
+
 ---
 
 ## 05 — Economy control
 
-**The 500-ruby cap the player must not see.** Flying Ruby currently has
-**no cap** — score is unbounded. To enforce a soft ceiling of 500 without
-breaking the fantasy, do *not* clamp the counter. Instead, taper supply so
-the world organically thins as the player approaches the cap.
+**Caps the player must not see.** If a fairness or brand rule demands a
+soft ceiling on score per round, do **not** clamp the counter, end the
+round early, or stop spawning entirely. Each of those reads as a bug.
 
 ### Why a visible clamp fails
 
-- **Stuck counter** — Score stops moving while sparkle "+1" pops keep
-  playing. Players notice instantly and feel cheated.
-- **Empty world** — Killing all spawns above 500 leaves the player flying
-  through nothing for the final minute. Reads as a bug.
-- **Hard freeze** — Ending the round early at 500 breaks the "spend the
-  full 3:00" contract the game made on the title screen.
+- **Stuck counter** — Score stops moving while pickup feedback ("+1" pops,
+  sparkles) keeps playing. Players notice instantly and feel cheated.
+- **Empty world** — Killing all spawns above the threshold leaves the player
+  traversing nothing for the final stretch. Reads as a glitch.
+- **Hard freeze** — Ending the round early breaks the "spend the full
+  advertised time" contract the title screen made.
 
 ### Approaches ranked by how invisible they are
 
 | Approach | How it works | Visibility |
 |---|---|---|
-| Hard clamp | `score = Math.min(500, score + 1)` | Very obvious |
-| Stop all spawns past threshold | Lane & gap rolls return empty after 500 | Obvious |
-| **Soft taper (recommended)** | Multiply spawn probabilities by `1 − smoothstep(420, 520, score)`. Suppress new Power Rush bubbles within ~70 of cap. | Invisible |
-| Pre-rolled per-round budget | Pick a target 460–500 at round start; spread spawns via inverse-CDF across the timeline | Invisible but rigid |
+| Hard clamp | `score = Math.min(cap, score + 1)` | Very obvious |
+| Stop all spawns past threshold | Lane & gap rolls return empty after cap | Obvious |
+| **Soft taper (recommended)** | Multiply spawn probabilities by `1 − smoothstep(taperStart, taperEnd, score)`. Suppress new high-payout power-ups within ~10% of cap. | Invisible |
+| Pre-rolled per-round budget | Pick a target near cap at round start; spread spawns via inverse-CDF across the timeline | Invisible but rigid |
 
 ### The soft-taper pattern
 
@@ -193,7 +223,7 @@ export const ECONOMY = {
   softCap:       500,
   taperStart:    420,   // begin thinning supply at this score
   taperEnd:      520,   // effectively no spawns past this
-  rushBlockedAt: 430,   // don't arm new Power Rush bubbles here
+  frenzyBlockedAt: 430, // don't arm new frenzy bubbles here
 };
 
 // In GameScene — a single multiplier applied to every spawn roll
@@ -205,52 +235,43 @@ _supplyMultiplier() {
   return 1 - (t * t * (3 - 2 * t));   // smoothstep
 }
 
-// Then in _spawnGapReward / _spawnLaneCollectible:
+// Then in every spawn function:
 if (Math.random() > this._supplyMultiplier()) return;
 // ...existing odds roll continues here
 ```
 
-> **Why this works.** From the player's perspective the world simply "calms
-> down" near the end — which already happens naturally with the difficulty
-> ramp. Empty lanes during the final stretch feel like difficulty, not
-> deprivation. The HUD keeps counting up; sparkles keep popping; the game
-> keeps its promise.
+> **Why this works.** The world simply "calms down" near the end — which
+> already happens with the difficulty ramp. Empty lanes during the final
+> stretch read as difficulty, not deprivation. The HUD keeps counting up;
+> feedback keeps popping; the game keeps its promise.
+
+> **Reference: Flying Ruby.** Today, score is unbounded. If a 500-ruby cap
+> is added, the values above (taperStart 420, taperEnd 520, Power Rush
+> blocked at 430) are the recommended starting tuning.
 
 ---
 
 ## 06 — Asset management & optimization
 
-**Every kilobyte is a deliberate choice.** The entire game — five sprites,
-one background, seven SFX, three BGM tracks — fits in **2.8 MB**. Folder
-structure mirrors load order, formats are chosen per-asset-type, and
-runtime-generated textures sidestep shipping art that maths can produce.
-
-> **Total payload: 2.8 MB · 16 files · first-load complete.**
+**Every kilobyte is a deliberate choice.** A JDP game should fit comfortably
+under the **3 MB** total-payload target (5 MB hard cap). Hit that envelope
+by choosing formats per-asset-type, generating runtime art for anything
+math can produce, and shipping no build-tooling bytes.
 
 ### Folder layout — sorted by load order & intent
 
 ```
-flying-ruby/
+<game-name>/
 ├── index.html                       # entry · loads Phaser from CDN + src/main.js
 ├── src/                             # scenes + config — code only, no bundler
+│   ├── config.js
+│   ├── main.js
+│   └── scenes/
 ├── assets/
-│   ├── sprites/                     # character art with transparency
-│   │   ├── pbot.webp                #  80 KB · 432×578
-│   │   ├── ruby.webp                #  68 KB · 512×512
-│   │   ├── magnet.webp              #  52 KB · 1024×1024
-│   │   ├── pwr.webp                 #  76 KB · 1024×1024
-│   │   └── game_logo.webp           #  80 KB · 350×338
-│   └── backgrounds/                 # solid art, no transparency channel
-│       └── bg.webp                  # 720 KB · 768×1376
+│   ├── sprites/                     # character art with transparency (WebP lossless)
+│   └── backgrounds/                 # solid art, no alpha (WebP lossy)
 ├── sfx/                             # short, one-shot AAC clips
-│   ├── jump.m4a                     #  16 KB
-│   ├── collect.m4a                  #  20 KB
-│   ├── on-hit.m4a                   #  12 KB
-│   └── ... (4 more)                 # ~200 KB total
-└── bgm/                             # looping AAC tracks per scene
-    ├── start-bgm.m4a                # 128 KB
-    ├── game-bgm.m4a                 # 1.3 MB
-    └── pwr-up.m4a                   # 116 KB
+└── bgm/                             # looping AAC tracks
 ```
 
 > **Foldering principle.** Folder name = file family + lifecycle.
@@ -258,45 +279,52 @@ flying-ruby/
 > alpha. `sfx/` = one-shot. `bgm/` = looped. A new engineer never has to
 > ask where to put a new file.
 
-### Format choices — and what each one saved us
+### Format choices — and what each one saves you
 
 | Asset family | Format | Alternative | Saving | Why this format |
 |---|---|---|---|---|
-| Sprites & logo | **WebP (lossless, RGBA)** | PNG-24 | ~30–50% | Same crisp transparency as PNG, smaller file. Universal browser support since 2020. |
-| Background | **WebP (lossy, RGB)** | JPEG | ~25–35% | No alpha needed; lossy WebP beats JPEG at the same perceptual quality. |
-| SFX (short clips) | **AAC / m4a** | WAV / MP3 | ~10× vs WAV | Sounds identical at gameplay volumes; plays on every browser without licensing. |
+| Sprites & logos | **WebP (lossless, RGBA)** | PNG-24 | ~30–50% | Same crisp transparency as PNG, smaller file. Universal browser support since 2020. |
+| Backgrounds | **WebP (lossy, RGB)** | JPEG | ~25–35% | No alpha needed; lossy WebP beats JPEG at the same perceptual quality. |
+| SFX (short clips) | **AAC / m4a** | WAV / MP3 | ~10× vs WAV | Sounds identical at gameplay volumes; plays on every browser without licensing concerns. |
 | BGM (long loops) | **AAC / m4a** | MP3 | ~15% smaller | Better quality-per-byte than MP3 at the same bitrate; loops cleanly. |
-| Pillars, sparkles, vignette | **Generated at runtime** | PNG | ~100% saved | A gradient or a 4-point star is cheaper to draw than to download. |
+| Pillars, sparkles, vignettes, gradients | **Generated at runtime** | PNG | ~100% saved | A gradient or a 4-point star is cheaper to draw than to download. |
+
+**No PNG. No JPEG. No WAV. No MP3 for new builds.** If a specific asset
+needs to break this rule, document why in the game's own `CLAUDE.md`.
+
+### File-size targets per asset
+
+| Asset | Target | Hard cap |
+|---|---|---|
+| Individual sprite | <100 KB | 200 KB |
+| Background image | <800 KB | 1.5 MB |
+| SFX clip | <50 KB | 100 KB |
+| BGM track | <1.5 MB | 2 MB |
+| **Total game payload** | **<3 MB** | **5 MB** |
 
 ### Six optimization tactics in play
 
-1. **WebP everywhere.** Every image is WebP. Lossless for sprites, lossy
-   for the background. No PNG, no JPEG anywhere in the bundle.
-2. **Generate before download.** Pillars, sparkles, dust, and the rush
-   vignette are drawn in code at boot. **Zero bytes** shipped for any of
-   them.
-3. **Mirror to tile.** The background ships as a single image. BootScene
-   mirrors it horizontally in a canvas to produce a seamless loop — no
-   second image, no artist-authored tile.
-4. **Source sprites stay oversized.** Power-up orbs are 1024×1024 source;
-   rendered at 58–68 px via `setDisplaySize()`. Authoring once at high-res
-   means no swapping per device.
-5. **AAC over WAV.** Seven SFX total ~200 KB. The same clips as WAV would
-   push past 2 MB on their own.
-6. **No bundler, no framework.** Phaser loads from a CDN. ES modules import
-   directly. **0 KB of build tooling, polyfills, or dependency duplication**
-   ships to the player.
+1. **WebP everywhere.** Lossless for sprites, lossy for the background.
+2. **Generate before download.** Obstacles, sparkles, dust, vignettes —
+   draw them in code at boot. **Zero bytes** shipped for any of them.
+3. **Mirror to tile.** Ship one background image; mirror it horizontally
+   in a canvas at boot to produce a seamless loop. No artist-authored tile.
+4. **Source sprites stay oversized.** Author at 1024×1024 if you want,
+   render via `setDisplaySize()`. One asset, every device.
+5. **AAC over WAV** for all audio.
+6. **No bundler, no framework** unless required. **0 KB of build tooling,
+   polyfills, or dependency duplication** ships to the player.
 
 ### How runtime generation looks in code
 
 ```js
 // BootScene · zero-byte texture, drawn once at boot
-_makePipe() {
+_makeObstacle() {
   const w = 64, h = this.scale.height;
-  const tex = this.textures.createCanvas('pipe', w, h);
+  const tex = this.textures.createCanvas('obstacle', w, h);
   const ctx = tex.context;
 
-  // gold cylinder: dark edges → bright highlight band ~42% across
+  // dark edges → bright highlight band ~42% across
   const grad = ctx.createLinearGradient(0, 0, w, 0);
   grad.addColorStop(0.00, '#9a6e00');
   grad.addColorStop(0.42, '#ffd633');
@@ -306,81 +334,104 @@ _makePipe() {
 }
 ```
 
-> **Pattern: shared keys for placeholder & final art.** Placeholder textures
-> use the same key the real file will use (`'pipe'`, `'star'`, `'sparkle'`).
-> Swapping in real art is a one-line change in `BootScene.preload()` — every
-> scene that uses the key picks it up automatically. Gameplay can be built
-> and tested before any artist delivers a final asset.
+> **Pattern: shared keys for placeholder & final art.** Generate
+> placeholders in `BootScene` using the **same key** the real file will use
+> (`'obstacle'`, `'star'`, `'sparkle'`). Swapping in real art is a one-line
+> change in `BootScene.preload()` — every scene that uses the key picks it
+> up automatically. Gameplay can be built and playtested before any artist
+> delivers a final asset.
+
+> **Reference: Flying Ruby.** Ships in **2.8 MB across 16 files**. Five
+> sprites (`pbot`, `ruby`, `magnet`, `pwr`, `game_logo`, all WebP, each
+> 52–80 KB), one background (`bg.webp`, 720 KB), seven SFX (~200 KB total),
+> three BGM tracks (`start-bgm`, `game-bgm`, `pwr-up`, 1.5 MB combined).
+> Pipes, sparkles, dust, and the rush vignette are drawn at boot — zero
+> bytes downloaded for any of them.
 
 ---
 
-## 06b — Visual reference
+## 06b — Visual composition
 
-**The actual art, and how it composes on screen.** The five sprites below
-are the entire visible cast of the game. Everything else — pillars,
-particles, glows, vignettes — is drawn from code.
+**Draw more than you ship.** A typical JDP game frame stacks 6–8 visible
+layers, but only 2–4 of them are loaded from disk. Everything else —
+chrome, particles, gradients, overlays — is drawn from code in `BootScene`
+or each scene's `create()`.
 
-| Sprite | Source size | File size |
-|---|---|---|
-| `pbot.webp` — mascot | 432×578 | 80 KB |
-| `ruby.webp` — currency | 512×512 | 68 KB |
-| `magnet.webp` — aid power-up | 1024×1024 | 52 KB |
-| `pwr.webp` — frenzy power-up | 1024×1024 | 76 KB |
-| `game_logo.webp` — title art | 350×338 | 80 KB |
+### Generic frame composition (layered back-to-front)
 
-### What you see, layer by layer
+1. **Background** — single image, optionally mirrored at runtime for a
+   seamless loop.
+2. **Dim overlay** — translucent navy rectangle. Pure code, makes the
+   playfield pop without darker art.
+3. **Playfield art** — generated canvas textures (obstacles, lanes, walls)
+   scaled to gameplay positions.
+4. **Mascot / player** — single sprite; rotate / squash / tint in response
+   to input.
+5. **Currency & power-ups** — single sprite per type, spawned in singles or
+   formations.
+6. **HUD strip** — translucent bar, brand colors, the one HUD number on one
+   side, the timer on the other. No chrome.
+7. **Effects layer** — sparkles, "+1" floats, auras, vignettes. All
+   generated at runtime.
+8. **Modal / overlay** — Continue prompt, mute button, NEW BEST! pop.
 
-1. **Background** — single WebP, mirrored at runtime into a seamless
-   scrolling tile.
-2. **Navy dim overlay** — 28% opacity rectangle. Pure code, makes the
-   playfield pop.
-3. **HUD strip** — translucent navy bar. Ruby count (left), TIME (right).
-   Brand colors, no chrome.
-4. **Gold pillars** — generated canvas gradient. Same texture, scaled to
-   gap position.
-5. **pbot** — single sprite, tilted toward velocity, squashed on flap.
-6. **Rubies** — single sprite, spawned in singles or in line / wave /
-   circle formations.
-7. **Floor band** — translucent navy + yellow trim line. Two rectangles.
+> **Observation.** Of the eight layers above, typically only the
+> background, mascot, and currency sprite are loaded from disk. The rest is
+> constructed in code. **This is what keeps the bundle under 3 MB and the
+> first frame fast.**
 
-> **Observation.** Of the seven visible layers above, only three are loaded
-> from disk (background, pbot, ruby). The remaining four are constructed in
-> code. This is what keeps the bundle under 3 MB and the first frame fast.
+> **Reference: Flying Ruby.** Visible cast on disk: `pbot` (mascot, 432×578,
+> 80 KB), `ruby` (currency, 512×512, 68 KB), `bg` (720 KB). Pipes, dim
+> overlay, HUD strip, floor band, sparkles, "+1" floats, magnet rings, rush
+> vignette — all drawn from code.
 
 ---
 
 ## 07 — Game feel
 
-**The polish budget.** Almost every interaction has a small response. None
-of it is expensive, but the cumulative effect is the difference between a
-prototype and a shippable game.
+**The polish budget.** Almost every interaction should have a small visual
+response. None of it is expensive, but the cumulative effect is the
+difference between a prototype and a shippable game.
 
-- **Tilt-to-velocity** — pbot rotates toward its vertical velocity each
-  frame, clamped −25° to +70°. Sells the arc of a flap.
-- **Squash on flap** — 80 ms scale yoyo (1.08× / 0.92×). Free, but makes the
-  input feel tactile.
-- **Sparkle + "+1"** — every ruby pickup emits a fading sparkle pop and a
-  floating "+1". Reinforces the scoring loop visually.
-- **Multi-phase crash** — flash → pillar white-out → cracks → shatter →
-  mascot flies into camera → glass screen-crack → fade to Game Over. ~1.9s
-  of pure drama.
-- **Magnet aura** — pulsing concentric rings around pbot while the power-up
-  is active. Status that doesn't need HUD real estate.
-- **Rush visuals** — red vignette + speed lines + faint red mascot
-  afterimages + the background races at 10× scroll speed.
-- **Mirrored bg loop** — BootScene bakes a horizontal mirror so any
-  background image loops seamlessly — no artist needs to author a tileable
-  version.
-- **Generous hit pads** — buttons have ~40 px invisible hit padding on
-  every side. Edge taps still register on mobile.
+Mandatory polish for any JDP game:
+
+- **Tactile input response.** Squash on tap (80 ms scale yoyo, 1.08× /
+  0.92×), button press scale-down, etc. Free, but makes the input feel
+  alive.
+- **Pickup feedback.** Sparkle pop + floating "+1" (or equivalent) on every
+  collect. Reinforces the scoring loop visually.
+- **Multi-phase death.** At least three phases — e.g. flash → object
+  shatter → screen effect → fade. Earn 1–2 seconds of drama.
+- **Power-up activation effects.** A ring, a label, and an aura on every
+  power-up. The aura is your status indicator — it frees HUD real estate.
+- **Urgent HUD.** Turn red / pulse in the final 10 seconds of the round.
+- **"NEW BEST!" celebration** when the round beats `localStorage` best.
+- **Generous hit pads.** ~40 px of invisible padding on every tappable
+  button so edge taps register on mobile.
+
+Optional but high-leverage:
+
+- **Tilt-to-velocity.** Rotate the player sprite toward its movement vector
+  each frame, clamped to a sensible range. Sells the arc of a jump or dash.
+- **Mirrored background loop.** Bake a horizontal mirror so any background
+  image loops seamlessly — no artist needs to author a tileable version.
+- **Frenzy visuals.** Vignette + speed lines + mascot afterimages + the
+  background racing at a higher scroll speed. Sells the mode change.
+
+> **Reference: Flying Ruby.** Tilt clamped −25° to +70°, 80 ms squash on
+> flap, sparkle + "+1" on every ruby, 1.9s multi-phase crash (flash →
+> pillar white-out → cracks → shatter → mascot flies into camera → glass
+> screen-crack → fade), magnet aura (pulsing concentric rings), rush
+> visuals (red vignette + speed lines + 10× scroll). All built from tweens
+> and runtime-generated textures.
 
 ---
 
 ## 08 — Replication patterns
 
-Ten patterns to copy into your next game. Each is a self-contained design
-or engineering choice that travelled well in Flying Ruby and should
-transplant cleanly to any short-session arcade game.
+Ten patterns to copy into every JDP game. Each is a self-contained design
+or engineering choice that should transplant cleanly to any short-session
+arcade game.
 
 ### 1. One config file, named ranges
 Put every tuning value in `config.js`. Use `{ start, end }` for anything
@@ -414,15 +465,15 @@ while pickups still spawn.
 feels like a bug.
 
 ### 6. Formations as cheap content
-Build a handful of formation shapes (line, wave, circle) that share one
-velocity. Rotate which one spawns. You get visual variety from a single
+Build a handful of formation shapes (line, wave, circle, arc) that share
+one velocity. Rotate which one spawns. You get visual variety from a single
 sprite.
-**Why:** ten formations × one ruby sprite = ten distinct "moments" with no
+**Why:** ten formations × one sprite = ten distinct "moments" with no
 extra art.
 
 ### 7. Two power-ups, two purposes
-One *aid* power-up (magnet — makes the existing loop easier) and one
-*frenzy* power-up (Power Rush — changes the loop briefly). Don't ship four.
+One *aid* power-up (makes the existing loop easier) and one *frenzy*
+power-up (changes the loop briefly). Don't ship four.
 **Why:** two power-ups can be balanced and explained on a title screen.
 Four becomes a tutorial problem.
 
@@ -433,8 +484,8 @@ final art will use. Swapping later is a single `this.load.image()` line.
 and code parallelise.
 
 ### 9. Polish budget on every interaction
-Every input gets a tactile response (squash, flash, sparkle, +1 float).
-Death sequences earn 1–2 seconds of drama. Magnet and Rush each get a
+Every input gets a tactile response (squash, flash, sparkle, "+1" float).
+Death sequences earn 1–2 seconds of drama. Aid and frenzy each get a
 distinct visual language.
 **Why:** the gap between "prototype" and "shippable" is mostly tiny
 tweens. They're cheap; ship them.
@@ -454,7 +505,7 @@ pattern from §08.
 
 - [ ] Decide the session length first. Under 5 minutes? Use
       endless-with-timer; skip stages.
-- [ ] Stand up `config.js` with palette, gravity, round duration, and
+- [ ] Stand up `config.js` with palette, physics, round duration, and
       `{ start, end }` ranges before writing any scene.
 - [ ] Pick one currency. Name it. That's the only number on the HUD.
 - [ ] Define two exit conditions: a soft one (crash with time remaining →
@@ -469,7 +520,7 @@ pattern from §08.
       probability, not as a counter clamp.
 - [ ] Identify which textures are art (mascot, currency, power-ups,
       background) and which are generated (obstacles, particles, glows).
-- [ ] Reserve a polish budget per interaction: flap response, pickup
+- [ ] Reserve a polish budget per interaction: input response, pickup
       feedback, death sequence, power-up activation.
 - [ ] Add a `?scene=` dev jump in BootScene from day one.
 - [ ] Persist best score and mute preference in `localStorage`; guard with
@@ -489,7 +540,8 @@ If you remember three things:
    Taper spawn probabilities as the player nears the cap — the world simply
    "calms down".
 
-> **Closing thought.** Flying Ruby is small on purpose. Four scenes, one
-> config file, two power-ups, one currency. The discipline of *not adding
-> more* is what lets the polish budget land — and it's what makes the game
-> feel finished in a way most prototypes never do.
+> **Closing thought.** A JDP game should be small on purpose. A handful of
+> scenes, one config file, two power-ups, one currency. The discipline of
+> *not adding more* is what lets the polish budget land — and it's what
+> makes the game feel finished in a way most prototypes never do. Flying
+> Ruby is the proof that the recipe works end-to-end in under 3 MB.

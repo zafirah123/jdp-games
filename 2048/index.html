@@ -89,16 +89,22 @@
     top: 16px; right: 16px;
     background: rgba(2, 13, 38, 0.85);
     border: 2px solid #FFD633;
-    border-radius: 50%;
-    width: 40px; height: 40px;
+    border-radius: 999px;
+    height: 40px;
     color: #FFD633;
     cursor: pointer;
-    padding: 8px;
+    padding: 4px 12px 4px 6px;
     display: flex;
     align-items: center; justify-content: center;
+    gap: 6px;
     z-index: 30;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
   }
-  .mute svg { width: 100%; height: 100%; fill: currentColor; }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; flex-shrink: 0; }
+  .mute .mute-label { line-height: 1; white-space: nowrap; }
 
   /* Overlays */
   .overlay {
@@ -195,6 +201,7 @@
 
 <button id="muteBtn" class="mute" aria-label="Toggle sound">
   <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+  <span class="mute-label" id="muteLabel"></span>
 </button>
 
 <div id="hud" class="hidden">
@@ -210,24 +217,65 @@
 <div id="menu" class="overlay">
   <div class="card">
     <h1>2048</h1>
-    <p class="sub">Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.</p>
+    <p class="sub" id="menuSub"></p>
     <p class="best" id="bestText">&nbsp;</p>
-    <button id="startBtn" class="cta">Start</button>
-    <p class="hint">Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd></p>
+    <button id="startBtn" class="cta"></button>
+    <p class="hint" id="menuHint"></p>
   </div>
 </div>
 
 <div id="gameOver" class="overlay hidden">
   <div class="card">
-    <h2 id="goTitle">Time's up!</h2>
-    <div id="goNewBest" class="hidden"><span class="new-best">NEW BEST!</span></div>
+    <h2 id="goTitle"></h2>
+    <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
     <div id="finalStats" class="stats"></div>
-    <button id="playAgainBtn" class="cta">Play Again</button>
+    <button id="playAgainBtn" class="cta"></button>
   </div>
 </div>
 
 <script>
 'use strict';
+
+// =============================================================================
+// i18n — ?lang=ms switches the game's copy to Bahasa Melayu, English otherwise.
+// =============================================================================
+const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    start: 'START GAME',
+    timeUp: "TIME'S UP!",
+    gameOver: 'GAME OVER',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    menuSub: 'Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.',
+    menuHint: 'Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
+    playAgain: 'PLAY AGAIN',
+    newBest: 'NEW BEST!',
+    bestPrefix: 'Best',
+    statScore: 'Score',
+    statHighestTile: 'Highest tile',
+    statMoves: 'Moves',
+    statMerges: 'Merges',
+    statBest: 'Best',
+  },
+  ms: {
+    start: 'MULA MAIN',
+    timeUp: 'MASA TAMAT!',
+    gameOver: 'PERMAINAN TAMAT',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    menuSub: 'Leret untuk gerakkan jubin — dua jubin dengan nombor sama akan bergabung menjadi satu. Pastikan sekurang-kurangnya satu petak kosong atau permainan tamat. Dapatkan skor setinggi mungkin dalam 3 minit.',
+    menuHint: 'Leret pada skrin sentuh, atau gunakan <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
+    playAgain: 'MAIN SEMULA',
+    newBest: 'REKOD BAHARU!',
+    bestPrefix: 'Terbaik',
+    statScore: 'Skor',
+    statHighestTile: 'Jubin tertinggi',
+    statMoves: 'Gerakan',
+    statMerges: 'Gabungan',
+    statBest: 'Terbaik',
+  },
+}[LANG];
 
 // =============================================================================
 // CONFIG — all tunables live here
@@ -291,14 +339,25 @@ const dom = {
   urgencyFill: document.getElementById('urgencyFill'),
   muteBtn: document.getElementById('muteBtn'),
   menu: document.getElementById('menu'),
+  menuSub: document.getElementById('menuSub'),
+  menuHint: document.getElementById('menuHint'),
   startBtn: document.getElementById('startBtn'),
   bestText: document.getElementById('bestText'),
   gameOver: document.getElementById('gameOver'),
   goTitle: document.getElementById('goTitle'),
   goNewBest: document.getElementById('goNewBest'),
+  newBestLabel: document.getElementById('newBestLabel'),
   finalStats: document.getElementById('finalStats'),
   playAgainBtn: document.getElementById('playAgainBtn'),
+  muteLabel: document.getElementById('muteLabel'),
 };
+
+// Apply localized copy into the DOM up front.
+dom.menuSub.textContent = COPY.menuSub;
+dom.menuHint.innerHTML = COPY.menuHint;
+dom.startBtn.textContent = COPY.start;
+dom.playAgainBtn.textContent = COPY.playAgain;
+dom.newBestLabel.textContent = COPY.newBest;
 
 // =============================================================================
 // Sandbox-safe storage
@@ -983,15 +1042,15 @@ function endGame(reason) {
     storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
   }
 
-  dom.goTitle.textContent = reason === 'locked' ? 'Game Over' : "Time's up!";
+  dom.goTitle.textContent = reason === 'locked' ? COPY.gameOver : COPY.timeUp;
   dom.goNewBest.classList.toggle('hidden', !isNewBest);
 
   dom.finalStats.innerHTML =
-    '<div class="label">Score</div><div class="value">' + state.score + '</div>' +
-    '<div class="label">Highest tile</div><div class="value">' + (state.highestTile || '—') + '</div>' +
-    '<div class="label">Moves</div><div class="value">' + state.moves + '</div>' +
-    '<div class="label">Merges</div><div class="value">' + state.merges + '</div>' +
-    '<div class="label">Best</div><div class="value">' + state.best + '</div>';
+    '<div class="label">' + COPY.statScore + '</div><div class="value">' + state.score + '</div>' +
+    '<div class="label">' + COPY.statHighestTile + '</div><div class="value">' + (state.highestTile || '—') + '</div>' +
+    '<div class="label">' + COPY.statMoves + '</div><div class="value">' + state.moves + '</div>' +
+    '<div class="label">' + COPY.statMerges + '</div><div class="value">' + state.merges + '</div>' +
+    '<div class="label">' + COPY.statBest + '</div><div class="value">' + state.best + '</div>';
 
   playGameOver();
   setTimeout(() => {
@@ -1001,7 +1060,7 @@ function endGame(reason) {
 }
 
 function showBest() {
-  if (state.best > 0) dom.bestText.innerHTML = 'Best: <b>' + state.best + '</b>';
+  if (state.best > 0) dom.bestText.innerHTML = COPY.bestPrefix + ': <b>' + state.best + '</b>';
   else dom.bestText.innerHTML = '&nbsp;';
 }
 
@@ -1073,6 +1132,8 @@ function updateMuteUI() {
   svg.innerHTML = state.muted
     ? '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3zm17.59-7L17 5.59 13.41 2 12 3.41l3.59 3.59L12 10.59 13.41 12 17 8.41 20.59 12 22 10.59 18.41 7 22 3.41z"/>'
     : '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
+  // Label shows current state — muted == AUDIO OFF, unmuted == AUDIO ON.
+  dom.muteLabel.textContent = state.muted ? COPY.audioOff : COPY.audioOn;
 }
 
 // =============================================================================

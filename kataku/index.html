@@ -62,9 +62,17 @@
 
   /* HUD */
   #hud {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 4px 12px; gap: 8px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 8px 4px 12px;
+    gap: 8px;
+    /* Right column reserves space for the fixed 44×44 audio toggle */
+    padding-right: 60px;
   }
+  #hud .left  { display: flex; align-items: center; gap: 8px; justify-self: start; }
+  #hud .mid   { justify-self: center; }
+  #hud .right { justify-self: end; }
   .pill {
     background: #1a2548;
     border: 2px solid var(--tile-border);
@@ -268,9 +276,14 @@
 
 <div id="app">
   <header id="hud" class="hidden">
-    <div id="scorePill" class="pill">0</div>
-    <div class="mult-badge" id="multBadge">×1.0</div>
-    <div id="timerPill" class="pill timer">3:00</div>
+    <div class="left">
+      <div id="scorePill" class="pill">0</div>
+      <div class="mult-badge" id="multBadge">×1.0</div>
+    </div>
+    <div class="mid">
+      <div id="timerPill" class="pill timer">3:00</div>
+    </div>
+    <div class="right"></div>
   </header>
 
   <div id="board-wrap" class="hidden">

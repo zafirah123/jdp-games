@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#031034">
+<title>Tap Tap Match — JDP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #031034;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+    touch-action: none;
+    font-family: 'Poppins', system-ui, sans-serif;
+  }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; inset: 0;
+  }
+  #game {
+    display: block;
+    background: #031034;
+    image-rendering: -webkit-optimize-contrast;
+  }
+  .mute {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    border: 2px solid #FFB603;
+    background: #9E131F;
+    color: #FFD633;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 80ms ease;
+  }
+  .mute:active { transform: scale(0.92); }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="muteBtn" class="mute" aria-label="Toggle sound" aria-pressed="false">
+  <svg viewBox="0 0 24 24"></svg>
+</button>
+<script>
+'use strict';
+
+// ============================================================
+// CONFIG — all tuning lives here
+// ============================================================
+const CONFIG = {
+  width: 480,
+  height: 800,
+  roundDurationMs: 180 * 1000,   // 3-minute round
+
+  // Grid geometry (logical units)
+  grid: {
+    cellSize: 116,
+    cellGap: 10,
+    yOffset: 220,                 // top of grid block
+  },
+
+  // JDP palette — DESIGN.md §1
+  palette: {
+    bg:        '#031034',         // Black
+    chrome:    '#9E131F',         // Brick Red
+    chromeHi:  '#FFD633',         // Light Yellow
+    accent:    '#FFB603',         // Dark Yellow
+    blue:      '#133B9F',         // Blue
+    white:     '#FFFFFF',
+    muted:     '#82868B',
+    danger:    '#AF1726',         // Light Red
+  },
+
+  // 3×3 cell colors — rainbow with JDP main colors at 0, 2, 5
+  // Pentatonic-major over 2 octaves (C D E G A C D E G) — cheerful, kid-friendly
+  cells: [
+    { hue: '#9E131F', dim: '#3a0810', freq: 261.63 }, // 0 JDP Brick Red · C4
+    { hue: '#FF8A1E', dim: '#3a1f08', freq: 293.66 }, // 1 Orange         · D4
+    { hue: '#FFB603', dim: '#3a2a00', freq: 329.63 }, // 2 JDP Dark Yellow· E4
+    { hue: '#22C55E', dim: '#0a3a18', freq: 392.00 }, // 3 Green          · G4
+    { hue: '#14B8A6', dim: '#063a35', freq: 440.00 }, // 4 Teal           · A4
+    { hue: '#133B9F', dim: '#0a1a3a', freq: 523.25 }, // 5 JDP Blue       · C5
+    { hue: '#6366F1', dim: '#1a1a3a', freq: 587.33 }, // 6 Indigo         · D5
+    { hue: '#A855F7', dim: '#2a0a3a', freq: 659.25 }, // 7 Purple         · E5
+    { hue: '#EC4899', dim: '#3a0a26', freq: 783.99 }, // 8 Pink           · G5
+  ],
+
+  // Round timing table — sequence length 3..9, flash & gap shrinking
+  rounds: [
+    { len: 3, flash: 600, gap: 250 }, // round 1
+    { len: 4, flash: 550, gap: 220 }, // round 2
+    { len: 5, flash: 500, gap: 200 }, // round 3
+    { len: 6, flash: 450, gap: 180 }, // round 4
+    { len: 7, flash: 400, gap: 160 }, // round 5
+    { len: 8, flash: 350, gap: 140 }, // round 6
+    { len: 9, flash: 300, gap: 120 }, // round 7 — length cap
+  ],
+  postCap: { flashStep: 30, gapStep: 10, flashFloor: 150, gapFloor: 70 },
+
+  // Scoring
+  basePoints:    [3, 4, 6, 8, 11, 14, 18],   // by round 1..7
+  postCapPoints: 22,
+  speedBonus:    2,
+
+  // Soft cap — taper per-round payout (BEST-PRACTICES.md §05).
+  // Per-round payout because Tap Tap Grid has no spawn rate to taper.
+  economy: {
+    softCap:    500,
+    taperStart: 420,
+    taperEnd:   520,
+  },
+
+  // Feedback timings
+  confirmFlashMs:  180,
+  wrongFlashMs:    700,
+  betweenRoundMs:  650,
+  prerollMs:       450,        // pause before first flash each round
+  urgentSecs:      10,         // HUD pulse + ticks
+
+  // Storage
+  storage: {
+    best: 'tap-tap-match:best',
+    mute: 'tap-tap-match:mute',
+  },
+};
+
+// ============================================================
+// HELPERS
+// ============================================================
+const clamp      = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+const lerp       = (a, b, t)   => a + (b - a) * t;
+const smoothstep = t => t * t * (3 - 2 * t);
+
+function timingForRound(round) {
+  if (round <= CONFIG.rounds.length) return CONFIG.rounds[round - 1];
+  const postCap = round - CONFIG.rounds.length;
+  const last = CONFIG.rounds[CONFIG.rounds.length - 1];
+  return {
+    len: 9,
+    flash: Math.max(CONFIG.postCap.flashFloor, last.flash - postCap * CONFIG.postCap.flashStep),
+    gap:   Math.max(CONFIG.postCap.gapFloor,   last.gap   - postCap * CONFIG.postCap.gapStep),
+  };
+}
+
+function basePointsForRound(round) {
+  if (round <= CONFIG.basePoints.length) return CONFIG.basePoints[round - 1];
+  return CONFIG.postCapPoints;
+}
+
+// §05 soft taper — multiply the per-round payout, never clamp the counter.
+function payoutMultiplier(score) {
+  const { taperStart, taperEnd } = CONFIG.economy;
+  if (score <= taperStart) return 1;
+  if (score >= taperEnd)   return 0;
+  return 1 - smoothstep((score - taperStart) / (taperEnd - taperStart));
+}
+
+function makeSequence(length) {
+  const seq = [];
+  let last = -1;
+  for (let i = 0; i < length; i++) {
+    let n;
+    do { n = Math.floor(Math.random() * 9); } while (n === last);
+    seq.push(n);
+    last = n;
+  }
+  return seq;
+}
+
+function storageGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v === null ? fallback : v; }
+  catch (e) { return fallback; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+  scene: 'start',            // start | flashing | input | between | continue | gameover
+  score: 0,
+  best: 0,
+  round: 1,
+  sequence: [],
+  inputIndex: 0,
+  flashIndex: -1,
+  flashUntil: 0,             // when current flash event ends (advance timer)
+  flashCellOnUntil: 0,       // when current cell glow fades
+  confirmCellIndex: -1,
+  confirmUntil: 0,
+  wrongUntil: 0,
+  timerMs: CONFIG.roundDurationMs,
+  inputStartMs: 0,
+  continueUsed: false,
+  newBest: false,
+  muted: false,
+  lastAward: 0,
+  lastAwardUntil: 0,
+};
+
+// ============================================================
+// AUDIO — Web Audio synthesis, zero asset bytes
+// ============================================================
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) audioCtx = new Ctx();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playTone(opts) {
+  if (state.muted || !audioCtx) return;
+  const {
+    freq, freqEnd = null, type = 'sine',
+    dur = 0.2, gain = 0.15, delay = 0,
+  } = opts;
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (freqEnd !== null) osc.frequency.linearRampToValueAtTime(freqEnd, t0 + dur);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.05);
+}
+
+function playCellTone(idx) {
+  playTone({ freq: CONFIG.cells[idx].freq, type: 'sine',     dur: 0.32, gain: 0.18 });
+  playTone({ freq: CONFIG.cells[idx].freq, type: 'triangle', dur: 0.22, gain: 0.08 });
+}
+function playWrong() {
+  playTone({ freq: 220, freqEnd: 70,  type: 'sawtooth', dur: 0.45, gain: 0.22 });
+}
+function playRoundComplete() {
+  [523.25, 659.25, 783.99].forEach((f, i) =>
+    playTone({ freq: f, type: 'triangle', dur: 0.22, gain: 0.16, delay: i * 0.07 })
+  );
+}
+function playTick() {
+  playTone({ freq: 1100, type: 'square', dur: 0.05, gain: 0.10 });
+}
+function playButton() {
+  playTone({ freq: 600, freqEnd: 900, type: 'triangle', dur: 0.10, gain: 0.14 });
+}
+
+// ============================================================
+// CANVAS & DRAW
+// ============================================================
+const canvas  = document.getElementById('game');
+const ctx     = canvas.getContext('2d');
+const muteBtn = document.getElementById('muteBtn');
+
+function resize() {
+  const dpr   = Math.min(window.devicePixelRatio || 1, 2);
+  const ratio = CONFIG.width / CONFIG.height;
+  let cssW = window.innerWidth;
+  let cssH = window.innerHeight;
+  if (cssW / cssH > ratio) cssW = cssH * ratio;
+  else                     cssH = cssW / ratio;
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  const scale = (cssW * dpr) / CONFIG.width;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+}
+
+function roundRect(x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x,     y + h, rr);
+  ctx.arcTo(x,     y + h, x,     y,     rr);
+  ctx.arcTo(x,     y,     x + w, y,     rr);
+  ctx.closePath();
+}
+
+function cellRect(idx) {
+  const { cellSize, cellGap, yOffset } = CONFIG.grid;
+  const total = 3 * cellSize + 2 * cellGap;
+  const x0 = (CONFIG.width - total) / 2;
+  const col = idx % 3;
+  const row = Math.floor(idx / 3);
+  return {
+    x: x0 + col * (cellSize + cellGap),
+    y: yOffset + row * (cellSize + cellGap),
+    w: cellSize,
+    h: cellSize,
+  };
+}
+
+function cellAtPoint(px, py) {
+  for (let i = 0; i < 9; i++) {
+    const r = cellRect(i);
+    if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return i;
+  }
+  return -1;
+}
+
+function drawBackground() {
+  ctx.fillStyle = CONFIG.palette.bg;
+  ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+  const grad = ctx.createRadialGradient(
+    CONFIG.width / 2, CONFIG.height * 0.42, 80,
+    CONFIG.width / 2, CONFIG.height * 0.42, CONFIG.height * 0.9
+  );
+  grad.addColorStop(0, 'rgba(19, 59, 159, 0.22)');
+  grad.addColorStop(1, 'rgba(3, 16, 52, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+}
+
+function drawCell(idx, lit, scale = 1) {
+  const c = CONFIG.cells[idx];
+  const r = cellRect(idx);
+  const cx = r.x + r.w / 2;
+  const cy = r.y + r.h / 2;
+  const w = r.w * scale;
+  const h = r.h * scale;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  if (lit) {
+    ctx.shadowColor = c.hue;
+    ctx.shadowBlur = 36;
+  }
+  ctx.fillStyle = lit ? c.hue : c.dim;
+  roundRect(-w / 2, -h / 2, w, h, 18);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  if (lit) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    roundRect(-w / 2 + 10, -h / 2 + 10, w - 20, h * 0.32, 12);
+    ctx.fill();
+  }
+
+  ctx.lineWidth = lit ? 3 : 2;
+  ctx.strokeStyle = lit ? '#FFFFFF' : 'rgba(255, 255, 255, 0.08)';
+  roundRect(-w / 2, -h / 2, w, h, 18);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawGrid(time) {
+  const litIdx = new Set();
+  const scaleMap = {};
+
+  if (state.scene === 'flashing' && time < state.flashCellOnUntil && state.flashIndex >= 0) {
+    const i = state.sequence[state.flashIndex];
+    litIdx.add(i);
+    scaleMap[i] = 1.06;
+  }
+  if ((state.scene === 'input' || state.scene === 'between') &&
+      time < state.confirmUntil && state.confirmCellIndex >= 0) {
+    litIdx.add(state.confirmCellIndex);
+    scaleMap[state.confirmCellIndex] = 1.06;
+  }
+
+  const wrong = time < state.wrongUntil;
+  for (let i = 0; i < 9; i++) {
+    drawCell(i, litIdx.has(i) && !wrong, scaleMap[i] || 1);
+    if (wrong) {
+      const r = cellRect(i);
+      const t = (state.wrongUntil - time) / CONFIG.wrongFlashMs;
+      ctx.fillStyle = `rgba(175, 23, 38, ${0.55 * t})`;
+      roundRect(r.x, r.y, r.w, r.h, 18);
+      ctx.fill();
+    }
+  }
+}
+
+function drawPill(x, y, w, h, fill, label, value, valueColor) {
+  ctx.fillStyle = fill;
+  roundRect(x, y, w, h, h / 2);
+  ctx.fill();
+  ctx.strokeStyle = CONFIG.palette.accent;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = '600 11px Poppins, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + 18, y + h / 2 - 11);
+
+  ctx.fillStyle = valueColor;
+  ctx.font = '700 22px Poppins, sans-serif';
+  ctx.fillText(value, x + 18, y + h / 2 + 10);
+}
+
+function drawHUD(time) {
+  const secsLeft = Math.max(0, Math.ceil(state.timerMs / 1000));
+  const live = state.scene !== 'start' && state.scene !== 'gameover';
+  const urgent = live && secsLeft <= CONFIG.urgentSecs && secsLeft > 0;
+
+  // Score pill (left)
+  drawPill(36, 70, 168, 56, CONFIG.palette.chrome, 'SCORE', String(state.score), CONFIG.palette.chromeHi);
+
+  // Timer pill (right)
+  const mm = Math.floor(secsLeft / 60);
+  const ss = String(secsLeft % 60).padStart(2, '0');
+  const fill = urgent ? CONFIG.palette.danger : CONFIG.palette.blue;
+  const alpha = urgent ? (0.78 + 0.22 * Math.sin(time * 0.012)) : 1;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  drawPill(CONFIG.width - 36 - 168, 70, 168, 56, fill, 'TIME', `${mm}:${ss}`, '#FFFFFF');
+  ctx.restore();
+
+  // Round indicator
+  if (live) {
+    const len = timingForRound(state.round).len;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.font = '600 13px Poppins, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`Round ${state.round}  ·  Length ${len}`, CONFIG.width / 2, 150);
+  }
+
+  // Floating "+N" award
+  if (time < state.lastAwardUntil && state.lastAward > 0) {
+    const t = (state.lastAwardUntil - time) / 900;
+    const y = 110 - (1 - t) * 20;
+    ctx.save();
+    ctx.globalAlpha = clamp(t, 0, 1);
+    ctx.fillStyle = CONFIG.palette.chromeHi;
+    ctx.font = '700 26px Poppins, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`+${state.lastAward}`, 120, y);
+    ctx.restore();
+  }
+}
+
+function drawStatusText(time) {
+  const { cellSize, cellGap, yOffset } = CONFIG.grid;
+  const y = yOffset + 3 * (cellSize + cellGap) + 36;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (state.scene === 'flashing') {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+    ctx.font = '600 18px Poppins, sans-serif';
+    ctx.fillText('Watch the sequence', CONFIG.width / 2, y);
+  } else if (state.scene === 'input') {
+    const remaining = state.sequence.length - state.inputIndex;
+    ctx.fillStyle = CONFIG.palette.chromeHi;
+    ctx.font = '700 20px Poppins, sans-serif';
+    ctx.fillText(`Tap ${remaining} more`, CONFIG.width / 2, y);
+  } else if (state.scene === 'between') {
+    const pulse = 1 + 0.06 * Math.sin(time * 0.02);
+    ctx.save();
+    ctx.translate(CONFIG.width / 2, y);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = CONFIG.palette.chromeHi;
+    ctx.font = '700 26px Poppins, sans-serif';
+    ctx.fillText('NICE!', 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawButton(x, y, w, h, label) {
+  // Shadow plate (DESIGN.md §5.1)
+  ctx.fillStyle = '#DE9D00';
+  roundRect(x, y + 8, w, h, h / 2);
+  ctx.fill();
+  // Surface gradient
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, '#FFE258');
+  grad.addColorStop(1, '#FFBA0A');
+  ctx.fillStyle = grad;
+  roundRect(x, y, w, h, h / 2);
+  ctx.fill();
+  ctx.strokeStyle = '#FFD633';
+  ctx.lineWidth = 1.5;
+  roundRect(x, y, w, h, h / 2);
+  ctx.stroke();
+  // Label
+  ctx.fillStyle = '#DE0909';
+  ctx.font = '700 22px Poppins, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + w / 2, y + h / 2);
+}
+
+// Button hit-boxes (logical coords) — keep in sync with draw calls.
+const BTN_START    = { x: CONFIG.width / 2 - 120, y: 560, w: 240, h: 70 };
+const BTN_REPLAY   = { x: CONFIG.width / 2 - 120, y: 600, w: 240, h: 70 };
+const CONTINUE_CARD = (() => {
+  const w = 380, h = 340;
+  return { x: (CONFIG.width - w) / 2, y: (CONFIG.height - h) / 2, w, h };
+})();
+const BTN_CONTINUE = (() => {
+  const c = CONTINUE_CARD;
+  return { x: c.x + 30, y: c.y + 200, w: c.w - 60, h: 64 };
+})();
+
+function pointInRect(p, r) {
+  return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+}
+
+const pbotImg = new Image();
+let pbotReady = false;
+pbotImg.onload = () => { pbotReady = true; };
+pbotImg.src = 'assets/pbot.webp';
+
+function drawPbot(cx, cy, size, time) {
+  if (pbotReady) {
+    const bob = Math.sin(time * 0.002) * 8;
+    // Fit pbot into a `size`-edged bounding box, preserving native aspect.
+    const ratio = pbotImg.naturalWidth / pbotImg.naturalHeight;
+    const h = size;
+    const w = size * ratio;
+    ctx.drawImage(pbotImg, cx - w / 2, cy - h / 2 + bob, w, h);
+  } else {
+    ctx.fillStyle = CONFIG.palette.chrome;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size / 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawStartScreen(time) {
+  ctx.fillStyle = 'rgba(3, 16, 52, 0.94)';
+  ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+
+  drawPbot(CONFIG.width / 2, 220, 240, time);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = CONFIG.palette.chromeHi;
+  ctx.font = '700 46px Poppins, sans-serif';
+  ctx.fillText('TAP TAP MATCH', CONFIG.width / 2, 380);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+  ctx.font = '500 16px Poppins, sans-serif';
+  ctx.fillText('Watch the sequence. Tap it back.', CONFIG.width / 2, 425);
+  ctx.fillText('3 minutes. One number to beat.',   CONFIG.width / 2, 450);
+
+  if (state.best > 0) {
+    ctx.fillStyle = CONFIG.palette.accent;
+    ctx.font = '600 14px Poppins, sans-serif';
+    ctx.fillText(`Best: ${state.best}`, CONFIG.width / 2, 495);
+  }
+
+  drawButton(BTN_START.x, BTN_START.y, BTN_START.w, BTN_START.h, 'START GAME');
+
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawGameOverScreen(time) {
+  ctx.fillStyle = 'rgba(3, 16, 52, 0.94)';
+  ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+
+  drawPbot(CONFIG.width / 2, 180, 200, time);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = CONFIG.palette.chromeHi;
+  ctx.font = '700 38px Poppins, sans-serif';
+  ctx.fillText("TIME'S UP!", CONFIG.width / 2, 320);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '500 16px Poppins, sans-serif';
+  ctx.fillText('Final Score', CONFIG.width / 2, 360);
+
+  ctx.fillStyle = CONFIG.palette.accent;
+  ctx.font = '700 78px Poppins, sans-serif';
+  ctx.fillText(String(state.score), CONFIG.width / 2, 425);
+
+  if (state.newBest) {
+    const pulse = 1 + 0.1 * Math.sin(time * 0.008);
+    ctx.save();
+    ctx.translate(CONFIG.width / 2, 495);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = CONFIG.palette.chromeHi;
+    ctx.font = '700 26px Poppins, sans-serif';
+    ctx.fillText('NEW BEST!', 0, 0);
+    ctx.restore();
+  } else if (state.best > 0) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.font = '500 14px Poppins, sans-serif';
+    ctx.fillText(`Best: ${state.best}`, CONFIG.width / 2, 495);
+  }
+
+  drawButton(BTN_REPLAY.x, BTN_REPLAY.y, BTN_REPLAY.w, BTN_REPLAY.h, 'PLAY AGAIN');
+
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawContinuePrompt(time) {
+  ctx.fillStyle = 'rgba(3, 16, 52, 0.82)';
+  ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+
+  const c = CONTINUE_CARD;
+  ctx.fillStyle = CONFIG.palette.bg;
+  roundRect(c.x, c.y, c.w, c.h, 24);
+  ctx.fill();
+  ctx.strokeStyle = CONFIG.palette.accent;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = CONFIG.palette.chromeHi;
+  ctx.font = '700 30px Poppins, sans-serif';
+  ctx.fillText('OOPS!', CONFIG.width / 2, c.y + 56);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '500 16px Poppins, sans-serif';
+  ctx.fillText('Wrong tap.', CONFIG.width / 2, c.y + 100);
+  ctx.fillText('Continue with your score?', CONFIG.width / 2, c.y + 124);
+
+  const secsLeft = Math.max(0, Math.ceil(state.timerMs / 1000));
+  ctx.fillStyle = CONFIG.palette.accent;
+  ctx.font = '600 14px Poppins, sans-serif';
+  ctx.fillText(`${secsLeft}s remaining`, CONFIG.width / 2, c.y + 160);
+
+  drawButton(BTN_CONTINUE.x, BTN_CONTINUE.y, BTN_CONTINUE.w, BTN_CONTINUE.h, 'CONTINUE');
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.font = '500 13px Poppins, sans-serif';
+  ctx.fillText('Tap outside to give up', CONFIG.width / 2, c.y + c.h - 28);
+
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function draw() {
+  const time = performance.now();
+  drawBackground();
+
+  if (state.scene === 'start') {
+    drawStartScreen(time);
+    return;
+  }
+
+  drawHUD(time);
+  drawGrid(time);
+  drawStatusText(time);
+
+  if (state.scene === 'continue') drawContinuePrompt(time);
+  if (state.scene === 'gameover') drawGameOverScreen(time);
+}
+
+// ============================================================
+// LIFECYCLE / UPDATE
+// ============================================================
+let lastFrame = 0;
+let lastTickSec = -1;
+
+function startGame() {
+  state.score = 0;
+  state.round = 1;
+  state.timerMs = CONFIG.roundDurationMs;
+  state.continueUsed = false;
+  state.newBest = false;
+  lastTickSec = -1;
+  startRound();
+}
+
+function startRound() {
+  const t = timingForRound(state.round);
+  state.sequence = makeSequence(t.len);
+  state.inputIndex = 0;
+  state.flashIndex = -1;
+  state.flashCellOnUntil = 0;
+  state.confirmUntil = 0;
+  state.flashUntil = performance.now() + CONFIG.prerollMs;
+  state.scene = 'flashing';
+}
+
+function awardForCompletedRound(fastBonus) {
+  const raw = basePointsForRound(state.round) + (fastBonus ? CONFIG.speedBonus : 0);
+  const mult = payoutMultiplier(state.score);
+  // Soft taper: round-half-up but never below 0. At taperEnd payouts hit 0.
+  const awarded = Math.max(0, Math.round(raw * mult));
+  state.score += awarded;
+  state.lastAward = awarded;
+  state.lastAwardUntil = performance.now() + 900;
+  return awarded;
+}
+
+function endRun() {
+  if (state.score > state.best) {
+    state.best = state.score;
+    state.newBest = true;
+    storageSet(CONFIG.storage.best, String(state.best));
+  } else {
+    state.newBest = false;
+  }
+  state.scene = 'gameover';
+}
+
+function update(dtMs) {
+  const time = performance.now();
+  const live = state.scene === 'flashing' || state.scene === 'input' || state.scene === 'between';
+
+  if (live) {
+    state.timerMs -= dtMs;
+    if (state.timerMs <= 0) {
+      state.timerMs = 0;
+      endRun();
+      return;
+    }
+    const secsLeft = Math.ceil(state.timerMs / 1000);
+    if (secsLeft <= CONFIG.urgentSecs && secsLeft !== lastTickSec) {
+      lastTickSec = secsLeft;
+      playTick();
+    }
+  }
+
+  if (state.scene === 'flashing' && time >= state.flashUntil) {
+    state.flashIndex++;
+    if (state.flashIndex >= state.sequence.length) {
+      state.scene = 'input';
+      state.inputStartMs = time;
+    } else {
+      const t = timingForRound(state.round);
+      const cellIdx = state.sequence[state.flashIndex];
+      playCellTone(cellIdx);
+      state.flashCellOnUntil = time + t.flash;
+      state.flashUntil = time + t.flash + t.gap;
+    }
+  } else if (state.scene === 'between' && time >= state.flashUntil) {
+    state.round++;
+    startRound();
+  }
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+function handleInputTap(cellIdx) {
+  if (state.scene !== 'input') return;
+  const time = performance.now();
+  const expected = state.sequence[state.inputIndex];
+
+  if (cellIdx === expected) {
+    state.confirmCellIndex = cellIdx;
+    state.confirmUntil = time + CONFIG.confirmFlashMs;
+    playCellTone(cellIdx);
+    state.inputIndex++;
+
+    if (state.inputIndex >= state.sequence.length) {
+      const elapsedMs = time - state.inputStartMs;
+      const t = timingForRound(state.round);
+      const targetMs = state.sequence.length * (t.flash + t.gap);
+      const fastBonus = elapsedMs < targetMs;
+      awardForCompletedRound(fastBonus);
+      playRoundComplete();
+      state.scene = 'between';
+      state.flashUntil = time + CONFIG.betweenRoundMs;
+    }
+  } else {
+    state.wrongUntil = time + CONFIG.wrongFlashMs;
+    playWrong();
+    if (state.continueUsed) {
+      endRun();
+    } else {
+      state.scene = 'continue';
+    }
+  }
+}
+
+function resumeAfterContinue() {
+  state.continueUsed = true;
+  state.inputIndex = 0;
+  state.flashIndex = -1;
+  state.flashCellOnUntil = 0;
+  state.confirmUntil = 0;
+  state.wrongUntil = 0;
+  state.flashUntil = performance.now() + CONFIG.prerollMs;
+  state.scene = 'flashing';
+}
+
+function eventPoint(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (CONFIG.width  / rect.width),
+    y: (e.clientY - rect.top)  * (CONFIG.height / rect.height),
+  };
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  ensureAudio();
+  const p = eventPoint(e);
+
+  if (state.scene === 'start') {
+    if (pointInRect(p, BTN_START)) { playButton(); startGame(); }
+    return;
+  }
+  if (state.scene === 'gameover') {
+    if (pointInRect(p, BTN_REPLAY)) { playButton(); startGame(); }
+    return;
+  }
+  if (state.scene === 'continue') {
+    if (pointInRect(p, BTN_CONTINUE)) { playButton(); resumeAfterContinue(); }
+    else if (!pointInRect(p, CONTINUE_CARD)) { endRun(); }
+    return;
+  }
+  if (state.scene === 'input') {
+    const idx = cellAtPoint(p.x, p.y);
+    if (idx >= 0) handleInputTap(idx);
+  }
+}, { passive: false });
+
+// ============================================================
+// MUTE BUTTON
+// ============================================================
+const ICON_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
+const ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
+
+function updateMuteUI() {
+  const svg = muteBtn.querySelector('svg');
+  svg.innerHTML = state.muted ? ICON_OFF : ICON_ON;
+  muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+}
+
+muteBtn.addEventListener('click', () => {
+  state.muted = !state.muted;
+  storageSet(CONFIG.storage.mute, state.muted ? '1' : '0');
+  updateMuteUI();
+  if (!state.muted) { ensureAudio(); playButton(); }
+});
+
+// ============================================================
+// BOOT
+// ============================================================
+state.muted = storageGet(CONFIG.storage.mute, '0') === '1';
+state.best  = parseInt(storageGet(CONFIG.storage.best, '0'), 10) || 0;
+updateMuteUI();
+
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
+resize();
+
+// Dev jump: ?scene=game | gameover | continue
+const params = new URLSearchParams(location.search);
+const sceneParam = params.get('scene');
+if (sceneParam === 'game') {
+  startGame();
+} else if (sceneParam === 'gameover') {
+  state.score = 217;
+  state.best = Math.max(state.best, 180);
+  state.newBest = state.score > 180;
+  state.scene = 'gameover';
+} else if (sceneParam === 'continue') {
+  startGame();
+  state.scene = 'continue';
+  state.wrongUntil = performance.now() + CONFIG.wrongFlashMs;
+}
+
+function loop(t) {
+  const dt = lastFrame ? Math.min(t - lastFrame, 100) : 0;
+  lastFrame = t;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

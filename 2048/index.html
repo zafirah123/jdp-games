@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020d26">
+<title>2048 — JDP Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #020d26 0%, #000000 100%);
+    color: #fff;
+    font-family: 'Poppins', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  canvas#game {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  .hidden { display: none !important; }
+
+  /* HUD */
+  #hud {
+    position: fixed;
+    top: 16px; left: 16px; right: 72px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .hud-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .pill {
+    background: rgba(2, 13, 38, 0.85);
+    border: 2px solid #FFD633;
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1;
+    color: #FFD633;
+    letter-spacing: 0.4px;
+    pointer-events: auto;
+    min-width: 96px;
+    text-align: center;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+  }
+  .pill.timer { color: #FFFFFF; }
+  .pill.timer.urgent {
+    animation: pulse 0.4s ease-in-out infinite alternate;
+    border-color: #AF1726;
+    color: #FFE258;
+  }
+  .pill.score.warn { border-color: #ff7b00; color: #ffd633; }
+  .pill.score.danger { border-color: #AF1726; color: #FFE258; animation: pulse 0.5s ease-in-out infinite alternate; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+  /* Urgency bar — fills toward the next auto-spawn. Only visible once spawn pressure kicks in. */
+  .urgency-bar {
+    margin: 10px auto 0;
+    height: 6px;
+    width: min(360px, 70vw);
+    background: rgba(2, 13, 38, 0.7);
+    border: 1.5px solid rgba(255, 214, 51, 0.4);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .urgency-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #FFD633 0%, #ff7b00 60%, #AF1726 100%);
+    transition: width 0.08s linear;
+  }
+
+  .mute {
+    position: fixed;
+    top: 16px; right: 16px;
+    background: rgba(2, 13, 38, 0.85);
+    border: 2px solid #FFD633;
+    border-radius: 50%;
+    width: 40px; height: 40px;
+    color: #FFD633;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center; justify-content: center;
+    z-index: 30;
+  }
+  .mute svg { width: 100%; height: 100%; fill: currentColor; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(2, 13, 38, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    padding: 16px;
+  }
+  .card {
+    background: linear-gradient(180deg, #020d26 0%, #051335 100%);
+    border: 3px solid #FFD633;
+    border-radius: 24px;
+    padding: 32px 28px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 0 rgba(0,0,0,0.4);
+  }
+  .card h1 {
+    font-size: 44px;
+    margin: 0 0 8px;
+    font-weight: 700;
+    color: #FFD633;
+    letter-spacing: 1px;
+    text-shadow: 0 4px 0 #AF1726;
+  }
+  .card h2 {
+    font-size: 26px;
+    margin: 0 0 16px;
+    color: #FFD633;
+    font-weight: 700;
+  }
+  .card .sub { font-size: 14px; color: #FFFFFF; margin: 0 0 4px; opacity: 0.9; }
+  .card .cap { font-size: 14px; color: #FFFFFF; margin: 0 0 16px; opacity: 0.8; }
+  .card .best { font-size: 14px; color: #FFD633; margin: 0 0 20px; font-weight: 600; min-height: 20px; }
+  .card .hint { font-size: 12px; color: rgba(255,255,255,0.6); margin: 14px 0 0; }
+  .card .hint kbd {
+    background: rgba(255,214,51,0.15);
+    border: 1px solid rgba(255,214,51,0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #FFD633;
+    font-family: inherit;
+    font-size: 11px;
+  }
+  .cta {
+    background: linear-gradient(180deg, #FFE258 0%, #FFBA0A 100%);
+    border: 3px solid #FFB603;
+    border-radius: 999px;
+    padding: 14px 36px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    color: #031034;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 0 #DE9D00;
+    transition: transform 0.08s, box-shadow 0.08s;
+    text-transform: uppercase;
+  }
+  .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
+  .cta.secondary {
+    background: linear-gradient(180deg, #1535a8 0%, #0a1f5c 100%);
+    border-color: #1535a8;
+    color: #FFD633;
+    box-shadow: 0 4px 0 #051335;
+    margin-top: 12px;
+    padding: 12px 28px;
+    font-size: 15px;
+  }
+  .cta.secondary:active { box-shadow: 0 2px 0 #051335; }
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 16px;
+    margin: 0 0 20px;
+    font-size: 14px;
+  }
+  .stats .label { color: rgba(255,255,255,0.7); text-align: left; }
+  .stats .value { color: #FFD633; font-weight: 700; text-align: right; }
+  .new-best {
+    display: inline-block;
+    background: #FFD633;
+    color: #031034;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin: 0 0 12px;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+  .time-left {
+    font-size: 13px;
+    color: rgba(255,255,255,0.85);
+    margin: -4px 0 16px;
+  }
+  .time-left b { color: #FFE258; }
+
+  @media (max-width: 420px) {
+    .card h1 { font-size: 36px; }
+    .pill { font-size: 14px; padding: 6px 12px; min-width: 80px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<button id="muteBtn" class="mute" aria-label="Toggle sound">
+  <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+</button>
+
+<div id="hud" class="hidden">
+  <div class="hud-row">
+    <div id="scorePill" class="pill score">0</div>
+    <div id="timerPill" class="pill timer">3:00</div>
+  </div>
+  <div id="urgencyBar" class="urgency-bar hidden">
+    <div id="urgencyFill" class="urgency-fill"></div>
+  </div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="card">
+    <h1>2048</h1>
+    <p class="sub">Swipe to merge tiles. Push your score as high as you can in 3 minutes.</p>
+    <p class="cap">Score above <b>500</b> and the board starts dropping tiles on its own — fast.</p>
+    <p class="best" id="bestText">&nbsp;</p>
+    <button id="startBtn" class="cta">Start</button>
+    <p class="hint">Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd></p>
+  </div>
+</div>
+
+<div id="continueOverlay" class="overlay hidden">
+  <div class="card">
+    <h2>Board Locked!</h2>
+    <p class="time-left">Time left: <b id="contTimeLeft">0:00</b></p>
+    <p class="sub">Continue and we'll clear your four smallest tiles. The clock keeps running.</p>
+    <button id="continueBtn" class="cta">Continue</button>
+    <button id="giveUpBtn" class="cta secondary">Give Up</button>
+  </div>
+</div>
+
+<div id="gameOver" class="overlay hidden">
+  <div class="card">
+    <h2 id="goTitle">Time's up!</h2>
+    <div id="goNewBest" class="hidden"><span class="new-best">NEW BEST!</span></div>
+    <div id="finalStats" class="stats"></div>
+    <button id="playAgainBtn" class="cta">Play Again</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// =============================================================================
+// CONFIG — all tunables live here
+// =============================================================================
+const CONFIG = {
+  GRID_SIZE: 4,
+  GAME_DURATION_SEC: 180,
+  // Score thresholds for the auto-spawn taper. The game stays endless and
+  // uncapped, but auto-spawn kicks in past TAPER_START and ramps to its
+  // minimum interval at TAPER_FULL — past that the board fills faster than
+  // a player can clear, so scoring beyond ~500 is rare by design.
+  TAPER_START_SCORE: 100,
+  TAPER_FULL_SCORE: 500,
+  AUTO_SPAWN_INTERVAL_START_SEC: 8.0,
+  AUTO_SPAWN_INTERVAL_END_SEC: 1.2,
+  SPAWN_FOUR_PROB_BASE: 0.10,        // 10% of tiles spawn as 4 by default
+  SPAWN_FOUR_PROB_MAX: 0.28,         // ramps up to make late-game more chaotic
+  SLIDE_DURATION_SEC: 0.13,
+  SPAWN_ANIM_SEC: 0.16,
+  MERGE_PUNCH_SEC: 0.18,
+  INPUT_DEBOUNCE_MS: 60,
+  SWIPE_THRESHOLD_PX: 24,
+  CONTINUE_CLEAR_COUNT: 4,           // tiles removed when player continues
+  STORAGE_KEY_BEST: '2048:best',
+  STORAGE_KEY_MUTE: '2048:mute',
+};
+
+// Per-tier visual styling for tiles. Index is log2(value): 2→1, 4→2, …
+// Anchored to JDP palette (DESIGN.md §1); cool blues for clutter, warm reds /
+// yellows for high-tier achievements.
+const TILE_STYLES = [
+  null,
+  { bg: '#1e3a8a', text: '#FFFFFF', shadow: '#0a1f5c' }, // 2
+  { bg: '#1535a8', text: '#FFFFFF', shadow: '#0a1f5c' }, // 4
+  { bg: '#2456c4', text: '#FFFFFF', shadow: '#0e2d72' }, // 8
+  { bg: '#0ea5b8', text: '#FFFFFF', shadow: '#054b54' }, // 16
+  { bg: '#fdd83d', text: '#031034', shadow: '#caa800' }, // 32
+  { bg: '#ffb800', text: '#031034', shadow: '#8a6400' }, // 64
+  { bg: '#ff7b00', text: '#FFFFFF', shadow: '#a14e00' }, // 128
+  { bg: '#ff4e2a', text: '#FFFFFF', shadow: '#a8260f' }, // 256
+  { bg: '#b81c26', text: '#FFE258', shadow: '#640A19' }, // 512
+  { bg: '#9E131F', text: '#FFE258', shadow: '#530209' }, // 1024
+  { bg: '#FFD633', text: '#9E131F', shadow: '#FFB603' }, // 2048 (special)
+];
+function tileStyle(value) {
+  const tier = Math.round(Math.log2(value));
+  return TILE_STYLES[Math.min(tier, TILE_STYLES.length - 1)];
+}
+
+// =============================================================================
+// DOM refs
+// =============================================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const dom = {
+  hud: document.getElementById('hud'),
+  scorePill: document.getElementById('scorePill'),
+  timerPill: document.getElementById('timerPill'),
+  urgencyBar: document.getElementById('urgencyBar'),
+  urgencyFill: document.getElementById('urgencyFill'),
+  muteBtn: document.getElementById('muteBtn'),
+  menu: document.getElementById('menu'),
+  startBtn: document.getElementById('startBtn'),
+  bestText: document.getElementById('bestText'),
+  continueOverlay: document.getElementById('continueOverlay'),
+  continueBtn: document.getElementById('continueBtn'),
+  giveUpBtn: document.getElementById('giveUpBtn'),
+  contTimeLeft: document.getElementById('contTimeLeft'),
+  gameOver: document.getElementById('gameOver'),
+  goTitle: document.getElementById('goTitle'),
+  goNewBest: document.getElementById('goNewBest'),
+  finalStats: document.getElementById('finalStats'),
+  playAgainBtn: document.getElementById('playAgainBtn'),
+};
+
+// =============================================================================
+// Sandbox-safe storage
+// =============================================================================
+function storageGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v === null ? fallback : v; }
+  catch (e) { return fallback; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+
+// =============================================================================
+// Dev shortcuts — ?score=N, ?time=N, ?phase=gameover
+// =============================================================================
+const params = new URLSearchParams(window.location.search);
+const devScore = parseInt(params.get('score') || '', 10);
+const devTime = parseInt(params.get('time') || '', 10);
+const devPhase = params.get('phase');
+
+// =============================================================================
+// State
+// =============================================================================
+const state = {
+  phase: 'MENU',                 // MENU | PLAYING | CONTINUE | GAME_OVER
+  tiles: [],                     // active tile list (see makeTile)
+  grid: null,                    // 4x4 array of tile or null (logical board)
+  score: 0,
+  highestTile: 0,
+  moves: 0,
+  merges: 0,
+  timer: CONFIG.GAME_DURATION_SEC,
+  timerStarted: false,
+  startTime: 0,
+  paused: false,
+  pausedAt: 0,
+  pausedDuration: 0,             // accumulated paused ms during this round
+  lastDropAt: 0,
+  lastTickPlayed: 999,
+  muted: storageGet(CONFIG.STORAGE_KEY_MUTE, '0') === '1',
+  best: parseInt(storageGet(CONFIG.STORAGE_KEY_BEST, '0'), 10) || 0,
+  // Auto-spawn state
+  autoSpawnAccumulator: 0,       // counts up to current interval
+  // Floating "+N" indicators
+  floaters: [],
+  // Pulse triggered when an auto-spawn drops in (visual cue)
+  autoSpawnPulse: 0,
+};
+
+function makeTile(row, col, value, opts) {
+  opts = opts || {};
+  return {
+    row, col, value,
+    prevRow: opts.prevRow !== undefined ? opts.prevRow : row,
+    prevCol: opts.prevCol !== undefined ? opts.prevCol : col,
+    spawn: opts.spawn || false,         // animate scale-up on entry
+    merged: false,                      // played a merge punch this turn
+    autoSpawn: opts.autoSpawn || false, // bigger entry effect
+    animT: opts.spawn ? 0 : 1,          // 0..1 over SLIDE_DURATION_SEC
+    punchT: 1,                          // 0..1 merge punch; <1 means animating
+  };
+}
+
+// =============================================================================
+// Sizing / viewport
+// =============================================================================
+const view = {
+  w: 0, h: 0, dpr: 1,
+  boardX: 0, boardY: 0, boardSize: 0,
+  cellSize: 0, gap: 0,
+};
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.w = window.innerWidth;
+  view.h = window.innerHeight;
+  view.dpr = dpr;
+  canvas.width = Math.floor(view.w * dpr);
+  canvas.height = Math.floor(view.h * dpr);
+  canvas.style.width = view.w + 'px';
+  canvas.style.height = view.h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Reserve room for HUD up top + urgency bar.
+  const hudReserved = 110;
+  const padding = 20;
+  const availW = view.w - padding * 2;
+  const availH = view.h - hudReserved - padding * 2;
+  view.boardSize = Math.min(availW, availH, 520);
+  view.boardX = (view.w - view.boardSize) / 2;
+  view.boardY = hudReserved + (view.h - hudReserved - view.boardSize) / 2;
+  view.gap = Math.max(6, view.boardSize * 0.022);
+  view.cellSize = (view.boardSize - view.gap * (CONFIG.GRID_SIZE + 1)) / CONFIG.GRID_SIZE;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function cellRect(row, col) {
+  const x = view.boardX + view.gap + col * (view.cellSize + view.gap);
+  const y = view.boardY + view.gap + row * (view.cellSize + view.gap);
+  return { x, y, w: view.cellSize, h: view.cellSize };
+}
+
+// =============================================================================
+// Grid logic — the source of truth is state.grid (4x4 of tile or null).
+// state.tiles is a flat list for iteration / animation; rebuilt from the grid
+// after every mutation.
+// =============================================================================
+function emptyGrid() {
+  const g = [];
+  for (let r = 0; r < CONFIG.GRID_SIZE; r++) {
+    g.push(new Array(CONFIG.GRID_SIZE).fill(null));
+  }
+  return g;
+}
+// Rebuild from the grid, preserving any "dying" tiles (still mid-slide into
+// their merge target) so the absorbed half of a merge keeps animating.
+function rebuildTileList() {
+  const dying = state.tiles.filter(t => t.dying);
+  const live = [];
+  for (let r = 0; r < CONFIG.GRID_SIZE; r++) {
+    for (let c = 0; c < CONFIG.GRID_SIZE; c++) {
+      if (state.grid[r][c]) live.push(state.grid[r][c]);
+    }
+  }
+  state.tiles = live.concat(dying);
+}
+function emptyCells() {
+  const out = [];
+  for (let r = 0; r < CONFIG.GRID_SIZE; r++) {
+    for (let c = 0; c < CONFIG.GRID_SIZE; c++) {
+      if (!state.grid[r][c]) out.push([r, c]);
+    }
+  }
+  return out;
+}
+
+// Spawn a new tile in a random empty cell.
+// kind: 'move' | 'auto' — 'auto' uses a slightly bigger entry effect.
+function spawnRandomTile(kind) {
+  const empties = emptyCells();
+  if (empties.length === 0) return null;
+  const [r, c] = empties[Math.floor(Math.random() * empties.length)];
+  const fourProb = lerp(
+    CONFIG.SPAWN_FOUR_PROB_BASE,
+    CONFIG.SPAWN_FOUR_PROB_MAX,
+    urgencyFactor()
+  );
+  const value = Math.random() < fourProb ? 4 : 2;
+  const t = makeTile(r, c, value, {
+    spawn: true,
+    autoSpawn: kind === 'auto',
+  });
+  state.grid[r][c] = t;
+  rebuildTileList();
+  return t;
+}
+
+// =============================================================================
+// Move logic — slide + merge in a given direction.
+// Returns true if anything moved or merged.
+// =============================================================================
+function attemptMove(dir) {
+  if (state.phase !== 'PLAYING') return;
+  const now = performance.now();
+  if (now - state.lastDropAt < CONFIG.INPUT_DEBOUNCE_MS) return;
+  state.lastDropAt = now;
+
+  const moved = performSlide(dir);
+  if (!moved) {
+    // No-op: don't start the clock or spend a move, but if the board was
+    // already locked (auto-spawn filled it), surface the continue prompt.
+    if (!hasAnyMove()) onBoardLocked();
+    return;
+  }
+
+  if (!state.timerStarted) {
+    state.timerStarted = true;
+    state.startTime = performance.now();
+    state.pausedDuration = 0;
+  }
+
+  state.moves += 1;
+  spawnRandomTile('move');
+  playMove();
+  updateHud();
+
+  if (!hasAnyMove()) onBoardLocked();
+}
+
+// dir: 'left' | 'right' | 'up' | 'down'
+// Returns true if board changed.
+function performSlide(dir) {
+  const N = CONFIG.GRID_SIZE;
+  let changed = false;
+  let scoreGained = 0;
+
+  // Reset per-turn animation state on every live tile. Dying tiles from the
+  // previous move are dropped by rebuildTileList once their slide finishes;
+  // if we're moving again before that, just snap them away.
+  state.tiles = state.tiles.filter(t => !t.dying);
+  for (const t of state.tiles) {
+    t.prevRow = t.row;
+    t.prevCol = t.col;
+    t.animT = 1;
+    t.punchT = 1;
+    t.merged = false;
+    t.spawn = false;
+    t.autoSpawn = false;
+  }
+
+  // Walk each line in the movement direction, producing an ordered list of
+  // surviving tiles plus a map of survivor → absorbed partner.
+  const plans = [];
+  for (let li = 0; li < N; li++) {
+    let lineTiles;
+    if (dir === 'left')       lineTiles = [0, 1, 2, 3].map(c => state.grid[li][c]).filter(Boolean);
+    else if (dir === 'right') lineTiles = [3, 2, 1, 0].map(c => state.grid[li][c]).filter(Boolean);
+    else if (dir === 'up')    lineTiles = [0, 1, 2, 3].map(r => state.grid[r][li]).filter(Boolean);
+    else                      lineTiles = [3, 2, 1, 0].map(r => state.grid[r][li]).filter(Boolean);
+
+    const survivors = [];
+    const absorbed = new Map();
+    let i = 0;
+    while (i < lineTiles.length) {
+      const a = lineTiles[i];
+      const b = lineTiles[i + 1];
+      if (b && a.value === b.value) {
+        const newValue = a.value * 2;
+        a.value = newValue;
+        a.merged = true;
+        a.punchT = 0;
+        a._floatPending = newValue;
+        scoreGained += newValue;
+        state.merges += 1;
+        if (newValue > state.highestTile) state.highestTile = newValue;
+        absorbed.set(a, b);
+        survivors.push(a);
+        i += 2;
+      } else {
+        survivors.push(a);
+        i += 1;
+      }
+    }
+    plans.push({ index: li, survivors, absorbed });
+  }
+
+  // Write survivors back to a fresh grid, animating tiles from their old
+  // positions to the new ones. Absorbed tiles slide into the merge cell
+  // alongside the survivor, then drop out once their animation completes.
+  state.grid = emptyGrid();
+  for (const L of plans) {
+    for (let k = 0; k < L.survivors.length; k++) {
+      const a = L.survivors[k];
+      let newRow, newCol;
+      if (dir === 'left')       { newRow = L.index; newCol = k; }
+      else if (dir === 'right') { newRow = L.index; newCol = N - 1 - k; }
+      else if (dir === 'up')    { newCol = L.index; newRow = k; }
+      else                      { newCol = L.index; newRow = N - 1 - k; }
+
+      if (a.row !== newRow || a.col !== newCol) changed = true;
+      a.row = newRow;
+      a.col = newCol;
+      a.animT = 0;
+      state.grid[newRow][newCol] = a;
+
+      const b = L.absorbed.get(a);
+      if (b) {
+        // b keeps its prevRow/prevCol from the reset above; new dest = a's cell
+        b.row = newRow;
+        b.col = newCol;
+        b.animT = 0;
+        b.dying = true;
+        changed = true;
+      }
+
+      if (a._floatPending) {
+        const rect = cellRect(newRow, newCol);
+        state.floaters.push({
+          x: rect.x + rect.w / 2,
+          y: rect.y + rect.h / 2,
+          text: '+' + a._floatPending,
+          t: 0,
+          color: '#FFE258',
+        });
+        a._floatPending = 0;
+      }
+    }
+  }
+
+  rebuildTileList();
+
+  if (scoreGained > 0) {
+    state.score += scoreGained;
+    if (scoreGained >= 64) playMergeBig();
+    else if (scoreGained >= 16) playMergeMid();
+    else playMergeSmall();
+  }
+  return changed;
+}
+
+// Is any move possible? Used to detect board-locked.
+function hasAnyMove() {
+  if (emptyCells().length > 0) return true;
+  const N = CONFIG.GRID_SIZE;
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const v = state.grid[r][c] && state.grid[r][c].value;
+      if (!v) continue;
+      if (c + 1 < N && state.grid[r][c + 1] && state.grid[r][c + 1].value === v) return true;
+      if (r + 1 < N && state.grid[r + 1][c] && state.grid[r + 1][c].value === v) return true;
+    }
+  }
+  return false;
+}
+
+// =============================================================================
+// Auto-spawn — the difficulty knob.
+// urgencyFactor: 0 at score <= TAPER_START, 1 at score >= TAPER_FULL.
+// Below TAPER_START the interval is Infinity (no auto-spawn).
+// =============================================================================
+function urgencyFactor() {
+  const s = state.score;
+  if (s <= CONFIG.TAPER_START_SCORE) return 0;
+  if (s >= CONFIG.TAPER_FULL_SCORE) return 1;
+  return (s - CONFIG.TAPER_START_SCORE) / (CONFIG.TAPER_FULL_SCORE - CONFIG.TAPER_START_SCORE);
+}
+function autoSpawnInterval() {
+  if (state.score < CONFIG.TAPER_START_SCORE) return Infinity;
+  return lerp(
+    CONFIG.AUTO_SPAWN_INTERVAL_START_SEC,
+    CONFIG.AUTO_SPAWN_INTERVAL_END_SEC,
+    urgencyFactor()
+  );
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function updateAutoSpawn(dt) {
+  if (state.phase !== 'PLAYING' || !state.timerStarted) return;
+  const interval = autoSpawnInterval();
+  if (!isFinite(interval)) {
+    state.autoSpawnAccumulator = 0;
+    return;
+  }
+  state.autoSpawnAccumulator += dt;
+  if (state.autoSpawnAccumulator >= interval) {
+    state.autoSpawnAccumulator = 0;
+    const spawned = spawnRandomTile('auto');
+    if (spawned) {
+      state.autoSpawnPulse = 0.4;
+      playAutoSpawn();
+      if (!hasAnyMove()) onBoardLocked();
+    }
+    // If board was full, just skip — player still has their own merges to make.
+  }
+}
+
+// =============================================================================
+// Board-locked: offer Continue while time remains, otherwise end the game.
+// =============================================================================
+function onBoardLocked() {
+  if (state.phase !== 'PLAYING') return;
+  if (state.timer <= 0) { endGame('time'); return; }
+  state.phase = 'CONTINUE';
+  // Pause the round clock while the player decides
+  state.paused = true;
+  state.pausedAt = performance.now();
+  dom.contTimeLeft.textContent = formatTime(state.timer);
+  dom.continueOverlay.classList.remove('hidden');
+}
+
+function doContinue() {
+  // Clear the N lowest-value tiles to reopen space
+  const sorted = state.tiles.slice().sort((a, b) => a.value - b.value);
+  const toRemove = sorted.slice(0, CONFIG.CONTINUE_CLEAR_COUNT);
+  for (const t of toRemove) {
+    state.grid[t.row][t.col] = null;
+  }
+  rebuildTileList();
+  state.autoSpawnAccumulator = 0;
+  // Resume timer
+  if (state.paused) {
+    state.pausedDuration += performance.now() - state.pausedAt;
+    state.paused = false;
+  }
+  state.phase = 'PLAYING';
+  dom.continueOverlay.classList.add('hidden');
+  playContinue();
+}
+
+// =============================================================================
+// Main update
+// =============================================================================
+function update(dt) {
+  if (state.phase === 'PLAYING' && state.timerStarted) {
+    const elapsed = (performance.now() - state.startTime - state.pausedDuration) / 1000;
+    state.timer = Math.max(0, CONFIG.GAME_DURATION_SEC - elapsed);
+    const secondsLeft = Math.ceil(state.timer);
+    const tickPoints = [10, 5, 4, 3, 2, 1];
+    if (tickPoints.indexOf(secondsLeft) !== -1 && state.lastTickPlayed !== secondsLeft) {
+      playTick();
+      state.lastTickPlayed = secondsLeft;
+    }
+    dom.timerPill.classList.toggle('urgent', state.timer <= 10);
+    if (state.timer <= 0) { state.timer = 0; endGame('time'); return; }
+  }
+
+  updateAutoSpawn(dt);
+
+  // Animate tile slides + merge punches
+  for (const t of state.tiles) {
+    if (t.animT < 1) t.animT = Math.min(1, t.animT + dt / CONFIG.SLIDE_DURATION_SEC);
+    if (t.punchT < 1) t.punchT = Math.min(1, t.punchT + dt / CONFIG.MERGE_PUNCH_SEC);
+  }
+  // Drop absorbed tiles once they've finished sliding into the merge cell
+  for (let i = state.tiles.length - 1; i >= 0; i--) {
+    const t = state.tiles[i];
+    if (t.dying && t.animT >= 1) state.tiles.splice(i, 1);
+  }
+
+  // Floaters
+  for (let i = state.floaters.length - 1; i >= 0; i--) {
+    const f = state.floaters[i];
+    f.t += dt;
+    f.y -= dt * 36;
+    if (f.t > 0.7) state.floaters.splice(i, 1);
+  }
+
+  if (state.autoSpawnPulse > 0) state.autoSpawnPulse = Math.max(0, state.autoSpawnPulse - dt);
+
+  updateHud();
+}
+
+function formatTime(t) {
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function updateHud() {
+  dom.scorePill.textContent = String(state.score);
+  dom.timerPill.textContent = formatTime(state.timer);
+
+  // Score pill warning tiers — visual cue for taper pressure
+  dom.scorePill.classList.toggle('warn', state.score >= CONFIG.TAPER_START_SCORE && state.score < CONFIG.TAPER_FULL_SCORE);
+  dom.scorePill.classList.toggle('danger', state.score >= CONFIG.TAPER_FULL_SCORE);
+
+  // Urgency bar — fills toward next auto-spawn
+  const interval = autoSpawnInterval();
+  if (isFinite(interval) && state.phase === 'PLAYING') {
+    dom.urgencyBar.classList.remove('hidden');
+    const pct = Math.min(100, (state.autoSpawnAccumulator / interval) * 100);
+    dom.urgencyFill.style.width = pct + '%';
+  } else {
+    dom.urgencyBar.classList.add('hidden');
+  }
+}
+
+// =============================================================================
+// Draw
+// =============================================================================
+function draw() {
+  ctx.clearRect(0, 0, view.w, view.h);
+  drawBoard();
+  drawTiles();
+  drawFloaters();
+}
+
+function roundRectPath(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawBoard() {
+  // Board frame
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = '#0a1f5c';
+  roundRectPath(view.boardX, view.boardY, view.boardSize, view.boardSize, view.boardSize * 0.04);
+  ctx.fill();
+  ctx.restore();
+
+  // Empty cells
+  for (let r = 0; r < CONFIG.GRID_SIZE; r++) {
+    for (let c = 0; c < CONFIG.GRID_SIZE; c++) {
+      const rect = cellRect(r, c);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      roundRectPath(rect.x, rect.y, rect.w, rect.h, rect.w * 0.08);
+      ctx.fill();
+    }
+  }
+
+  // Auto-spawn pulse — red glow around the whole board for ~0.4s
+  if (state.autoSpawnPulse > 0) {
+    ctx.save();
+    const a = state.autoSpawnPulse / 0.4;
+    ctx.globalAlpha = a * 0.7;
+    ctx.strokeStyle = '#AF1726';
+    ctx.lineWidth = 6;
+    roundRectPath(view.boardX - 3, view.boardY - 3, view.boardSize + 6, view.boardSize + 6, view.boardSize * 0.045);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function drawTiles() {
+  // Render dying tiles first so the absorbing survivor draws on top of them
+  // when they share a cell during the merge slide.
+  const dying = [], live = [];
+  for (const t of state.tiles) (t.dying ? dying : live).push(t);
+  for (const t of dying) drawOneTile(t);
+  for (const t of live) drawOneTile(t);
+}
+
+function drawOneTile(t) {
+  const fromRect = cellRect(t.prevRow, t.prevCol);
+  const toRect = cellRect(t.row, t.col);
+  const e = easeOutQuad(t.animT);
+  const x = lerp(fromRect.x, toRect.x, e);
+  const y = lerp(fromRect.y, toRect.y, e);
+  let scale = 1;
+  if (t.spawn) scale = easeOutBack(t.animT);
+  if (t.punchT < 1) {
+    const p = t.punchT;
+    const punch = p < 0.5 ? 1 + 0.18 * (p / 0.5) : 1 + 0.18 * (1 - (p - 0.5) / 0.5);
+    scale *= punch;
+  }
+  drawTile(x, y, t.value, scale, t.autoSpawn && t.animT < 1);
+}
+
+function drawTile(x, y, value, scale, glow) {
+  const s = tileStyle(value);
+  const cs = view.cellSize;
+  const cx = x + cs / 2, cy = y + cs / 2;
+  const r = cs * 0.10;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.translate(-cs / 2, -cs / 2);
+
+  // Drop shadow plate (JDP "stacked drop" style)
+  ctx.fillStyle = s.shadow;
+  roundRectPath(0, 3, cs, cs, r);
+  ctx.fill();
+
+  // Tile body
+  ctx.fillStyle = s.bg;
+  roundRectPath(0, 0, cs, cs, r);
+  ctx.fill();
+
+  // 2048-tier glow
+  if (value >= 2048 || glow) {
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = '#FFE258';
+    ctx.lineWidth = 3;
+    roundRectPath(2, 2, cs - 4, cs - 4, r - 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Value text — size scales down for longer numbers
+  ctx.fillStyle = s.text;
+  let fontSize = cs * 0.45;
+  const digits = String(value).length;
+  if (digits === 3) fontSize = cs * 0.38;
+  else if (digits === 4) fontSize = cs * 0.30;
+  else if (digits >= 5) fontSize = cs * 0.24;
+  ctx.font = '700 ' + Math.round(fontSize) + "px Poppins, sans-serif";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(value), cs / 2, cs / 2 + cs * 0.02);
+  ctx.restore();
+}
+
+function drawFloaters() {
+  for (const f of state.floaters) {
+    const alpha = 1 - (f.t / 0.7);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.fillStyle = f.color;
+    ctx.font = '700 22px Poppins, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetY = 2;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.restore();
+  }
+}
+
+// =============================================================================
+// Audio — Web Audio API synthesis, no asset files needed
+// =============================================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(opts) {
+  if (state.muted) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime + (opts.delay || 0);
+  const dur = opts.dur || 0.15;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = opts.type || 'sine';
+  osc.frequency.setValueAtTime(opts.freq, t);
+  if (opts.freqEnd !== undefined) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.freqEnd), t + dur);
+  }
+  g.gain.setValueAtTime(opts.gain || 0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + dur + 0.05);
+}
+function playMove()       { playTone({ freq: 280, freqEnd: 200, type: 'triangle', dur: 0.08, gain: 0.12 }); }
+function playMergeSmall() { playTone({ freq: 520, type: 'triangle', dur: 0.12, gain: 0.14 }); }
+function playMergeMid()   {
+  playTone({ freq: 660, type: 'triangle', dur: 0.14, gain: 0.16 });
+  playTone({ freq: 990, type: 'triangle', dur: 0.14, gain: 0.10, delay: 0.04 });
+}
+function playMergeBig()   {
+  playTone({ freq: 780, type: 'triangle', dur: 0.18, gain: 0.18 });
+  playTone({ freq: 1170, type: 'triangle', dur: 0.20, gain: 0.14, delay: 0.05 });
+  playTone({ freq: 1560, type: 'triangle', dur: 0.22, gain: 0.10, delay: 0.10 });
+}
+function playAutoSpawn()  { playTone({ freq: 180, freqEnd: 110, type: 'sawtooth', dur: 0.16, gain: 0.14 }); }
+function playContinue()   { playTone({ freq: 440, freqEnd: 880, type: 'sine', dur: 0.20, gain: 0.18 }); }
+function playGameOver()   { playTone({ freq: 220, freqEnd: 60, type: 'sawtooth', dur: 0.5, gain: 0.22 }); }
+function playTick()       { playTone({ freq: 1200, type: 'sine', dur: 0.07, gain: 0.12 }); }
+
+// =============================================================================
+// Game lifecycle
+// =============================================================================
+function startGame() {
+  state.phase = 'PLAYING';
+  state.grid = emptyGrid();
+  state.tiles = [];
+  state.floaters = [];
+  state.score = isFinite(devScore) ? devScore : 0;
+  state.highestTile = 0;
+  state.moves = 0;
+  state.merges = 0;
+  state.timer = isFinite(devTime) ? devTime : CONFIG.GAME_DURATION_SEC;
+  state.timerStarted = false;
+  state.startTime = 0;
+  state.pausedDuration = 0;
+  state.paused = false;
+  state.lastDropAt = 0;
+  state.lastTickPlayed = 999;
+  state.autoSpawnAccumulator = 0;
+  state.autoSpawnPulse = 0;
+
+  // Two starting tiles, per standard 2048
+  spawnRandomTile('move');
+  spawnRandomTile('move');
+
+  dom.menu.classList.add('hidden');
+  dom.gameOver.classList.add('hidden');
+  dom.continueOverlay.classList.add('hidden');
+  dom.hud.classList.remove('hidden');
+  dom.timerPill.classList.remove('urgent');
+
+  if (devPhase === 'gameover') {
+    // Force into game-over state for dev testing
+    state.timerStarted = true;
+    state.startTime = performance.now() - CONFIG.GAME_DURATION_SEC * 1000;
+    state.timer = 0;
+    endGame('time');
+    return;
+  }
+  updateHud();
+}
+
+function endGame(reason) {
+  if (state.phase === 'GAME_OVER') return;
+  state.phase = 'GAME_OVER';
+
+  const isNewBest = state.score > state.best;
+  if (isNewBest) {
+    state.best = state.score;
+    storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
+  }
+
+  dom.goTitle.textContent = reason === 'locked' ? 'Board Locked!' : "Time's up!";
+  dom.goNewBest.classList.toggle('hidden', !isNewBest);
+
+  dom.finalStats.innerHTML =
+    '<div class="label">Score</div><div class="value">' + state.score + '</div>' +
+    '<div class="label">Highest tile</div><div class="value">' + (state.highestTile || '—') + '</div>' +
+    '<div class="label">Moves</div><div class="value">' + state.moves + '</div>' +
+    '<div class="label">Merges</div><div class="value">' + state.merges + '</div>' +
+    '<div class="label">Best</div><div class="value">' + state.best + '</div>';
+
+  playGameOver();
+  setTimeout(() => {
+    dom.hud.classList.add('hidden');
+    dom.continueOverlay.classList.add('hidden');
+    dom.gameOver.classList.remove('hidden');
+  }, 350);
+}
+
+function showBest() {
+  if (state.best > 0) dom.bestText.innerHTML = 'Best: <b>' + state.best + '</b>';
+  else dom.bestText.innerHTML = '&nbsp;';
+}
+
+// =============================================================================
+// Input — keyboard + swipe
+// =============================================================================
+window.addEventListener('keydown', (e) => {
+  if (state.phase !== 'PLAYING') return;
+  let dir = null;
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') dir = 'left';
+  else if (e.code === 'ArrowRight' || e.code === 'KeyD') dir = 'right';
+  else if (e.code === 'ArrowUp' || e.code === 'KeyW') dir = 'up';
+  else if (e.code === 'ArrowDown' || e.code === 'KeyS') dir = 'down';
+  if (dir) {
+    e.preventDefault();
+    attemptMove(dir);
+  }
+});
+
+let touchStart = null;
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) { touchStart = null; return; }
+  const t = e.touches[0];
+  touchStart = { x: t.clientX, y: t.clientY };
+}, { passive: true });
+canvas.addEventListener('touchmove', (e) => {
+  // Prevent scroll while interacting with the board
+  if (touchStart) e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchend', (e) => {
+  if (!touchStart) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStart.x;
+  const dy = t.clientY - touchStart.y;
+  touchStart = null;
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  if (adx < CONFIG.SWIPE_THRESHOLD_PX && ady < CONFIG.SWIPE_THRESHOLD_PX) return;
+  if (adx > ady) attemptMove(dx > 0 ? 'right' : 'left');
+  else attemptMove(dy > 0 ? 'down' : 'up');
+}, { passive: true });
+
+// Mouse drag — desktop fallback so users without arrow keys can play
+let mouseStart = null;
+canvas.addEventListener('mousedown', (e) => {
+  mouseStart = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('mouseup', (e) => {
+  if (!mouseStart) return;
+  const dx = e.clientX - mouseStart.x;
+  const dy = e.clientY - mouseStart.y;
+  mouseStart = null;
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  if (adx < CONFIG.SWIPE_THRESHOLD_PX && ady < CONFIG.SWIPE_THRESHOLD_PX) return;
+  if (adx > ady) attemptMove(dx > 0 ? 'right' : 'left');
+  else attemptMove(dy > 0 ? 'down' : 'up');
+});
+
+// Buttons
+dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
+dom.playAgainBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
+dom.continueBtn.addEventListener('click', () => { ensureAudio(); doContinue(); });
+dom.giveUpBtn.addEventListener('click', () => {
+  ensureAudio();
+  dom.continueOverlay.classList.add('hidden');
+  endGame('locked');
+});
+dom.muteBtn.addEventListener('click', () => {
+  state.muted = !state.muted;
+  storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');
+  updateMuteUI();
+});
+
+function updateMuteUI() {
+  const svg = dom.muteBtn.querySelector('svg');
+  svg.innerHTML = state.muted
+    ? '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3zm17.59-7L17 5.59 13.41 2 12 3.41l3.59 3.59L12 10.59 13.41 12 17 8.41 20.59 12 22 10.59 18.41 7 22 3.41z"/>'
+    : '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
+}
+
+// =============================================================================
+// Pause on tab hide — preserve the wall-clock timer accurately on resume
+// =============================================================================
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (state.phase === 'PLAYING' && !state.paused) {
+      state.paused = true;
+      state.pausedAt = performance.now();
+    }
+  } else {
+    if (state.paused && state.phase === 'PLAYING') {
+      state.pausedDuration += performance.now() - state.pausedAt;
+      state.paused = false;
+      lastT = 0;
+    }
+  }
+});
+
+// =============================================================================
+// Main loop
+// =============================================================================
+let lastT = 0;
+function loop(t) {
+  if (!lastT) lastT = t;
+  const dt = Math.min((t - lastT) / 1000, 1 / 30);
+  lastT = t;
+  if (!state.paused) update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// =============================================================================
+// Boot
+// =============================================================================
+showBest();
+updateMuteUI();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

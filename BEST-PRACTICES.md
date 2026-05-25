@@ -18,16 +18,17 @@ cite "the case study" or "best practices," they mean this file.
 ## Table of contents
 
 1. [What "good" looks like for a JDP arcade game](#01--what-good-looks-like)
-2. [Architecture — scenes, one config file](#02--architecture)
-3. [The core loop — endless within a timer](#03--the-core-loop)
-4. [Gamification — one currency, two power-ups, many shapes](#04--gamification)
-5. [Economy control — caps the player must not see](#05--economy-control)
-6. [Asset management & optimization](#06--asset-management--optimization)
-7. [Visual composition — drawing more than you ship](#06b--visual-composition)
-8. [Game feel — the polish budget](#07--game-feel)
-9. [Ten replication patterns](#08--replication-patterns)
-10. [Build checklist](#09--build-checklist)
-11. [TL;DR](#10--tldr)
+2. [Pick the simplest stack that ships](#01b--pick-the-simplest-stack)
+3. [Architecture — scenes, one config file](#02--architecture)
+4. [The core loop — endless within a timer](#03--the-core-loop)
+5. [Gamification — one currency, two power-ups, many shapes](#04--gamification)
+6. [Economy control — caps the player must not see](#05--economy-control)
+7. [Asset management & optimization](#06--asset-management--optimization)
+8. [Visual composition — drawing more than you ship](#06b--visual-composition)
+9. [Game feel — the polish budget](#07--game-feel)
+10. [Ten replication patterns](#08--replication-patterns)
+11. [Build checklist](#09--build-checklist)
+12. [TL;DR](#10--tldr)
 
 Throughout, sidebars labeled **Reference: Flying Ruby** show how the
 production game in `flying-ruby/` implements the pattern. Treat those as
@@ -59,11 +60,98 @@ The shape that consistently works:
 
 ---
 
+## 01b — Pick the simplest stack that ships
+
+**Default to vanilla.** A new JDP arcade game should start as **a single
+`index.html` file with vanilla JavaScript and the HTML5 Canvas 2D API**.
+No framework, no bundler, no WebGL shaders, no scene-graph library — just
+one file you can open, read end-to-end, and ship. Most short-session
+arcade games (one round, one currency, a handful of sprite types, ~30
+on-screen entities at a time) do not need anything more than that.
+
+| Decision | Default | Reach for more only when... |
+|---|---|---|
+| **JS framework** | None — vanilla JS | You need scene-graph, tween manager, or physics you'd otherwise hand-write badly |
+| **Rendering** | Canvas 2D | Profiling shows Canvas 2D dropping frames with many sprites — **measure first, don't pre-optimize** |
+| **File layout** | One `index.html` (CSS + JS inline). Optionally one sibling `game.js`. | The single file crosses ~1500 lines *and* has clear scene boundaries |
+| **Build step** | None | Code-splitting or TypeScript is genuinely required to ship — rare for JDP games |
+| **Audio** | Web Audio API (synthesized SFX, no asset files) | Recorded SFX/BGM clips are needed — then `.m4a` per §06 |
+| **External assets** | Minimize. Google Fonts via CDN is fine. | The game's identity actually depends on bespoke art |
+
+### Why vanilla first
+
+Phaser is ~1 MB of framework before your first pixel renders. A
+`requestAnimationFrame` loop, a few `ctx.fillRect` / `ctx.fillText`
+calls, and a tiny `state` object is a few dozen lines. For the JDP
+shape — 3-minute round, ~30 entities, one mascot, one currency — the
+framework's scene graph, physics engine, and tween system are weight
+the player pays for and the reviewer pays for, with little gameplay
+benefit. A single self-contained HTML file is also dramatically easier
+to review, port, and hand off.
+
+### WebGL isn't "complex" — it's invisible
+
+Phaser uses a WebGL renderer by default and the game developer never
+writes a shader or touches the GL API. So the choice is **framework vs.
+no framework**, not *Canvas vs. WebGL*. Avoiding WebGL as such is not
+the point; avoiding framework weight is.
+
+### When Phaser is the right call
+
+Reach for Phaser (or a similar engine) when the game's polish budget
+genuinely depends on its machinery:
+
+- **Heavy particle moments** — multi-phase death sequences, frenzy
+  speed-line bursts, mascot afterimages. Phaser's particle and tween
+  managers are cheap; rewriting them in vanilla is not.
+- **Choreographed tween chains** — e.g. flash → shatter → screen-crack →
+  fade, with timing that has to land. Hand-rolled timer cascades get
+  brittle fast.
+- **Many scenes with managed assets** — Boot / Start / Game / GameOver
+  each with their own preloads. Phaser's scene manager earns its weight
+  here.
+
+If your design doesn't need those, don't reach for Phaser. **The
+default is vanilla.**
+
+> **Reference: Susun** (`susun/`). A single ~920-line `index.html`.
+> Vanilla JS, Canvas 2D isometric projection (`COS30` / `SIN30`
+> trig constants, no engine), Web Audio synthesis for every SFX,
+> `localStorage` for best score and mute, three-minute round, one
+> currency capped at 500, streak tiers, multi-phase shake-and-tumble
+> miss animation. Total payload well under 200 KB, no asset files
+> beyond a Google Fonts CSS link. This is the shape every new JDP
+> game should start from.
+
+> **Reference: Flying Ruby** (`flying-ruby/`). Phaser 3 from a CDN, ES
+> modules, four scenes, full tween-heavy polish (1.9-second crash
+> sequence, magnet aura rings, rush vignette + speed lines). The case
+> *for* reaching past vanilla: the crash sequence and frenzy mode
+> genuinely benefit from Phaser's tween manager. If your game has
+> matching polish ambition, the §02 architecture below applies. If it
+> doesn't, stay in one HTML file.
+
+> **Pre-existing single-file games** (`bubble-shooter/`, `liquid-sort/`,
+> `puzzle/`, `ruby-rhythm/`, `tetra-blocks/`, `tic-tac-toe/`,
+> `Wordscapes/`) already follow this shape. They predate this written
+> guidance — and they're proof the pattern works.
+
+---
+
 ## 02 — Architecture
+
+> **This section applies when you've reached for Phaser per §01b.** If
+> you're staying in a single vanilla HTML file (the default), your
+> "architecture" is section comments inside one `<script>` block —
+> typically `CONFIG`, `STATE`, `INPUT`, `UPDATE`, `DRAW`, `LIFECYCLE`,
+> `AUDIO`. Susun (`susun/index.html`) is the worked example. Skip ahead
+> to §03; the *design* patterns below (config-driven tuning, named
+> ranges) still apply — they just live in a `const CONFIG = { ... }`
+> object at the top of the file instead of a separate `config.js`.
 
 **Scenes for shape, one config file for tuning.** Split your game so the
 people who *tune* it (designers, PMs) never have to read the people who
-*build* it (engineers, scenes). The canonical layout:
+*build* it (engineers, scenes). The canonical Phaser-shaped layout:
 
 | File | Responsibility |
 |---|---|
@@ -259,6 +347,13 @@ by choosing formats per-asset-type, generating runtime art for anything
 math can produce, and shipping no build-tooling bytes.
 
 ### Folder layout — sorted by load order & intent
+
+**For vanilla single-file games (the §01b default):** the layout is just
+`<game-name>/index.html`. If you genuinely need bespoke art or audio,
+add `assets/`, `sfx/`, and `bgm/` siblings using the same format rules
+below. Skip the rest of this layout.
+
+**For Phaser-shaped games:**
 
 ```
 <game-name>/
@@ -530,13 +625,16 @@ pattern from §08.
 
 ## 10 — TL;DR
 
-If you remember three things:
+If you remember four things:
 
-1. **Time-box, don't stage.** Short-session arcade games belong in one
+1. **Start in one HTML file with vanilla JS + Canvas 2D.** No framework,
+   no bundler, no WebGL shaders. Reach for Phaser only when your polish
+   budget genuinely demands its tween / particle / scene machinery.
+2. **Time-box, don't stage.** Short-session arcade games belong in one
    endless round with a smooth difficulty ramp. Stages are friction.
-2. **One currency, one HUD number.** Make variety come from *how* rewards
+3. **One currency, one HUD number.** Make variety come from *how* rewards
    appear (formations, power-ups), not from competing score systems.
-3. **Cap economies by thinning supply.** Never freeze a visible counter.
+4. **Cap economies by thinning supply.** Never freeze a visible counter.
    Taper spawn probabilities as the player nears the cap — the world simply
    "calms down".
 

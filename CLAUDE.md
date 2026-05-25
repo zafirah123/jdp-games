@@ -4,8 +4,18 @@
 
 Every JDP game ships from this repository to the public landing page at
 `https://zafirah123.github.io/jdp-games/`. This document is the binding
-contract for how new games should be designed, built, and shipped. It is
-derived from the Flying Ruby case study, which is the canonical reference.
+contract for how new games should be designed, built, and shipped.
+
+**Two reference implementations**, picked deliberately for different
+ambition levels:
+
+- [`susun/`](./susun/) — **vanilla JS + Canvas 2D, single `index.html`**.
+  The default shape for a new JDP game per [BEST-PRACTICES.md §01b](./BEST-PRACTICES.md#01b--pick-the-simplest-stack).
+  Start here.
+- [`flying-ruby/`](./flying-ruby/) — **Phaser 3 from CDN**. The
+  polish-heavy escape hatch: reach for it only if your design
+  genuinely needs tween chains, scene management, or particle systems
+  beyond what vanilla affords.
 
 ## Source of truth
 
@@ -20,16 +30,21 @@ live in the case study:
   (also live at https://zafirah123.github.io/jdp-games/flying-ruby-case-study.html)
   — the presentation-format version of the same material. If the two
   disagree, the Markdown wins.
-- **Reference implementation**: [`flying-ruby/`](./flying-ruby/) — read its
-  [`src/config.js`](./flying-ruby/src/config.js) and
-  [`src/scenes/GameScene.js`](./flying-ruby/src/scenes/GameScene.js) before
-  designing your own.
+- **Reference implementations**:
+  - [`susun/index.html`](./susun/index.html) — **read this first.** Vanilla
+    JS, Canvas 2D, single file, Web Audio synthesis. The default shape.
+  - [`flying-ruby/`](./flying-ruby/) — Phaser-shaped polish-heavy
+    reference. Read its
+    [`src/config.js`](./flying-ruby/src/config.js) and
+    [`src/scenes/GameScene.js`](./flying-ruby/src/scenes/GameScene.js)
+    only if you're reaching for Phaser.
 
 **Visual language**: [`DESIGN.md`](./DESIGN.md) is the source of truth for
 colors, typography, spacing, radii, effects, and component anatomy. Read it
 **before** writing any UI — HUD chips, buttons, progress bars, leaderboards,
-tier badges, and mascot usage are all specified there. Per-game `config.js`
-palette overrides must reconcile against the JDP 2026 tokens in DESIGN.md §1.
+tier badges, and mascot usage are all specified there. Per-game palette
+overrides (in CSS variables or a `CONFIG`/`config.js` palette block) must
+reconcile against the JDP 2026 tokens in DESIGN.md §1.
 
 **Precedence when docs disagree**: BEST-PRACTICES.md wins over the HTML case
 study; DESIGN.md wins on visuals; BEST-PRACTICES.md wins over this CLAUDE.md
@@ -63,8 +78,10 @@ Every game must be usable on:
 
 Practical implications:
 
-- Use Phaser's `Scale.FIT` (or equivalent canvas-fit logic) so the game
-  scales to the viewport without clipping or letterboxing badly.
+- Resize the canvas to the viewport on `window.resize` (and apply
+  `devicePixelRatio` for crispness) so the game scales without clipping
+  or letterboxing badly. Phaser games can use `Scale.FIT`; vanilla games
+  set `canvas.width / height` directly per the Susun pattern.
 - Every input must have a touch path — no keyboard-only controls. Tap, drag,
   and swipe targets ≥44×44 px.
 - Test in browser dev-tools mobile emulation **and** on at least one real
@@ -161,16 +178,16 @@ Full rationale in [BEST-PRACTICES.md §08](./BEST-PRACTICES.md#08--replication-p
 
 | # | Pattern | One-line rule |
 |---|---|---|
-| 1 | One config file, named ranges | All tuning in `src/config.js`. Use `{ start, end }` for any ramping value. |
+| 1 | One config block, named ranges | All tuning in one place — `const CONFIG = { ... }` at top of file (vanilla) or `src/config.js` (Phaser). Use `{ start, end }` for any ramping value. |
 | 2 | Endless within a fixed timer | One continuous round, smooth difficulty arc peaking at ~85%. |
 | 3 | Time as shared budget | Crash + time remaining = Continue. Only the clock ends the run. |
 | 4 | One currency, one HUD number | Resist multiple scores or multipliers. |
 | 5 | Cap by tapering supply | Never clamp the visible counter. |
 | 6 | Formations as cheap content | Single sprite + multiple shapes (line, wave, circle) = visual variety for free. |
 | 7 | Two power-ups, two purposes | One aid, one frenzy. Stop. |
-| 8 | Placeholder textures with final keys | Generate stand-ins in BootScene using the texture keys real art will use. |
+| 8 | Placeholder textures with final keys | Generate stand-ins at boot using the same keys real art will use — `ctx.createCanvas` calls (vanilla) or `BootScene` (Phaser). |
 | 9 | Polish budget on every interaction | Tactile response on every input (squash, sparkle, +1, flash). |
-| 10 | Dev shortcuts in BootScene | `?scene=` query jump + persisted user prefs (mute) before any audio plays. |
+| 10 | Dev shortcuts at boot | `?scene=` / `?phase=` query jump + persisted user prefs (mute) before any audio plays. |
 
 ---
 
@@ -180,8 +197,9 @@ See also the more detailed pre-implementation checklist in
 [BEST-PRACTICES.md §09](./BEST-PRACTICES.md#09--build-checklist).
 
 
+- [ ] **Picked the simplest stack that ships.** Default: vanilla JS + Canvas 2D, single `index.html`. Reach for Phaser only if the design genuinely needs tween chains, particles, or many managed scenes (see [BEST-PRACTICES.md §01b](./BEST-PRACTICES.md#01b--pick-the-simplest-stack)).
 - [ ] Decided session length. <5 min → endless-with-timer (no stages).
-- [ ] Stood up `src/config.js` with palette, gravity, round duration, and `{ start, end }` ramps before writing any scene.
+- [ ] Stood up the config block (top-of-file `const CONFIG` for vanilla, `src/config.js` for Phaser) with palette, gravity, round duration, and `{ start, end }` ramps before writing the game loop.
 - [ ] Picked one currency. Named it. That's the only number on the HUD.
 - [ ] Defined two exit conditions: soft (crash with time remaining → continue) and hard (time up → final).
 - [ ] Specified the difficulty arc — which values ramp, peak at what %.
@@ -189,34 +207,96 @@ See also the more detailed pre-implementation checklist in
 - [ ] Wrote drop odds as a probability table. **Most rolls should be empty** so the rare drops feel special.
 - [ ] Specified any economy caps. Implemented as a spawn-probability taper, not a counter clamp.
 - [ ] Identified which textures are real art (mascot, currency, power-ups, background) vs generated (obstacles, particles, glows).
-- [ ] Reserved polish budget per interaction: flap response, pickup feedback, death sequence, power-up activation.
-- [ ] Added `?scene=` dev jump in BootScene from day one.
+- [ ] Reserved polish budget per interaction: input response, pickup feedback, death sequence, power-up activation.
+- [ ] Added a `?scene=` / `?phase=` dev jump at boot from day one.
 - [ ] Persisted best score and mute preference in `localStorage` with try/catch for sandboxed webviews.
 
 ---
 
 ## 4. Tech stack defaults
 
-- **Engine**: Phaser 3, loaded from a CDN. No bundler unless you have a
-  specific reason (e.g. Ruby Breaker uses Vite for code-splitting).
-- **Modules**: ES modules (`<script type="module">`). Static site, served
-  over `http://` for local dev (the harness can't open `file://` modules).
-- **No frameworks**: no React, Vue, etc. for game code itself.
-- **No build step preferred** — if you can ship the source directly, do.
-  Reduces dependency churn and PR review surface.
+**Start vanilla, single file.** Full rationale in
+[BEST-PRACTICES.md §01b](./BEST-PRACTICES.md#01b--pick-the-simplest-stack).
+The summary:
 
-Local dev server pattern:
+- **Rendering**: HTML5 Canvas 2D. Avoid WebGL shaders / 3D libraries —
+  Canvas 2D is fast enough for ~30 entities at 60fps and dramatically
+  simpler to read and review. (WebGL via Phaser is *invisible* — that's
+  fine; it's hand-rolled shader code that's overkill.)
+- **JS framework**: **None.** No React, Vue, no scene-graph library. The
+  game is a `requestAnimationFrame` loop and a `state` object.
+- **File layout**: One `index.html` with `<style>` and `<script>`
+  inline. Optionally one sibling `game.js` if the script crosses
+  ~1500 lines. **Susun (`susun/index.html`) is the canonical shape.**
+- **Audio**: Web Audio API for synthesized SFX (no asset files needed —
+  see Susun's `playTone` helper). Only ship recorded `.m4a` clips when
+  the game's identity actually depends on bespoke audio.
+- **No build step**: ship the source directly. No bundler, no
+  TypeScript, no PostCSS.
+- **Modules**: optional. `<script type="module">` is fine if you split
+  files; the more common pattern is one `<script>` block.
+
+### When to reach past vanilla (rare)
+
+Phaser 3 from a CDN is the right escape hatch when:
+
+- Polish needs heavy particle bursts or choreographed multi-tween
+  sequences (Flying Ruby's crash sequence is the canonical example).
+- The game has 4+ distinct scenes each with their own preloads.
+- You'd otherwise reimplement Phaser's tween manager poorly by hand.
+
+If you reach for Phaser: load it from a CDN, use ES modules, no bundler
+(Ruby Breaker's Vite setup is a legacy exception, not a pattern to
+follow). Follow [BEST-PRACTICES.md §02](./BEST-PRACTICES.md#02--architecture)
+for the scene split.
+
+### What to never reach for
+
+- React, Vue, Svelte, or any UI framework for game code.
+- 3D engines (Three.js, Babylon) — JDP games are 2D.
+- TypeScript build pipelines — not worth the dependency weight for a
+  ~1000-line game.
+- A bundler "just in case."
+
+### Local dev server pattern
+
 ```bash
 # from the game folder
 python3 -m http.server 8080
 # then open http://localhost:8080
 ```
 
+Browsers block `file://` ES-module loads, so even vanilla games served
+as `<script type="module">` need a local HTTP server. Single-file games
+with a plain `<script>` block will work from `file://` too, but use the
+server during dev for consistency.
+
 ---
 
 ## 5. Asset management
 
-### 5.1 Folder structure (mandatory)
+### 5.1 Folder structure
+
+**Vanilla single-file (default).** Most JDP games need only:
+
+```
+<game-name>/
+└── index.html                      # everything: HTML, CSS, JS, config
+```
+
+If the game ships bespoke art or recorded audio, add siblings as
+needed:
+
+```
+<game-name>/
+├── index.html
+├── assets/                         # WebP sprites + backgrounds
+├── sfx/                            # AAC one-shots
+└── bgm/                            # AAC loops
+```
+
+**Phaser-shaped (only when §4 says to reach for Phaser).** The full
+layout:
 
 ```
 <game-name>/
@@ -266,13 +346,13 @@ Flying Ruby ships in 2.8 MB across 16 files. Stay within that envelope.
 
 ### 5.4 Optimization tactics
 
-1. **WebP for everything visual.** Lossless for sprites, lossy for backgrounds.
-2. **Generate before download.** Pillars, sparkles, dust, vignettes — draw them in BootScene.
+1. **WebP for everything visual.** Lossless for sprites, lossy for backgrounds. (Skip entirely if your game has no asset files — Susun does.)
+2. **Generate before download.** Pillars, sparkles, dust, vignettes — draw them in code at boot.
 3. **Mirror to tile.** Ship one background; mirror it horizontally in canvas for a seamless loop. No tileable artwork needed.
-4. **Sources stay oversized.** Author at 1024×1024 if you want, render with `setDisplaySize()`. One asset, every device.
-5. **AAC over WAV** for all audio.
+4. **Sources stay oversized.** Author at 1024×1024 if you want, render scaled. One asset, every device.
+5. **AAC over WAV** for any recorded audio. Web Audio API synthesis ships zero bytes — prefer it when the SFX palette is simple (taps, beeps, ticks).
 6. **No bundler, no framework** unless required. Zero bytes shipped for build tooling.
-7. **Shared keys for placeholder & final art.** Placeholders in BootScene use the same key the real file will use — swapping is one line.
+7. **Shared keys for placeholder & final art.** Placeholders at boot use the same key/name the real file will use — swapping is one line.
 
 ---
 
@@ -282,7 +362,8 @@ Flying Ruby ships in 2.8 MB across 16 files. Stay within that envelope.
 Use the Pandai Design System 1.5 palette unless the game explicitly needs
 its own. The canonical tokens (with role mappings to legacy Flying Ruby
 names) live in [`DESIGN.md`](./DESIGN.md) §1 — consult it before adding new
-colors. Defined in `src/config.js`:
+colors. Define them once at the top of the file (CSS variables or a
+`CONFIG` palette block) and reference them everywhere:
 
 | Token | Hex | Used for |
 |---|---|---|
@@ -310,7 +391,10 @@ durations, follow [`DESIGN.md`](./DESIGN.md) §4–§8. Don't invent button
 shadows, border widths, or easings — they're already specified.
 
 ### 6.3 Mute & persistence
-- Mute toggle in every scene, top-right corner of HUD area
+- Mute toggle visible whenever the game can make sound — fixed top-right
+  corner is the convention. (For Phaser games: in every scene. For
+  vanilla single-screen games: one DOM button positioned over the canvas
+  is enough.)
 - Mute preference saved to `localStorage`, applied before any audio plays
 - Best score saved to `localStorage` under `<game-name>:best`
 - All `localStorage` calls wrapped in try/catch for sandboxed webviews
@@ -398,18 +482,19 @@ A game is shippable when it satisfies **all** of:
 - [ ] Plays on desktop, mobile (portrait, ≥360 px), and tablet — touch + keyboard paths (§0.2)
 - [ ] Content reviewed against §0.3 — no violence, nudity, gambling, ads, or tracking
 - [ ] SFX for primary action, pickup, and round end; BGM if appropriate; mute applied before audio (§0.4)
+- [ ] Stack picked deliberately per §4 — vanilla single-file by default, Phaser only with justification
 - [ ] Single endless round with a fixed timer (or stages with a documented reason)
 - [ ] One currency, one HUD number
 - [ ] Two power-ups max
-- [ ] Difficulty ramp tuned in `config.js`, peaks at ≤85% of round
+- [ ] Difficulty ramp tuned in the config block, peaks at ≤85% of round
 - [ ] Economy cap (if any) implemented as a spawn taper, never as a counter clamp
 - [ ] Total payload ≤3 MB (target) / ≤5 MB (hard cap)
-- [ ] All images are WebP, all audio is AAC
-- [ ] Folder layout matches §5.1
+- [ ] Any shipped images are WebP, any shipped recorded audio is AAC (or Web Audio synthesis for SFX)
+- [ ] Folder layout matches §5.1 (single-file or Phaser variant, as appropriate)
 - [ ] Polish checklist (§6.2) complete
 - [ ] Visuals reconciled against [`DESIGN.md`](./DESIGN.md) (palette, typography, button/pill/progress-bar anatomy)
 - [ ] Mute toggle + best score persistence working
-- [ ] `?scene=` dev jump wired in BootScene
+- [ ] Dev jump via `?scene=` / `?phase=` query param wired from day one
 - [ ] Listed in `games.js` with `author: '<github-username>'` set
 
 ---
@@ -425,9 +510,9 @@ Per-game CLAUDE.md files override this root document **for that game only**.
 
 ## Appendix A: Repo overview
 
-Not every game in this repo is a new Phaser build that follows §1–8. The
-repo also hosts older single-file canvas games. This appendix documents the
-existing inventory and the conventions for editing them.
+The repo hosts a mix of vanilla single-file games (the §4 default shape)
+and Phaser builds (the polish-heavy escape hatch). This appendix
+documents the existing inventory and the conventions for editing them.
 
 ### A.1 Run locally (from repo root)
 
@@ -451,14 +536,16 @@ Games that use ES modules or `fetch` (most of them) require an HTTP server —
 | `puzzle/` | `puzzle.html` | Vanilla JS + Tailwind CDN, canvas | Single file |
 | `ruby-breaker-v2/` | `index.html` | Phaser 3 + Vite (bundled) | **Deployed bundle.** Source lives outside this repo — see [folder CLAUDE.md](ruby-breaker-v2/CLAUDE.md) |
 | `ruby-rhythm/` | `index.html` | Vanilla JS + Tailwind CDN, canvas | Single file |
+| `susun/` | `index.html` | Vanilla JS, plain CSS, Canvas 2D, Web Audio | **Canonical vanilla single-file reference** — see [BEST-PRACTICES.md §01b](./BEST-PRACTICES.md#01b--pick-the-simplest-stack) |
 | `tetra-blocks/` | `tetra-blocks.html` | Vanilla JS + Tailwind CDN, canvas | Single file |
 | `tic-tac-toe/` | `tic-tack-toe.html` | Vanilla JS, plain CSS, canvas | 5×5 vs AI, single file |
 | `Wordscapes/` | `wordscapes.html` | Vanilla JS + Tailwind CDN, canvas | Single file |
 
 ### A.3 Editing existing games
 
-These rules apply when modifying any game already in the inventory. They do
-**not** override §1–8 for new builds.
+These rules apply when modifying any game already in the inventory.
+§1–8 still govern *new* builds; these rules just keep edits to existing
+games disciplined.
 
 1. **Stay in-folder.** A change to Ruby Rhythm must not touch any other
    game's files. There are no shared modules to keep "in sync"; if you find

@@ -163,16 +163,6 @@
     text-transform: uppercase;
   }
   .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
-  .cta.secondary {
-    background: linear-gradient(180deg, #1535a8 0%, #0a1f5c 100%);
-    border-color: #1535a8;
-    color: #FFD633;
-    box-shadow: 0 4px 0 #051335;
-    margin-top: 12px;
-    padding: 12px 28px;
-    font-size: 15px;
-  }
-  .cta.secondary:active { box-shadow: 0 2px 0 #051335; }
   .stats {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -194,13 +184,6 @@
     margin: 0 0 12px;
     animation: pulse 0.5s ease-in-out infinite alternate;
   }
-  .time-left {
-    font-size: 13px;
-    color: rgba(255,255,255,0.85);
-    margin: -4px 0 16px;
-  }
-  .time-left b { color: #FFE258; }
-
   @media (max-width: 420px) {
     .card h1 { font-size: 36px; }
     .pill { font-size: 14px; padding: 6px 12px; min-width: 80px; }
@@ -227,21 +210,10 @@
 <div id="menu" class="overlay">
   <div class="card">
     <h1>2048</h1>
-    <p class="sub">Swipe to merge tiles. Push your score as high as you can in 3 minutes.</p>
-    <p class="cap">Score above <b>500</b> and the board starts dropping tiles on its own — fast.</p>
+    <p class="sub">Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.</p>
     <p class="best" id="bestText">&nbsp;</p>
     <button id="startBtn" class="cta">Start</button>
     <p class="hint">Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd></p>
-  </div>
-</div>
-
-<div id="continueOverlay" class="overlay hidden">
-  <div class="card">
-    <h2>Board Locked!</h2>
-    <p class="time-left">Time left: <b id="contTimeLeft">0:00</b></p>
-    <p class="sub">Continue and we'll clear your four smallest tiles. The clock keeps running.</p>
-    <button id="continueBtn" class="cta">Continue</button>
-    <button id="giveUpBtn" class="cta secondary">Give Up</button>
   </div>
 </div>
 
@@ -263,12 +235,14 @@
 const CONFIG = {
   GRID_SIZE: 4,
   GAME_DURATION_SEC: 180,
-  // Score thresholds for the auto-spawn taper. The game stays endless and
-  // uncapped, but auto-spawn kicks in past TAPER_START and ramps to its
-  // minimum interval at TAPER_FULL — past that the board fills faster than
-  // a player can clear, so scoring beyond ~500 is rare by design.
-  TAPER_START_SCORE: 100,
-  TAPER_FULL_SCORE: 500,
+  // Each merge scores log2(result-tile) + 1 points:
+  //   4 → 3, 8 → 4, 16 → 5, 32 → 6, 64 → 7, 128 → 8, 256 → 9,
+  //   512 → 10, 1024 → 11, 2048 → 12.
+  // Score is uncapped, but auto-spawn kicks in past TAPER_START_SCORE and
+  // ramps to its minimum interval at TAPER_FULL_SCORE — past that the board
+  // fills faster than the player can clear, so high scores are rare.
+  TAPER_START_SCORE: 50,
+  TAPER_FULL_SCORE: 200,
   AUTO_SPAWN_INTERVAL_START_SEC: 8.0,
   AUTO_SPAWN_INTERVAL_END_SEC: 1.2,
   SPAWN_FOUR_PROB_BASE: 0.10,        // 10% of tiles spawn as 4 by default
@@ -278,7 +252,6 @@ const CONFIG = {
   MERGE_PUNCH_SEC: 0.18,
   INPUT_DEBOUNCE_MS: 60,
   SWIPE_THRESHOLD_PX: 24,
-  CONTINUE_CLEAR_COUNT: 4,           // tiles removed when player continues
   STORAGE_KEY_BEST: '2048:best',
   STORAGE_KEY_MUTE: '2048:mute',
 };
@@ -320,10 +293,6 @@ const dom = {
   menu: document.getElementById('menu'),
   startBtn: document.getElementById('startBtn'),
   bestText: document.getElementById('bestText'),
-  continueOverlay: document.getElementById('continueOverlay'),
-  continueBtn: document.getElementById('continueBtn'),
-  giveUpBtn: document.getElementById('giveUpBtn'),
-  contTimeLeft: document.getElementById('contTimeLeft'),
   gameOver: document.getElementById('gameOver'),
   goTitle: document.getElementById('goTitle'),
   goNewBest: document.getElementById('goNewBest'),
@@ -354,7 +323,7 @@ const devPhase = params.get('phase');
 // State
 // =============================================================================
 const state = {
-  phase: 'MENU',                 // MENU | PLAYING | CONTINUE | GAME_OVER
+  phase: 'MENU',                 // MENU | PLAYING | GAME_OVER
   tiles: [],                     // active tile list (see makeTile)
   grid: null,                    // 4x4 array of tile or null (logical board)
   score: 0,
@@ -501,8 +470,8 @@ function attemptMove(dir) {
   const moved = performSlide(dir);
   if (!moved) {
     // No-op: don't start the clock or spend a move, but if the board was
-    // already locked (auto-spawn filled it), surface the continue prompt.
-    if (!hasAnyMove()) onBoardLocked();
+    // already full (auto-spawn filled it before the swipe), end the run.
+    if (isBoardFull()) onBoardLocked();
     return;
   }
 
@@ -517,7 +486,7 @@ function attemptMove(dir) {
   playMove();
   updateHud();
 
-  if (!hasAnyMove()) onBoardLocked();
+  if (isBoardFull()) onBoardLocked();
 }
 
 // dir: 'left' | 'right' | 'up' | 'down'
@@ -544,6 +513,7 @@ function performSlide(dir) {
   // Walk each line in the movement direction, producing an ordered list of
   // surviving tiles plus a map of survivor → absorbed partner.
   const plans = [];
+  let largestMergedValue = 0;
   for (let li = 0; li < N; li++) {
     let lineTiles;
     if (dir === 'left')       lineTiles = [0, 1, 2, 3].map(c => state.grid[li][c]).filter(Boolean);
@@ -559,13 +529,15 @@ function performSlide(dir) {
       const b = lineTiles[i + 1];
       if (b && a.value === b.value) {
         const newValue = a.value * 2;
+        const mergePoints = Math.log2(newValue) + 1;  // 4→3, 8→4, …, 2048→12
         a.value = newValue;
         a.merged = true;
         a.punchT = 0;
-        a._floatPending = newValue;
-        scoreGained += newValue;
+        a._floatPending = mergePoints;
+        scoreGained += mergePoints;
         state.merges += 1;
         if (newValue > state.highestTile) state.highestTile = newValue;
+        if (newValue > largestMergedValue) largestMergedValue = newValue;
         absorbed.set(a, b);
         survivors.push(a);
         i += 2;
@@ -624,26 +596,24 @@ function performSlide(dir) {
 
   if (scoreGained > 0) {
     state.score += scoreGained;
-    if (scoreGained >= 64) playMergeBig();
-    else if (scoreGained >= 16) playMergeMid();
+    // Sound tier follows the biggest tile created, not the +1/+2 score
+    if (largestMergedValue >= 256) playMergeBig();
+    else if (largestMergedValue >= 32) playMergeMid();
     else playMergeSmall();
   }
   return changed;
 }
 
-// Is any move possible? Used to detect board-locked.
-function hasAnyMove() {
-  if (emptyCells().length > 0) return true;
-  const N = CONFIG.GRID_SIZE;
-  for (let r = 0; r < N; r++) {
-    for (let c = 0; c < N; c++) {
-      const v = state.grid[r][c] && state.grid[r][c].value;
-      if (!v) continue;
-      if (c + 1 < N && state.grid[r][c + 1] && state.grid[r][c + 1].value === v) return true;
-      if (r + 1 < N && state.grid[r + 1][c] && state.grid[r + 1][c].value === v) return true;
+// Game-over trigger: the moment every cell is occupied, the run ends —
+// even if a merge would still be technically possible. Stricter than
+// standard 2048, by request.
+function isBoardFull() {
+  for (let r = 0; r < CONFIG.GRID_SIZE; r++) {
+    for (let c = 0; c < CONFIG.GRID_SIZE; c++) {
+      if (!state.grid[r][c]) return false;
     }
   }
-  return false;
+  return true;
 }
 
 // =============================================================================
@@ -681,43 +651,16 @@ function updateAutoSpawn(dt) {
     if (spawned) {
       state.autoSpawnPulse = 0.4;
       playAutoSpawn();
-      if (!hasAnyMove()) onBoardLocked();
     }
-    // If board was full, just skip — player still has their own merges to make.
+    // Whether or not the auto-spawn fit, check fullness afterward.
+    if (isBoardFull()) onBoardLocked();
   }
 }
 
-// =============================================================================
-// Board-locked: offer Continue while time remains, otherwise end the game.
-// =============================================================================
+// Board-locked ends the run immediately — no continue.
 function onBoardLocked() {
   if (state.phase !== 'PLAYING') return;
-  if (state.timer <= 0) { endGame('time'); return; }
-  state.phase = 'CONTINUE';
-  // Pause the round clock while the player decides
-  state.paused = true;
-  state.pausedAt = performance.now();
-  dom.contTimeLeft.textContent = formatTime(state.timer);
-  dom.continueOverlay.classList.remove('hidden');
-}
-
-function doContinue() {
-  // Clear the N lowest-value tiles to reopen space
-  const sorted = state.tiles.slice().sort((a, b) => a.value - b.value);
-  const toRemove = sorted.slice(0, CONFIG.CONTINUE_CLEAR_COUNT);
-  for (const t of toRemove) {
-    state.grid[t.row][t.col] = null;
-  }
-  rebuildTileList();
-  state.autoSpawnAccumulator = 0;
-  // Resume timer
-  if (state.paused) {
-    state.pausedDuration += performance.now() - state.pausedAt;
-    state.paused = false;
-  }
-  state.phase = 'PLAYING';
-  dom.continueOverlay.classList.add('hidden');
-  playContinue();
+  endGame(state.timer <= 0 ? 'time' : 'locked');
 }
 
 // =============================================================================
@@ -738,6 +681,12 @@ function update(dt) {
   }
 
   updateAutoSpawn(dt);
+
+  // Belt-and-braces: if any path ever fills the board without firing the
+  // check above, this catches it on the next frame.
+  if (state.phase === 'PLAYING' && state.timerStarted && isBoardFull()) {
+    onBoardLocked();
+  }
 
   // Animate tile slides + merge punches
   for (const t of state.tiles) {
@@ -979,7 +928,6 @@ function playMergeBig()   {
   playTone({ freq: 1560, type: 'triangle', dur: 0.22, gain: 0.10, delay: 0.10 });
 }
 function playAutoSpawn()  { playTone({ freq: 180, freqEnd: 110, type: 'sawtooth', dur: 0.16, gain: 0.14 }); }
-function playContinue()   { playTone({ freq: 440, freqEnd: 880, type: 'sine', dur: 0.20, gain: 0.18 }); }
 function playGameOver()   { playTone({ freq: 220, freqEnd: 60, type: 'sawtooth', dur: 0.5, gain: 0.22 }); }
 function playTick()       { playTone({ freq: 1200, type: 'sine', dur: 0.07, gain: 0.12 }); }
 
@@ -1011,7 +959,6 @@ function startGame() {
 
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
-  dom.continueOverlay.classList.add('hidden');
   dom.hud.classList.remove('hidden');
   dom.timerPill.classList.remove('urgent');
 
@@ -1036,7 +983,7 @@ function endGame(reason) {
     storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
   }
 
-  dom.goTitle.textContent = reason === 'locked' ? 'Board Locked!' : "Time's up!";
+  dom.goTitle.textContent = reason === 'locked' ? 'Game Over' : "Time's up!";
   dom.goNewBest.classList.toggle('hidden', !isNewBest);
 
   dom.finalStats.innerHTML =
@@ -1049,7 +996,6 @@ function endGame(reason) {
   playGameOver();
   setTimeout(() => {
     dom.hud.classList.add('hidden');
-    dom.continueOverlay.classList.add('hidden');
     dom.gameOver.classList.remove('hidden');
   }, 350);
 }
@@ -1116,12 +1062,6 @@ canvas.addEventListener('mouseup', (e) => {
 // Buttons
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.playAgainBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
-dom.continueBtn.addEventListener('click', () => { ensureAudio(); doContinue(); });
-dom.giveUpBtn.addEventListener('click', () => {
-  ensureAudio();
-  dom.continueOverlay.classList.add('hidden');
-  endGame('locked');
-});
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');

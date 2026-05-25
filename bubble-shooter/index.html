@@ -80,11 +80,8 @@
             <span id="timer" class="text-3xl font-extrabold text-emerald-400 tracking-wider font-mono">03:00</span>
         </div>
 
-        <!-- High Score -->
-        <div class="flex flex-col items-end">
-            <span class="text-xs text-indigo-300 uppercase tracking-wider font-semibold">High Score</span>
-            <span id="high-score" class="text-xl font-bold text-indigo-200">0</span>
-        </div>
+        <!-- Spacer reserving room for the fixed audio toggle (DESIGN.md §5.11) -->
+        <div class="w-11 shrink-0" aria-hidden="true"></div>
     </div>
 
     <!-- Main Game Container -->
@@ -578,7 +575,6 @@
                 const savedHighScore = localStorage.getItem('blitz_bubble_highscore');
                 if (savedHighScore) {
                     this.highScore = parseInt(savedHighScore, 10);
-                    document.getElementById('high-score').innerText = this.highScore;
                 }
 
                 this.setupInput();
@@ -1524,7 +1520,6 @@
                 if (this.score > this.highScore) {
                     this.highScore = this.score;
                     localStorage.setItem('blitz_bubble_highscore', this.highScore);
-                    document.getElementById('high-score').innerText = this.highScore;
                 }
 
                 // Render gameover interface

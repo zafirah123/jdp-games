@@ -94,9 +94,33 @@
             flex-direction: column;
             justify-content: space-between;
         }
+
+        /* Audio toggle — DESIGN.md §5.11 */
+        .mute {
+            position: fixed;
+            top: max(12px, env(safe-area-inset-top));
+            right: max(12px, env(safe-area-inset-right));
+            width: 44px; height: 44px;
+            border-radius: 22px;
+            border: 2px solid #FFB603;
+            background: #9E131F;
+            color: #FFD633;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0;
+            cursor: pointer;
+            z-index: 30;
+            transition: transform 80ms ease;
+        }
+        .mute:active { transform: scale(0.92); }
+        .mute svg { width: 22px; height: 22px; fill: currentColor; }
     </style>
 </head>
 <body class="text-white select-none">
+
+    <!-- Audio toggle — DESIGN.md §5.11 -->
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+        <svg viewBox="0 0 24 24"></svg>
+    </button>
 
     <div id="game-container">
         <!-- Game Canvas -->
@@ -688,6 +712,7 @@
         // Initialize state vectors for screens on startup
         window.addEventListener('DOMContentLoaded', () => {
             applyI18n();
+            updateMuteUI();
             renderPBot('startPBot', 'hello');
         });
 
@@ -696,6 +721,36 @@
         let synthInterval = null;
         let currentBeat = 0;
         let bpm = 120;
+
+        // Audio toggle — DESIGN.md §5.11. Each play* function early-returns when
+        // isMuted is true; persistence in localStorage (wrapped — sandboxed
+        // webviews throw on access).
+        const MUTE_STORAGE_KEY = 'ruby-rhythm:mute';
+        let isMuted = false;
+        try { isMuted = localStorage.getItem(MUTE_STORAGE_KEY) === '1'; }
+        catch { /* storage blocked */ }
+
+        const MUTE_ICON_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
+        const MUTE_ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
+
+        function updateMuteUI() {
+            const btn = document.getElementById('muteBtn');
+            if (!btn) return;
+            btn.querySelector('svg').innerHTML = isMuted ? MUTE_ICON_OFF : MUTE_ICON_ON;
+            const label = isMuted ? COPY.audioOff : COPY.audioOn;
+            btn.setAttribute('aria-pressed', isMuted ? 'true' : 'false');
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('title', label);
+        }
+
+        document.getElementById('muteBtn').addEventListener('click', () => {
+            isMuted = !isMuted;
+            try { localStorage.setItem(MUTE_STORAGE_KEY, isMuted ? '1' : '0'); }
+            catch { /* storage blocked */ }
+            updateMuteUI();
+            // On unmute, init/resume audio and play a short confirmation tone.
+            if (!isMuted) { initAudio(); playHitSound('good'); }
+        });
 
         // Minor Pentatonic musical scale frequencies
         const notesScale = [130.81, 146.83, 155.56, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66, 311.13, 349.23, 392.00, 440.00, 466.16, 523.25];
@@ -711,7 +766,7 @@
 
         // Play procedural hit sound effect based on hit type
         function playHitSound(type) {
-            if (!audioCtx) return;
+            if (!audioCtx || isMuted) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
@@ -753,7 +808,7 @@
 
         // Countdown audio cue (3, 2, 1, Go!)
         function playCountdownTone(isGo) {
-            if (!audioCtx) return;
+            if (!audioCtx || isMuted) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
@@ -819,6 +874,7 @@
         }
 
         function playKickDrum(time) {
+            if (isMuted) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
@@ -835,6 +891,7 @@
         }
 
         function playSnare(time) {
+            if (isMuted) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'triangle';
@@ -852,6 +909,7 @@
         }
 
         function playHihat(time) {
+            if (isMuted) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'square';
@@ -867,6 +925,7 @@
         }
 
         function playBassline(beat, time) {
+            if (isMuted) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sawtooth';

@@ -84,27 +84,24 @@
     transition: width 0.08s linear;
   }
 
+  /* Audio toggle — DESIGN.md §5.11 */
   .mute {
     position: fixed;
-    top: 16px; right: 16px;
-    background: rgba(2, 13, 38, 0.85);
-    border: 2px solid #FFD633;
-    border-radius: 999px;
-    height: 40px;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    border: 2px solid #FFB603;
+    background: #9E131F;
     color: #FFD633;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
     cursor: pointer;
-    padding: 4px 12px 4px 6px;
-    display: flex;
-    align-items: center; justify-content: center;
-    gap: 6px;
     z-index: 30;
-    font-family: inherit;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 0.5px;
+    transition: transform 80ms ease;
   }
-  .mute svg { width: 22px; height: 22px; fill: currentColor; flex-shrink: 0; }
-  .mute .mute-label { line-height: 1; white-space: nowrap; }
+  .mute:active { transform: scale(0.92); }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; }
 
   /* Overlays */
   .overlay {
@@ -199,9 +196,8 @@
 <body>
 <canvas id="game"></canvas>
 
-<button id="muteBtn" class="mute" aria-label="Toggle sound">
-  <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
-  <span class="mute-label" id="muteLabel"></span>
+<button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+  <svg viewBox="0 0 24 24"></svg>
 </button>
 
 <div id="hud" class="hidden">
@@ -349,7 +345,6 @@ const dom = {
   newBestLabel: document.getElementById('newBestLabel'),
   finalStats: document.getElementById('finalStats'),
   playAgainBtn: document.getElementById('playAgainBtn'),
-  muteLabel: document.getElementById('muteLabel'),
 };
 
 // Apply localized copy into the DOM up front.
@@ -1127,13 +1122,17 @@ dom.muteBtn.addEventListener('click', () => {
   updateMuteUI();
 });
 
+// Audio toggle — DESIGN.md §5.11. Icon paths canonical across all JDP games.
+const MUTE_ICON_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
+const MUTE_ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
+
 function updateMuteUI() {
   const svg = dom.muteBtn.querySelector('svg');
-  svg.innerHTML = state.muted
-    ? '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM3 9v6h4l5 5V4L7 9H3zm17.59-7L17 5.59 13.41 2 12 3.41l3.59 3.59L12 10.59 13.41 12 17 8.41 20.59 12 22 10.59 18.41 7 22 3.41z"/>'
-    : '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>';
-  // Label shows current state — muted == AUDIO OFF, unmuted == AUDIO ON.
-  dom.muteLabel.textContent = state.muted ? COPY.audioOff : COPY.audioOn;
+  svg.innerHTML = state.muted ? MUTE_ICON_OFF : MUTE_ICON_ON;
+  const label = state.muted ? COPY.audioOff : COPY.audioOn;
+  dom.muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+  dom.muteBtn.setAttribute('aria-label', label);
+  dom.muteBtn.setAttribute('title', label);
 }
 
 // =============================================================================

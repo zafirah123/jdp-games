@@ -8,11 +8,26 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Import Poppins with multiple weights for UI hierarchy */
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800;900&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+        /* JDP palette — DESIGN.md §1 */
+        :root {
+            --jdp-black: #031034;
+            --jdp-blue: #133B9F;
+            --jdp-brick: #9E131F;
+            --jdp-light-red: #AF1726;
+            --jdp-dark-yellow: #FFB603;
+            --jdp-light-yellow: #FFD633;
+            --jdp-cta-grad-start: #FFE258;
+            --jdp-cta-grad-end: #FFBA0A;
+            --jdp-cta-plate: #DE9D00;
+            --jdp-cta-label: #DE0909;
+        }
+
         body {
             font-family: 'Poppins', sans-serif;
-            background: radial-gradient(circle, #1e1b4b 0%, #0f0728 100%);
+            background: radial-gradient(circle, var(--jdp-blue) 0%, var(--jdp-black) 100%);
+            color: #FFFFFF;
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
         }
@@ -22,18 +37,87 @@
             font-weight: 900;
         }
 
-        /* Glassmorphism utility */
-        .glass {
-            background: rgba(255, 255, 255, 0.07);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        /* JDP Two-tone pill — DESIGN.md §5.2 */
+        .jdp-pill {
+            background: #FFFFFF;
+            border: 2px solid var(--jdp-dark-yellow);
+            border-radius: 30px;
+            overflow: hidden;
+            display: flex;
+            align-items: stretch;
+            min-width: 0;
+        }
+        .jdp-pill .pill-label {
+            background: var(--jdp-brick);
+            color: var(--jdp-light-yellow);
+            padding: 4px 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .jdp-pill .pill-value {
+            background: var(--jdp-blue);
+            color: #FFFFFF;
+            padding: 4px 12px;
+            font-size: 18px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1;
+            white-space: nowrap;
         }
 
-        /* Custom pulsing effect for critical timer */
+        /* JDP Primary CTA — DESIGN.md §5.1 (Large) */
+        .cta-primary {
+            position: relative;
+            background: linear-gradient(180deg, var(--jdp-cta-grad-start) 0%, var(--jdp-cta-grad-end) 100%);
+            color: var(--jdp-cta-label);
+            border: 1px solid var(--jdp-light-yellow);
+            border-radius: 50px;
+            padding: 14px 28px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            box-shadow: 0 8px 0 var(--jdp-cta-plate);
+            cursor: pointer;
+            transition: transform 80ms ease, box-shadow 80ms ease;
+        }
+        .cta-primary:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 var(--jdp-cta-plate);
+        }
+
+        /* JDP Icon button (square 44×44) — DESIGN.md §5.1 */
+        .jdp-icon-btn {
+            width: 44px; height: 44px;
+            background: var(--jdp-brick);
+            color: var(--jdp-light-yellow);
+            border: 2px solid var(--jdp-dark-yellow);
+            border-radius: 22px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: transform 80ms ease;
+        }
+        .jdp-icon-btn:active { transform: scale(0.92); }
+
+        /* JDP Card surface — radius-card 16px, 2px yellow border on navy */
+        .jdp-card {
+            background: rgba(3, 16, 52, 0.85);
+            border: 2px solid var(--jdp-dark-yellow);
+            border-radius: 16px;
+        }
+
+        /* Critical timer pulse — yellow flash on blue for urgency */
         @keyframes pulse-red {
-            0%, 100% { transform: scale(1); color: #ef4444; }
-            50% { transform: scale(1.1); color: #f87171; }
+            0%, 100% { transform: scale(1); color: #FFFFFF; }
+            50% { transform: scale(1.15); color: var(--jdp-light-yellow); }
         }
         .pulse-urgent {
             animation: pulse-red 0.8s infinite;
@@ -46,9 +130,9 @@
             right: max(12px, env(safe-area-inset-right));
             width: 44px; height: 44px;
             border-radius: 22px;
-            border: 2px solid #FFB603;
-            background: #9E131F;
-            color: #FFD633;
+            border: 2px solid var(--jdp-dark-yellow);
+            background: var(--jdp-brick);
+            color: var(--jdp-light-yellow);
             display: flex; align-items: center; justify-content: center;
             padding: 0;
             cursor: pointer;
@@ -66,18 +150,18 @@
         <svg viewBox="0 0 24 24"></svg>
     </button>
 
-    <!-- Top HUD Bar -->
-    <div class="w-full max-w-md glass rounded-2xl p-3 flex justify-between items-center z-10 shadow-2xl shrink-0">
-        <!-- Score Card -->
-        <div class="flex flex-col items-start">
-            <span class="text-xs text-indigo-300 uppercase tracking-wider font-semibold">Score</span>
-            <span id="score" class="text-2xl font-extrabold text-amber-400 title-font">0000</span>
+    <!-- Top HUD Bar — JDP two-tone pills per DESIGN.md §5.2 -->
+    <div class="w-full max-w-md flex justify-between items-stretch gap-2 z-10 shrink-0">
+        <!-- Score pill -->
+        <div class="jdp-pill flex-1">
+            <span class="pill-label">Score</span>
+            <span id="score" class="pill-value title-font">0000</span>
         </div>
 
-        <!-- Timer / Progress -->
-        <div class="flex flex-col items-center px-4 py-1 rounded-xl bg-slate-900/50 border border-indigo-500/30">
-            <span class="text-[10px] text-indigo-300 uppercase tracking-widest font-bold">Time Remaining</span>
-            <span id="timer" class="text-3xl font-extrabold text-emerald-400 tracking-wider font-mono">03:00</span>
+        <!-- Timer pill -->
+        <div class="jdp-pill flex-1">
+            <span class="pill-label">Time Remaining</span>
+            <span id="timer" class="pill-value font-mono">03:00</span>
         </div>
 
         <!-- Spacer reserving room for the fixed audio toggle (DESIGN.md §5.11) -->
@@ -87,66 +171,66 @@
     <!-- Main Game Container -->
     <div class="relative w-full max-w-md flex-grow flex items-center justify-center my-2 overflow-hidden">
         <!-- Game Canvas Wrapper to maintain Aspect Ratio -->
-        <div id="canvas-container" class="relative w-full aspect-[2/3] max-h-full glass rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.2)] border border-indigo-500/30">
+        <div id="canvas-container" class="relative w-full aspect-[2/3] max-h-full rounded-3xl overflow-hidden border-2 border-[#FFB603] bg-[#031034]">
             <canvas id="gameCanvas" class="absolute top-0 left-0 w-full h-full block"></canvas>
 
             <!-- Grid Danger Line indicator -->
             <div id="danger-line" class="absolute bottom-[20%] left-0 w-full h-[2px] border-t-2 border-dashed border-red-500/60 transition-colors duration-300 pointer-events-none">
-                <span class="absolute right-2 -top-5 text-[9px] font-bold text-red-400 uppercase tracking-wider transition-colors duration-300" id="danger-text">Danger Line</span>
+                <span class="absolute right-2 -top-5 text-[9px] font-bold uppercase tracking-wider transition-colors duration-300 text-red-400" id="danger-text">Danger Line</span>
             </div>
 
             <!-- Start Game / Instructions Overlay -->
-            <div id="start-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300">
-                <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-pink-500 to-indigo-400 title-font mb-2 animate-bounce">
+            <div id="start-overlay" class="absolute inset-0 bg-[#031034]/95 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300">
+                <h1 class="text-4xl title-font mb-3 animate-bounce text-[#FFD633]" style="text-shadow: 0 2px 0 #DE9D00, 0 4px 8px rgba(0,0,0,0.5);">
                     3-MIN BLITZ
                 </h1>
-                <p class="text-indigo-200 text-sm mb-6 max-w-xs">
-                    Clear the board before the time runs out! Bubbles descend faster as the clock ticks down. 
+                <p class="text-white text-sm mb-6 max-w-xs">
+                    Clear the board before the time runs out! Bubbles descend faster as the clock ticks down.
                 </p>
-                <div class="space-y-3 w-full max-w-xs mb-8 text-left text-xs bg-indigo-950/50 p-4 rounded-xl border border-indigo-500/20">
-                    <div class="flex items-center gap-2">
-                        <span class="text-amber-400 font-bold">🎯 Aim & Shoot:</span> Tap/Drag to aim, release to shoot.
+                <div class="space-y-3 w-full max-w-xs mb-8 text-left text-xs jdp-card p-4 text-white">
+                    <div class="flex items-start gap-2">
+                        <span class="text-[#FFD633] font-bold">🎯 Aim &amp; Shoot:</span> Tap/Drag to aim, release to shoot.
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-emerald-400 font-bold">💥 Match 3:</span> Connect 3+ bubbles of same color to pop them.
+                    <div class="flex items-start gap-2">
+                        <span class="text-[#FFD633] font-bold">💥 Match 3:</span> Connect 3+ bubbles of same color to pop them.
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-pink-400 font-bold">⏱️ Clock is Ticking:</span> Clear as much as you can in 3 minutes!
+                    <div class="flex items-start gap-2">
+                        <span class="text-[#FFD633] font-bold">⏱️ Clock is Ticking:</span> Clear as much as you can in 3 minutes!
                     </div>
                 </div>
-                <button id="start-btn" class="px-8 py-4 bg-gradient-to-r from-indigo-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600 font-extrabold text-lg rounded-2xl shadow-lg transform transition active:scale-95 duration-100 uppercase tracking-wider w-full max-w-xs font-semibold">
+                <button id="start-btn" class="cta-primary w-full max-w-xs">
                     Play Blitz!
                 </button>
             </div>
 
             <!-- Game Over / Results Overlay -->
-            <div id="gameover-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20 hidden transition-all duration-300">
+            <div id="gameover-overlay" class="absolute inset-0 bg-[#031034]/95 flex flex-col items-center justify-center p-6 text-center z-20 hidden transition-all duration-300">
                 <!-- Sad PBot character! -->
                 <img src="PBot - Sad.png" alt="Sad Robot" onerror="this.style.display='none'" class="w-24 h-24 md:w-28 md:h-28 mx-auto mb-2 object-contain animate-pulse">
-                
-                <h2 id="result-title" class="text-4xl font-extrabold text-red-500 title-font mb-2"></h2>
-                <p id="result-desc" class="text-indigo-200 text-sm mb-4">
+
+                <h2 id="result-title" class="text-4xl font-extrabold title-font mb-2 text-[#FFD633]" style="text-shadow: 0 2px 0 #DE9D00;"></h2>
+                <p id="result-desc" class="text-white text-sm mb-4">
                     Awesome effort! Here is how you did:
                 </p>
 
-                <!-- Statistics Card -->
-                <div class="bg-indigo-950/50 border border-indigo-500/30 rounded-2xl p-5 w-full max-w-xs mb-6 space-y-3">
-                    <div class="flex justify-between items-center border-b border-indigo-900/50 pb-2">
-                        <span class="text-indigo-300 text-xs uppercase tracking-wider font-semibold">Final Score</span>
-                        <span id="final-score" class="text-2xl font-black text-amber-400">0</span>
+                <!-- Statistics Card — JDP card surface -->
+                <div class="jdp-card p-5 w-full max-w-xs mb-6 space-y-3">
+                    <div class="flex justify-between items-center border-b border-[#FFB603]/30 pb-2">
+                        <span class="text-[#FFD633] text-xs uppercase tracking-wider font-bold">Final Score</span>
+                        <span id="final-score" class="text-2xl font-black text-white">0</span>
                     </div>
-                    <div class="flex justify-between items-center border-b border-indigo-900/50 pb-2">
-                        <span class="text-indigo-300 text-xs uppercase tracking-wider font-semibold">Bubbles Popped</span>
-                        <span id="stat-popped" class="text-lg font-bold text-indigo-100">0</span>
+                    <div class="flex justify-between items-center border-b border-[#FFB603]/30 pb-2">
+                        <span class="text-[#FFD633] text-xs uppercase tracking-wider font-bold">Bubbles Popped</span>
+                        <span id="stat-popped" class="text-lg font-bold text-white">0</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-indigo-300 text-xs uppercase tracking-wider font-semibold">Combos Achieved</span>
-                        <span id="stat-combos" class="text-lg font-bold text-indigo-100">0</span>
+                        <span class="text-[#FFD633] text-xs uppercase tracking-wider font-bold">Combos Achieved</span>
+                        <span id="stat-combos" class="text-lg font-bold text-white">0</span>
                     </div>
                 </div>
 
-                <button id="restart-btn" class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 font-extrabold text-lg rounded-2xl shadow-lg transform transition active:scale-95 duration-100 uppercase tracking-wider w-full max-w-xs font-semibold">
-                    Play Again
+                <button id="restart-btn" class="cta-primary w-full max-w-xs">
+                    Claim Score
                 </button>
             </div>
         </div>
@@ -154,23 +238,21 @@
 
     <!-- Lower Controls Bar -->
     <div class="w-full max-w-md flex justify-between items-center px-4 py-2 shrink-0 z-10">
-        <!-- Next Bubble Display -->
-        <div class="flex items-center gap-3 bg-slate-900/40 px-3 py-2 rounded-2xl border border-indigo-500/20">
-            <span class="text-[10px] text-indigo-300 uppercase tracking-wider font-semibold">Next</span>
-            <div class="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center relative overflow-hidden" id="next-bubble-preview">
+        <!-- Next Bubble Display — JDP pill -->
+        <div class="flex items-center gap-3 px-3 py-1.5 rounded-[30px] border-2 border-[#FFB603] bg-[#9E131F]">
+            <span class="text-[10px] uppercase tracking-wider font-bold text-[#FFD633]">Next</span>
+            <div class="w-8 h-8 rounded-full border-2 border-[#FFD633] bg-[#031034] flex items-center justify-center relative overflow-hidden" id="next-bubble-preview">
                 <div class="absolute inset-0 bg-gradient-to-b from-white/30 to-black/30"></div>
                 <div id="next-bubble-color" class="w-6 h-6 rounded-full shadow-inner transform transition-all duration-300"></div>
             </div>
         </div>
 
         <!-- Pause / feedback button (audio toggle is fixed top-right per DESIGN.md §5.11) -->
-        <div class="flex gap-2">
-            <button id="pause-btn" class="p-3 bg-indigo-950/60 rounded-2xl border border-indigo-500/20 hover:bg-indigo-900/60 transition active:scale-95">
-                <svg id="pause-icon" class="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </button>
-        </div>
+        <button id="pause-btn" class="jdp-icon-btn">
+            <svg id="pause-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
     </div>
 
     <!-- Web Audio & Core Game Engine Code -->
@@ -203,7 +285,7 @@
                 statFinal: 'Final Score',
                 statPopped: 'Bubbles Popped',
                 statCombos: 'Combos Achieved',
-                playAgain: 'PLAY AGAIN',
+                claimScore: 'CLAIM SCORE',
                 lineBreached: 'LINE BREACHED!',
                 lineBreachedDesc: 'The bubbles descended past the danger line. Clear them faster next time!',
                 gameOverDesc: 'Great effort! Can you beat your best score in the next try?',
@@ -238,7 +320,7 @@
                 statFinal: 'Markah Akhir',
                 statPopped: 'Buih Diletupkan',
                 statCombos: 'Kombo Dicapai',
-                playAgain: 'MAIN LAGI',
+                claimScore: 'TUNTUT SKOR',
                 lineBreached: 'GARISAN DILANGGAR!',
                 lineBreachedDesc: 'Buih telah melepasi garisan bahaya. Bersihkan lebih pantas pada cubaan seterusnya!',
                 gameOverDesc: 'Usaha yang baik! Boleh anda atasi markah terbaik anda kali nanti?',
@@ -280,9 +362,9 @@
             if (introP) introP.textContent = COPY.introBlurb;
             // How-to-play rows
             const howRows = document.querySelectorAll('#start-overlay .space-y-3 > div');
-            if (howRows[0]) howRows[0].innerHTML = `<span class="text-amber-400 font-bold">🎯 ${COPY.howAim}</span> ${COPY.howAimDesc}`;
-            if (howRows[1]) howRows[1].innerHTML = `<span class="text-emerald-400 font-bold">💥 ${COPY.howMatch}</span> ${COPY.howMatchDesc}`;
-            if (howRows[2]) howRows[2].innerHTML = `<span class="text-pink-400 font-bold">⏱️ ${COPY.howClock}</span> ${COPY.howClockDesc}`;
+            if (howRows[0]) howRows[0].innerHTML = `<span class="text-[#FFD633] font-bold">🎯 ${COPY.howAim}</span> ${COPY.howAimDesc}`;
+            if (howRows[1]) howRows[1].innerHTML = `<span class="text-[#FFD633] font-bold">💥 ${COPY.howMatch}</span> ${COPY.howMatchDesc}`;
+            if (howRows[2]) howRows[2].innerHTML = `<span class="text-[#FFD633] font-bold">⏱️ ${COPY.howClock}</span> ${COPY.howClockDesc}`;
             // Start button
             const startBtn = document.getElementById('start-btn');
             if (startBtn) startBtn.textContent = COPY.start;
@@ -292,9 +374,9 @@
             // Game-over description default
             const resultDesc = document.getElementById('result-desc');
             if (resultDesc) resultDesc.textContent = COPY.resultsBlurb;
-            // Restart button
+            // Restart button — §6.5 CLAIM SCORE CTA
             const restartBtn = document.getElementById('restart-btn');
-            if (restartBtn) restartBtn.textContent = COPY.playAgain;
+            if (restartBtn) restartBtn.textContent = COPY.claimScore;
             // Audio toggle label/title — see DESIGN.md §5.11
             updateMuteUI();
         }
@@ -657,9 +739,14 @@
                 document.getElementById('restart-btn').addEventListener('click', () => {
                     SoundSystem.init();
                     SoundSystem.playClick();
-                    document.getElementById('gameover-overlay').classList.add('hidden');
-                    this.reset();
-                    this.start();
+                    // CLAUDE.md §6.5: CLAIM SCORE redirect — no in-game retry
+                    const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+                        ? crypto.randomUUID()
+                        : Math.random().toString(36).slice(2) + Date.now().toString(36);
+                    location.href = 'https://app.pandai.org/app/game'
+                        + '?game=' + encodeURIComponent('bubble-shooter')
+                        + '&score=' + this.score
+                        + '&token=' + encodeURIComponent(token);
                 });
 
                 // Toggle Audio — DESIGN.md §5.11
@@ -805,7 +892,7 @@
                     if (this.timeSinceLastDrop >= this.dropInterval) {
                         this.dropGrid();
                         this.timeSinceLastDrop = 0;
-                        this.addFloatingText(COPY.speedUp, this.width / 2, this.height / 3, '#f43f5e');
+                        this.addFloatingText(COPY.speedUp, this.width / 2, this.height / 3, '#FFD633');
                     }
 
                     // Out of time check
@@ -1098,7 +1185,7 @@
                     // Compute points
                     const points = popCount * 100 + (popCount > 3 ? (popCount - 3) * 50 : 0);
                     this.score += points;
-                    this.addFloatingText(`+${points}`, bubble.x, bubble.y, '#f59e0b');
+                    this.addFloatingText(`+${points}`, bubble.x, bubble.y, '#FFD633');
 
                     // Find and drop orphans
                     const orphans = this.findOrphans();
@@ -1130,7 +1217,7 @@
                         });
 
                         this.score += dropScore;
-                        this.addFloatingText(`${COPY.drop} +${dropScore}`, this.width / 2, this.height / 2, '#34d399');
+                        this.addFloatingText(`${COPY.drop} +${dropScore}`, this.width / 2, this.height / 2, '#FFB603');
                     }
                 }
 
@@ -1483,16 +1570,16 @@
             drawShooterBase() {
                 // Sleek futuristic ring shooter structure at bottom center
                 this.ctx.save();
-                this.ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+                this.ctx.strokeStyle = 'rgba(255, 182, 3, 0.55)'; // JDP Dark Yellow
                 this.ctx.lineWidth = 4;
-                
+
                 // Gun Turret Pointer
                 this.ctx.save();
                 this.ctx.translate(this.shooterX, this.shooterY);
                 this.ctx.rotate(this.shootAngle);
-                
+
                 // Laser line pointing outwards
-                this.ctx.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+                this.ctx.strokeStyle = 'rgba(158, 19, 31, 0.5)'; // JDP Brick Red
                 this.ctx.lineWidth = 1.5;
                 this.ctx.beginPath();
                 this.ctx.moveTo(this.bubbleRadius * 1.2, 0);
@@ -1527,13 +1614,13 @@
                 const title = document.getElementById('result-title');
                 const desc = document.getElementById('result-desc');
 
+                title.className = "text-4xl font-extrabold title-font mb-2 uppercase text-[#FFD633]";
+                title.style.textShadow = "0 2px 0 #DE9D00";
                 if (victory) {
                     title.innerText = COPY.victory;
-                    title.className = "text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 title-font mb-2";
                     desc.innerText = COPY.victoryDesc;
                 } else {
                     title.innerText = reason;
-                    title.className = "text-4xl font-extrabold text-rose-500 title-font mb-2 uppercase";
                     if (reason === COPY.lineBreached) {
                         desc.innerText = COPY.lineBreachedDesc;
                     } else {

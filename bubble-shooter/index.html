@@ -1182,8 +1182,8 @@
 
                     this.totalPopped += popCount;
 
-                    // Compute points
-                    const points = popCount * 100 + (popCount > 3 ? (popCount - 3) * 50 : 0);
+                    // 1 point per popped bubble — CLAUDE.md §1.4 (~500 cap)
+                    const points = popCount;
                     this.score += points;
                     this.addFloatingText(`+${points}`, bubble.x, bubble.y, '#FFD633');
 
@@ -1208,7 +1208,7 @@
                                 gravity: 0.5
                             });
 
-                            dropScore += 200; // orphans yield double points for skill
+                            dropScore += 10; // +10 per dropped orphan
                             this.totalPopped++;
 
                             if (i === 0) {

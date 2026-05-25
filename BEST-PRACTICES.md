@@ -211,18 +211,26 @@ transitions. Difficulty is a smooth interpolation across the round.
 ### How the ramp is computed
 
 ```js
-_rampProgress() {
+// Engine-agnostic — works in vanilla. Phaser games can substitute
+// Phaser.Math.Clamp / Phaser.Math.Linear if preferred.
+const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+const lerp  = (a, b, t)   => a + (b - a) * t;
+
+function rampProgress(elapsedMs) {
   const rampMs = GAME.roundDurationMs * DIFFICULTY.rampCompleteAt;
-  return Phaser.Math.Clamp(this.elapsedMs / rampMs, 0, 1);
+  return clamp(elapsedMs / rampMs, 0, 1);
 }
 
-_ramp(range) {
-  return Phaser.Math.Linear(range.start, range.end, this._rampProgress());
+function ramp(range, elapsedMs) {
+  return lerp(range.start, range.end, rampProgress(elapsedMs));
 }
 ```
 
-Any value declared as `{ start, end }` in `config.js` can be ramped through
-`_ramp(range)` each frame. New tuning ≈ one new field plus one call site.
+Any value declared as `{ start, end }` in your config can be ramped through
+`ramp(range, elapsedMs)` each frame. New tuning ≈ one new field plus one
+call site. The "value" doesn't have to be a physics constant — it can be a
+flash duration, a beat gap, a sequence length, anything that scales with
+time.
 
 > **Why no stages?** Stages create friction for short sessions. A 3-minute
 > window is short enough that the player can finish a satisfying arc in one
@@ -244,23 +252,26 @@ formations, gap rewards, aid pulls, and a periodic frenzy event.
 
 | Element | Mechanic | Player benefit | Designer lever |
 |---|---|---|---|
-| **Currency** | +1 (or +N) on overlap / collect | Single, legible goal | `GAME.<currency>Value` |
-| **Risk reward** | Per-obstacle: empty / single / trio in the danger zone | Risk-vs-reward through the gap | Drop probabilities |
-| **Lane / arena collectibles** | Between obstacles: empty / single / line / wave / circle | Visual rhythm and choreographed beats | Spawn odds + formations |
-| **Aid power-up** | Brief pull / magnet / shield that *makes the existing loop easier* | Turns near-misses into pickups; reduces frustration | One config block |
-| **Frenzy power-up** | Brief mode change: obstacles thin, world speeds up, currency rains | Big payout window, momentum reset | One config block |
+| **Currency** | +N on the success event (collect, complete-round, hit-beat, clear-board) | Single, legible goal | `GAME.<currency>Value` |
+| **Reward variety** | Multiple variants of the same reward element — singles, formations, dense bursts, longer sequences, denser boards — appearing in changing patterns. Most rolls empty so rare ones feel special. | Visual rhythm and risk-vs-reward without inventing new scores | Variant probability table |
+| **Aid power-up** | Brief effect that *makes the existing loop easier* — magnet pull, shield, slow-mo, peek-the-next-card | Turns near-misses into hits; reduces frustration | One config block |
+| **Frenzy power-up** | Brief mode change that flips the loop's pace or rules — obstacles thin and currency rains, sequences shorten, multipliers spike, board fills with bonuses | Big payout window, momentum reset | One config block |
 | **Best score** | `localStorage['<game-name>:best']` | Meta-progression hook between sessions | Storage key |
-| **Continue** | Resume after crash with leftover time | Reduces frustration, encourages full round use | Time-budget logic |
+| **Continue** | Resume after failure with leftover time | Reduces frustration, encourages full round use | Time-budget logic |
 
-### Formations turn one sprite into a moment
+### Variants turn one element into many moments
 
-A handful of formation shapes — line, wave, circle, arc — sharing a single
-velocity is much cheaper than authoring real animations. The shape holds
-together as it scrolls; the player reads each formation as a distinct
-choreographed moment.
+A handful of variants — line / wave / circle / arc for a scrolling game;
+alternating board layouts for a puzzle; different sequence patterns or
+grid-cell rhythms for a memory game; beat-pattern variations for a
+rhythm game — built on a single underlying element is much cheaper than
+authoring bespoke content for each. The player reads each variant as a
+distinct choreographed moment, even though the underlying sprite, board
+cell, or grid tile is the same.
 
 ```js
-// Lane spawn odds — most lanes empty so the rare formations feel special
+// Scrolling-game example: lane spawn odds.
+// Most lanes empty so the rare formations feel special.
 const roll = Math.random();
 if (roll < 0.73) return;                // 73% empty (breather)
 if (roll < 0.85) spawnSingle();         // 12% single pickup
@@ -269,8 +280,21 @@ else if (roll < 0.96) spawnFormation('wave');
 else                  spawnFormation('circle');
 ```
 
-**Most rolls should be empty.** Empty space is what makes the rare drops
-feel special. If every lane spawns something, nothing is special.
+```js
+// Round-based example (memory / puzzle / rhythm): variant table
+// rolled once at round start instead of per-frame.
+const variant = pickWeighted([
+  { name: 'random',     weight: 60 },   // baseline pattern
+  { name: 'edges',      weight: 20 },   // visual identity moment
+  { name: 'diagonals',  weight: 12 },
+  { name: 'spiral',     weight:  6 },   // rare, feels earned
+  { name: 'mirrored',   weight:  2 },   // showcase
+]);
+```
+
+**Most rolls should be empty (or baseline).** Empty space — or the plain
+variant — is what makes the rare variants feel special. If every round
+ships a flourish, no round does.
 
 > **Reference: Flying Ruby.** Currency = rubies (+1 each). Aid = Magnet
 > (5s pull). Frenzy = Power Rush (7s, world ×1.6, sine line of 50 rubies).
@@ -287,10 +311,12 @@ round early, or stop spawning entirely. Each of those reads as a bug.
 
 ### Why a visible clamp fails
 
-- **Stuck counter** — Score stops moving while pickup feedback ("+1" pops,
-  sparkles) keeps playing. Players notice instantly and feel cheated.
-- **Empty world** — Killing all spawns above the threshold leaves the player
-  traversing nothing for the final stretch. Reads as a glitch.
+- **Stuck counter** — Score stops moving while success feedback ("+1" pops,
+  sparkles, chimes) keeps playing. Players notice instantly and feel cheated.
+- **Empty world** — Killing all content above the threshold (spawns in a
+  scroller, rounds in a memory game, beats in a rhythm game, boards in a
+  puzzle) leaves the player with nothing happening for the final stretch.
+  Reads as a glitch regardless of genre.
 - **Hard freeze** — Ending the round early breaks the "spend the full
   advertised time" contract the title screen made.
 
@@ -332,9 +358,9 @@ not as ambient HUD chrome.
 | Approach | How it works | Visibility |
 |---|---|---|
 | Hard clamp | `score = Math.min(cap, score + 1)` | Very obvious |
-| Stop all spawns past threshold | Lane & gap rolls return empty after cap | Obvious |
-| **Soft taper (recommended)** | Multiply spawn probabilities by `1 − smoothstep(taperStart, taperEnd, score)`. Suppress new high-payout power-ups within ~10% of cap. | Invisible |
-| Pre-rolled per-round budget | Pick a target near cap at round start; spread spawns via inverse-CDF across the timeline | Invisible but rigid |
+| Stop all content past threshold | Spawns / new rounds / new beats return empty after cap | Obvious |
+| **Soft taper (recommended)** | Multiply the reward-flow lever by `1 − smoothstep(taperStart, taperEnd, score)`. Suppress new high-payout power-ups within ~10% of cap. The lever is *spawn probability* for scrolling games, *per-round payout* for round-based games, *multiplier ceiling* for combo games. | Invisible |
+| Pre-rolled per-round budget | Pick a target near cap at round start; spread reward events via inverse-CDF across the timeline | Invisible but rigid |
 
 ### The soft-taper pattern
 
@@ -361,10 +387,20 @@ if (Math.random() > this._supplyMultiplier()) return;
 // ...existing odds roll continues here
 ```
 
+**Pick the lever that fits your game:**
+
+| Genre | Spawn rolls? | Lever to multiply by `_supplyMultiplier()` |
+|---|---|---|
+| Scrolling shooter / runner | Yes | Per-spawn probability — exactly as above |
+| Memory / Simon-style | No (rounds, not spawns) | Per-round point payout — round still happens, payout taper to zero |
+| Puzzle / match | No | Per-clear point payout, or combo multiplier ceiling |
+| Rhythm | No | Per-beat point payout, or speed-bonus weight |
+
 > **Why this works.** The world simply "calms down" near the end — which
-> already happens with the difficulty ramp. Empty lanes during the final
-> stretch read as difficulty, not deprivation. The HUD keeps counting up;
-> feedback keeps popping; the game keeps its promise.
+> already happens with the difficulty ramp. The visible event keeps
+> firing (lane spawns, rounds completing, beats hitting); only the
+> payout shrinks. The HUD keeps counting up; feedback keeps popping;
+> the game keeps its promise.
 
 > **Reference: Flying Ruby.** Today, score is unbounded. If a 500-ruby cap
 > is added, the values above (taperStart 420, taperEnd 520, Power Rush
@@ -491,12 +527,13 @@ or each scene's `create()`.
    seamless loop.
 2. **Dim overlay** — translucent navy rectangle. Pure code, makes the
    playfield pop without darker art.
-3. **Playfield art** — generated canvas textures (obstacles, lanes, walls)
-   scaled to gameplay positions.
+3. **Playfield art** — generated canvas textures (obstacles, lanes, walls,
+   grid cells, beat tracks, board tiles) scaled to gameplay positions.
 4. **Mascot / player** — single sprite; rotate / squash / tint in response
-   to input.
-5. **Currency & power-ups** — single sprite per type, spawned in singles or
-   formations.
+   to input. *(Omit for non-character games — a memory grid or rhythm track
+   has no on-screen player.)*
+5. **Currency & power-ups** — single sprite per type, presented in singles
+   or formations / variants.
 6. **HUD strip** — translucent bar, brand colors, the one HUD number on one
    side, the timer on the other. No chrome.
 7. **Effects layer** — sparkles, "+1" floats, auras, vignettes. All
@@ -537,14 +574,24 @@ Mandatory polish for any JDP game:
 - **Generous hit pads.** ~40 px of invisible padding on every tappable
   button so edge taps register on mobile.
 
-Optional but high-leverage:
+Optional but high-leverage — applicability depends on your genre:
 
-- **Tilt-to-velocity.** Rotate the player sprite toward its movement vector
-  each frame, clamped to a sensible range. Sells the arc of a jump or dash.
-- **Mirrored background loop.** Bake a horizontal mirror so any background
-  image loops seamlessly — no artist needs to author a tileable version.
-- **Frenzy visuals.** Vignette + speed lines + mascot afterimages + the
-  background racing at a higher scroll speed. Sells the mode change.
+- **Tilt-to-velocity** *(character-with-physics games)*. Rotate the player
+  sprite toward its movement vector each frame, clamped to a sensible
+  range. Sells the arc of a jump or dash.
+- **Mirrored background loop** *(scrolling games)*. Bake a horizontal
+  mirror so any background image loops seamlessly — no artist needs to
+  author a tileable version.
+- **Frenzy visuals** *(when you ship a frenzy power-up)*. Vignette + speed
+  lines + afterimages + the background racing at a higher scroll speed.
+  Sells the mode change.
+- **Round-end celebration** *(round-based games: memory, puzzle, rhythm)*.
+  A short grid pulse, color sweep, or chime escalation when a round
+  completes. Cheap; turns a discrete success into a felt moment, and
+  keeps consecutive rounds from blurring together.
+- **Sequence/board reveal animation** *(memory and puzzle games)*. A
+  brief stagger as the next pattern lights up, instead of an instant
+  swap. Gives the player a beat to orient.
 
 > **Reference: Flying Ruby.** Tilt clamped −25° to +70°, 80 ms squash on
 > flap, sparkle + "+1" on every ruby, 1.9s multi-phase crash (flash →
@@ -592,12 +639,15 @@ while pickups still spawn.
 **Why:** the world calming down feels like difficulty. A frozen counter
 feels like a bug.
 
-### 6. Formations as cheap content
-Build a handful of formation shapes (line, wave, circle, arc) that share
-one velocity. Rotate which one spawns. You get visual variety from a single
-sprite.
-**Why:** ten formations × one sprite = ten distinct "moments" with no
-extra art.
+### 6. Variants as cheap content
+Build a handful of variants — formation shapes (line, wave, circle, arc)
+for scrolling games, board layouts for puzzles, sequence patterns for
+memory games, beat patterns for rhythm games — that share one underlying
+element. Rotate which one appears. You get visual variety and pacing
+rhythm from a single asset.
+**Why:** ten variants × one element = ten distinct "moments" with no
+extra art. The principle is genre-agnostic: vary the *arrangement* of one
+thing instead of authoring many things.
 
 ### 7. Two power-ups, two purposes
 One *aid* power-up (makes the existing loop easier) and one *frenzy*

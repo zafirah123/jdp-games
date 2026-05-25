@@ -183,7 +183,7 @@ Full rationale in [BEST-PRACTICES.md §08](./BEST-PRACTICES.md#08--replication-p
 | 3 | Time as shared budget | Crash + time remaining = Continue. Only the clock ends the run. |
 | 4 | One currency, one HUD number | Resist multiple scores or multipliers. |
 | 5 | Cap by tapering supply | Never clamp the visible counter. |
-| 6 | Formations as cheap content | Single sprite + multiple shapes (line, wave, circle) = visual variety for free. |
+| 6 | Variants as cheap content | One underlying element + multiple variants (formation shapes, board layouts, sequence patterns, beat patterns) = visual variety for free. |
 | 7 | Two power-ups, two purposes | One aid, one frenzy. Stop. |
 | 8 | Placeholder textures with final keys | Generate stand-ins at boot using the same keys real art will use — `ctx.createCanvas` calls (vanilla) or `BootScene` (Phaser). |
 | 9 | Polish budget on every interaction | Tactile response on every input (squash, sparkle, +1, flash). |

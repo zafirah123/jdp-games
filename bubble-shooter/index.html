@@ -585,16 +585,49 @@
             }
         };
 
-        // --- BUBBLE COLORS & GRAPHICS PRESETS ---
+        // --- GEM PALETTES ---
+        // Shared 8-facet geometry (mirrors tap-tap-match/assets/gems/*.svg, viewBox 0 0 1000 900).
+        // Each gem renders the same 8 triangles; only the per-facet color list differs.
+        const GEM_FACETS = [
+            [[220,50], [40,320], [310,320]],
+            [[220,50], [500,50], [310,320]],
+            [[500,50], [310,320], [690,320]],
+            [[500,50], [780,50], [690,320]],
+            [[780,50], [690,320], [960,320]],
+            [[40,320], [310,320], [500,880]],
+            [[310,320], [690,320], [500,880]],
+            [[690,320], [960,320], [500,880]],
+        ];
+        // 6 gem palettes — facet order matches GEM_FACETS. Dominant fill is index 6.
+        const GEM_PALETTES = {
+            red:    ['#CA7D84', '#760F19', '#B1424C', '#580B14', '#8F111D', '#6C0E18', '#9E131F', '#80101A'],
+            blue:   ['#7D93CA', '#0F2E77', '#4262B2', '#0D2458', '#123690', '#0E2A6C', '#133B9F', '#103181'],
+            green:  ['#85DFA6', '#188D42', '#4ED17E', '#11642D', '#1EB053', '#16803B', '#22C55E', '#1B9B49'],
+            yellow: ['#FFD774', '#B07E02', '#FFC535', '#755401', '#E1A103', '#9C7002', '#FFB603', '#C48C02'],
+            purple: ['#CFA2FB', '#7637AB', '#B977F9', '#502073', '#954ADB', '#693098', '#A855F7', '#823EBE'],
+            orange: ['#FFBF83', '#B05F15', '#FFA14B', '#753F0F', '#E17A1B', '#9C5413', '#FF8A1E', '#C46A17'],
+        };
+        // Bubble shell tint per gem (dominant + lighter facet + darker facet)
         const COLORS = {
-            red: { fill: '#ef4444', light: '#f87171', shadow: '#b91c1c' },
-            blue: { fill: '#3b82f6', light: '#60a5fa', shadow: '#1d4ed8' },
-            green: { fill: '#10b981', light: '#34d399', shadow: '#047857' },
-            yellow: { fill: '#f59e0b', light: '#fbbf24', shadow: '#b45309' },
-            purple: { fill: '#8b5cf6', light: '#a78bfa', shadow: '#6d28d9' },
-            pink: { fill: '#ec4899', light: '#f472b6', shadow: '#be185d' }
+            red:    { fill: GEM_PALETTES.red[6],    light: GEM_PALETTES.red[2],    shadow: GEM_PALETTES.red[3] },
+            blue:   { fill: GEM_PALETTES.blue[6],   light: GEM_PALETTES.blue[2],   shadow: GEM_PALETTES.blue[3] },
+            green:  { fill: GEM_PALETTES.green[6],  light: GEM_PALETTES.green[2],  shadow: GEM_PALETTES.green[3] },
+            yellow: { fill: GEM_PALETTES.yellow[6], light: GEM_PALETTES.yellow[2], shadow: GEM_PALETTES.yellow[3] },
+            purple: { fill: GEM_PALETTES.purple[6], light: GEM_PALETTES.purple[2], shadow: GEM_PALETTES.purple[3] },
+            orange: { fill: GEM_PALETTES.orange[6], light: GEM_PALETTES.orange[2], shadow: GEM_PALETTES.orange[3] },
         };
         const COLOR_KEYS = Object.keys(COLORS);
+
+        // Inline-SVG data URI of a gem — used by the next-bubble HUD preview.
+        function gemDataUri(key) {
+            const p = GEM_PALETTES[key];
+            const polys = GEM_FACETS.map((tri, i) =>
+                `<polygon points="${tri.map(pt => pt.join(',')).join(' ')}" fill="${p[i]}"/>`
+            ).join('');
+            return 'data:image/svg+xml;utf8,' + encodeURIComponent(
+                `<svg viewBox="0 0 1000 900" xmlns="http://www.w3.org/2000/svg">${polys}</svg>`
+            );
+        }
 
         // --- CORE GAME ARCHITECTURE ---
         const Game = {
@@ -959,11 +992,13 @@
 
             updateNextBubblePreview() {
                 const previewColorEl = document.getElementById('next-bubble-color');
-                const nextColor = COLORS[this.nextBubbleColor];
-                if (nextColor) {
-                    previewColorEl.style.backgroundColor = nextColor.fill;
-                    previewColorEl.style.boxShadow = `inset 2px 2px 4px ${nextColor.light}, inset -2px -2px 4px ${nextColor.shadow}`;
-                }
+                if (!previewColorEl || !GEM_PALETTES[this.nextBubbleColor]) return;
+                previewColorEl.style.backgroundColor = 'transparent';
+                previewColorEl.style.backgroundImage = `url("${gemDataUri(this.nextBubbleColor)}")`;
+                previewColorEl.style.backgroundSize = '110% 110%';
+                previewColorEl.style.backgroundPosition = 'center';
+                previewColorEl.style.backgroundRepeat = 'no-repeat';
+                previewColorEl.style.boxShadow = 'none';
             },
 
             fireBubble() {
@@ -1160,14 +1195,14 @@
                 if (matchedSet.size >= 3) {
                     let popCount = 0;
                     
-                    // Spark/Pop Anim & Cleanup Grid
+                    // Shatter the shell, drop the gem — Cleanup Grid
                     matchedSet.forEach(key => {
                         const [r, c] = key.split(',').map(Number);
                         const pos = this.getBubbleCoord(r, c);
-                        this.spawnPopParticles(pos.x, pos.y, this.grid[r][c]);
+                        this.spawnGemPop(pos.x, pos.y, this.grid[r][c]);
                         this.grid[r][c] = null;
                         popCount++;
-                        
+
                         // Play chain pop sound
                         setTimeout(() => {
                             SoundSystem.playPop(popCount);
@@ -1190,17 +1225,9 @@
                         orphans.forEach((o, i) => {
                             const pos = this.getBubbleCoord(o.row, o.col);
                             this.grid[o.row][o.col] = null;
-                            
-                            // Feed physics engine with independent gravity drop bubble
-                            this.fallingBubbles.push({
-                                x: pos.x,
-                                y: pos.y,
-                                vx: (Math.random() - 0.5) * 4,
-                                vy: Math.random() * -3, // subtle pop up
-                                radius: this.bubbleRadius,
-                                color: o.color,
-                                gravity: 0.5
-                            });
+
+                            // Orphans pop too — shell shatters and the gem cascades down with extra oomph
+                            this.spawnGemPop(pos.x, pos.y, o.color, 1.6);
 
                             dropScore += 10; // +10 per dropped orphan
                             this.totalPopped++;
@@ -1231,22 +1258,32 @@
                 document.getElementById('score').innerText = String(this.score).padStart(4, '0');
             },
 
-            spawnPopParticles(x, y, color) {
-                const colorPreset = COLORS[color];
-                for (let i = 0; i < 8; i++) {
+            // Bubble shell shatters into white shards and the freed gem drops with gravity + spin.
+            spawnGemPop(x, y, color, dropPower = 1) {
+                // Shell shatter — small bright shards
+                for (let i = 0; i < 7; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const speed = 2 + Math.random() * 4;
+                    const speed = 2.5 + Math.random() * 3.5;
                     this.popParticles.push({
-                        x,
-                        y,
+                        x, y,
                         vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        radius: 2 + Math.random() * 3,
-                        color: colorPreset.fill,
+                        vy: Math.sin(angle) * speed - 1,
+                        radius: 1.5 + Math.random() * 2,
                         alpha: 1,
-                        decay: 0.03 + Math.random() * 0.03
+                        decay: 0.04 + Math.random() * 0.03,
                     });
                 }
+                // Freed gem — falls with gravity, tumbles
+                this.fallingBubbles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 3 * dropPower,
+                    vy: -1.5 - Math.random() * 2 * dropPower,
+                    radius: this.bubbleRadius,
+                    color,
+                    gravity: 0.45,
+                    rotation: (Math.random() - 0.5) * 0.4,
+                    rotationVel: (Math.random() - 0.5) * 0.18,
+                });
             },
 
             addFloatingText(txt, x, y, color = '#ffffff') {
@@ -1319,12 +1356,13 @@
                     }
                 }
 
-                // 2. Physics of Falling Orphans
+                // 2. Physics of falling gems — translate + tumble
                 for (let i = this.fallingBubbles.length - 1; i >= 0; i--) {
                     const b = this.fallingBubbles[i];
                     b.vy += b.gravity;
                     b.x += b.vx;
                     b.y += b.vy;
+                    if (b.rotationVel) b.rotation += b.rotationVel;
 
                     // Purge offscreen elements
                     if (b.y - b.radius > this.height) {
@@ -1332,9 +1370,10 @@
                     }
                 }
 
-                // 3. Update Pop Particles
+                // 3. Update Pop Particles — shell shards fall with light gravity
                 for (let i = this.popParticles.length - 1; i >= 0; i--) {
                     const p = this.popParticles[i];
+                    p.vy += 0.18;
                     p.x += p.vx;
                     p.y += p.vy;
                     p.alpha -= p.decay;
@@ -1431,21 +1470,24 @@
                     this.drawBubble(this.flyingBubble.x, this.flyingBubble.y, this.flyingBubble.radius, this.flyingBubble.color);
                 }
 
-                // Render Falling Orphans
+                // Render Falling Gems — shell is gone, raw gem tumbles
                 this.fallingBubbles.forEach(b => {
-                    this.drawBubble(b.x, b.y, b.radius, b.color, 0.7);
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.95;
+                    this.drawGem(b.x, b.y, b.radius * 1.85, b.color, b.rotation || 0);
+                    this.ctx.restore();
                 });
 
-                // Render Burst Particles
+                // Render shell-shatter shards
+                this.ctx.save();
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
                 this.popParticles.forEach(p => {
-                    this.ctx.save();
                     this.ctx.globalAlpha = p.alpha;
-                    this.ctx.fillStyle = p.color;
                     this.ctx.beginPath();
                     this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                     this.ctx.fill();
-                    this.ctx.restore();
                 });
+                this.ctx.restore();
 
                 // Render Floating Texts
                 this.floatingTexts.forEach(f => {
@@ -1472,7 +1514,35 @@
                 }
             },
 
-            // High Fidelity Shiny Spherical Bubble renderer
+            // Render a faceted gem at (x,y) sized to `diameter`. Used both inside
+            // bubbles and for free-falling gems after a pop.
+            drawGem(x, y, diameter, colorName, rotation = 0) {
+                const palette = GEM_PALETTES[colorName];
+                if (!palette) return;
+
+                this.ctx.save();
+                this.ctx.translate(x, y);
+                if (rotation) this.ctx.rotate(rotation);
+                // Source viewBox is 1000×900; gem center sits at ~(500, 465).
+                const scale = diameter / 1000;
+                this.ctx.scale(scale, scale);
+                this.ctx.translate(-500, -465);
+
+                for (let i = 0; i < GEM_FACETS.length; i++) {
+                    const tri = GEM_FACETS[i];
+                    this.ctx.fillStyle = palette[i];
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(tri[0][0], tri[0][1]);
+                    this.ctx.lineTo(tri[1][0], tri[1][1]);
+                    this.ctx.lineTo(tri[2][0], tri[2][1]);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                }
+
+                this.ctx.restore();
+            },
+
+            // Bubble = translucent glass shell wrapping a faceted gem.
             drawBubble(x, y, radius, colorName, opacity = 1) {
                 const color = COLORS[colorName];
                 if (!color) return;
@@ -1480,25 +1550,39 @@
                 this.ctx.save();
                 this.ctx.globalAlpha = opacity;
 
-                // Base Sphere Radial Gradient for simulated depth
+                // 1. Glass body — soft radial gradient using the gem's accent tones
                 const grad = this.ctx.createRadialGradient(
-                    x - radius * 0.3, y - radius * 0.3, radius * 0.1,
+                    x - radius * 0.35, y - radius * 0.4, radius * 0.1,
                     x, y, radius
                 );
-                grad.addColorStop(0, color.light);
-                grad.addColorStop(0.6, color.fill);
-                grad.addColorStop(1, color.shadow);
-
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.55)');
+                grad.addColorStop(0.55, color.light + 'cc'); // ~80% alpha
+                grad.addColorStop(1, color.shadow + 'aa');   // ~67% alpha
                 this.ctx.fillStyle = grad;
                 this.ctx.beginPath();
                 this.ctx.arc(x, y, radius, 0, Math.PI * 2);
                 this.ctx.fill();
 
-                // High intensity dynamic glossy reflection lens accent
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                // 2. Inset gem — clipped to the bubble so its tips don't poke out
+                this.ctx.save();
                 this.ctx.beginPath();
-                this.ctx.ellipse(x - radius * 0.35, y - radius * 0.35, radius * 0.25, radius * 0.12, Math.PI / -4, 0, Math.PI * 2);
+                this.ctx.arc(x, y, radius * 0.92, 0, Math.PI * 2);
+                this.ctx.clip();
+                this.drawGem(x, y, radius * 1.7, colorName);
+                this.ctx.restore();
+
+                // 3. Glossy specular highlight
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+                this.ctx.beginPath();
+                this.ctx.ellipse(x - radius * 0.38, y - radius * 0.42, radius * 0.28, radius * 0.14, Math.PI / -4, 0, Math.PI * 2);
                 this.ctx.fill();
+
+                // 4. Thin rim — sells the glass-marble look
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+                this.ctx.lineWidth = 1.25;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, radius - 0.5, 0, Math.PI * 2);
+                this.ctx.stroke();
 
                 this.ctx.restore();
             },

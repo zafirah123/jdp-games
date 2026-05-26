@@ -211,7 +211,7 @@ See also the more detailed pre-implementation checklist in
 - [ ] Added a `?scene=` / `?phase=` dev jump at boot from day one.
 - [ ] Persisted best score and mute preference in `localStorage` with try/catch for sandboxed webviews.
 - [ ] Used the standardized strings from §6.4 — `START GAME`, `TIME'S UP!`, `GAME OVER`, `AUDIO ON`, `AUDIO OFF` — and wired `?lang=ms` to switch the game's copy to Bahasa Melayu.
-- [ ] End-of-game modal has a single `CLAIM SCORE` CTA (no in-game retry button) that redirects to `https://app.pandai.org/app/game?game=<folder>&score=<n>&token=<random>` per §6.5.
+- [ ] End-of-game modal has a single `CLAIM SCORE` CTA (no in-game retry button) that uses the callback flow in §6.5 (`callback_url` support + product fallback).
 
 ---
 
@@ -470,33 +470,71 @@ end-of-game modal, and it sends the player back to the Pandai app:
 |---|---|---|
 | End-of-game CTA | `CLAIM SCORE` | `TUNTUT SKOR` |
 
-Tapping the CTA redirects to:
+Tapping the CTA sends results to a callback endpoint.
 
-```
-https://app.pandai.org/app/game?game=<game-folder>&score=<final-score>&token=<random-token>
-```
+Callback target resolution order:
 
-| Param | Value | Notes |
+1. Use `callback_url` from query params when provided.
+2. If absent/invalid, use the platform callback fallback configured by
+   product.
+3. Do not hardcode a public callback URL into game code.
+
+Minimum payload fields:
+
+| Field | Value | Notes |
 |---|---|---|
-| `game`  | kebab-case folder name, matching the `path` field in `games.js` (e.g. `flying-ruby`, `tap-tap-match`, `tic-tac-toe`) | URL-encode it |
-| `score` | integer final score (0–500 per §1.4) | No commas, no padding, no formatting |
-| `token` | random nonce generated client-side at end-of-round — UUID v4 or 16+ random hex chars is fine | Generate one per run, at the moment the modal opens. Not at boot. URL-encode it |
+| `game` | kebab-case folder name, matching `games.js` path (e.g. `flying-ruby`, `tap-tap-match`, `tic-tac-toe`) | URL-encode / serialize safely |
+| `score` | integer final score (0–500 target per §1.4, unless game-specific override) | No commas/padding/formatting |
+| `token` | random nonce generated client-side at submit time | UUID v4 or 16+ random hex chars |
 
-Minimum implementation:
+Optional payload fields:
+
+| Field | Purpose | Notes |
+|---|---|---|
+| `suspicious` | Local anti-abuse signal | Boolean set by an in-game heuristic check |
+| `suspicious_reason` | Why flagged | Short string/code, no sensitive data |
+| `log` | Lightweight run diagnostics | Keep small; no PII, no child profiling/tracking |
+
+Minimum implementation (callback URL source + payload assembly):
 
 ```js
-const GAME_NAME = 'flying-ruby';   // the kebab-case folder name for this game
-function claimScore(finalScore) {
+const GAME_NAME = 'flying-ruby';
+
+function resolveCallbackUrl() {
+  const qs = new URLSearchParams(location.search);
+  const candidate = qs.get('callback_url');
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === 'https:') return u.toString();
+    } catch (_) {}
+  }
+  // Platform-managed fallback (product-owned). Keep game code decoupled
+  // from hardcoded public callback paths.
+  return (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__)
+    ? window.__JDP_CALLBACK_URL__
+    : null;
+}
+
+function buildClaimPayload(finalScore, extra = {}) {
   const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const url = `https://app.pandai.org/app/game`
-            + `?game=${encodeURIComponent(GAME_NAME)}`
-            + `&score=${finalScore}`
-            + `&token=${encodeURIComponent(token)}`;
-  location.href = url;
+  return { game: GAME_NAME, score: Math.max(0, finalScore | 0), token, ...extra };
 }
 ```
+
+**Early end is required.** In addition to the final end-of-game modal, every
+game must provide a player-accessible way to end the run early and submit the
+current score through the same callback contract.
+
+**Suspicious-score checks are optional.** If implemented, run them locally
+before callback submission and annotate payload with `suspicious` and
+`suspicious_reason`. Do not block submission solely due to the local flag.
+
+**Run logs are optional.** If implemented, include compact diagnostic fields
+only (for example `duration_ms`, `actions`, `max_combo`, `avg_interval_ms`).
+Never include personal data or third-party tracking identifiers.
 
 **Continue ≠ CLAIM SCORE.** Games that offer a `CONTINUE` prompt when the
 player crashes with time remaining still show that prompt as before
@@ -605,7 +643,11 @@ A game is shippable when it satisfies **all** of:
 - [ ] Visuals reconciled against [`DESIGN.md`](./DESIGN.md) (palette, typography, button/pill/progress-bar anatomy)
 - [ ] Mute toggle + best score persistence working
 - [ ] Standardized end-of-game / audio copy used (§6.4); `?lang=ms` switches the game to Bahasa Melayu
-- [ ] End-of-game modal follows §6.5 — single `CLAIM SCORE` CTA (no retry button), redirect URL includes `game`, `score`, and a freshly-generated random `token`
+- [ ] End-of-game modal follows §6.5 — single `CLAIM SCORE` CTA (no retry button), callback payload includes `game`, `score`, and a freshly-generated random `token`
+- [ ] Game supports `callback_url` query param and platform fallback callback target
+- [ ] Game supports player-triggered early-end callback (same payload contract)
+- [ ] Optional suspicious-score check (if present) runs locally pre-submit and flags payload
+- [ ] Optional `log` payload (if present) is lightweight and excludes PII/tracking
 - [ ] Dev jump via `?scene=` / `?phase=` query param wired from day one
 - [ ] Listed in `games.js` with `author: '<github-username>'` set
 

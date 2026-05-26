@@ -79,22 +79,26 @@ single-file games alike.
 6. **CLAIM SCORE on end-of-game — no in-game retry.** The final
    end-of-game modal (after `TIME'S UP!` or `GAME OVER`) must have
    **exactly one** CTA: `CLAIM SCORE` (en) / `TUNTUT SKOR` (ms). Tapping
-   it redirects to:
+   it sends results to a callback endpoint:
 
-   ```
-   https://app.pandai.org/app/game?game=<folder>&score=<final>&token=<random>
-   ```
-
-   - `<folder>` — kebab-case folder name matching `games.js` path
-   - `<final>` — integer final score
-   - `<random>` — freshly-generated nonce per run (UUID v4 or random hex)
+   - Read `callback_url` from URL query params when present.
+   - If `callback_url` is missing/invalid, use the platform callback
+     fallback configured by product. Do not hardcode a public callback URL
+     in game code.
+   - Every game must allow the player to end early and trigger the same
+     callback flow (with current score), not only at the final timeout.
+   - Optional: run a game-local suspicious-score check before callback.
+     The check must not call a backend and should add a flag/reason in the
+     callback payload when triggered.
+   - Optional: include per-run `log` data (lightweight diagnostics only)
+     in the callback payload.
 
    No `Play Again` / `Try Again` / `Restart` / `Main Semula` button on
    the end-of-game modal — players replay by relaunching the game from
    the Pandai app. The mid-run `CONTINUE` prompt (when the player
    crashes with time remaining) continues to work as before; CLAIM
    SCORE only appears on the *final* modal. See
-   [CLAUDE.md §6.5](CLAUDE.md) for the redirect contract and reference
+   [CLAUDE.md §6.5](CLAUDE.md) for the callback contract and reference
    implementation.
 
 ## Setup
@@ -250,9 +254,14 @@ for the design-side checklist; the items below cover the harness/repo side.
 - [ ] Standardized end-of-game / audio strings used (§5 baseline);
       `?lang=ms` switches the game's copy to Bahasa Melayu.
 - [ ] End-of-game modal has a single `CLAIM SCORE` / `TUNTUT SKOR` CTA
-      (no retry/play-again button) and redirects to
-      `app.pandai.org/app/game?game=<folder>&score=<n>&token=<random>`
-      per §6 baseline.
+      (no retry/play-again button) and uses the callback flow per §6
+      baseline (`callback_url` support + product fallback).
+- [ ] Game supports early-end callback (player can finish early and submit
+      score through the same callback contract).
+- [ ] If a suspicious-score check is implemented, it runs locally before
+      callback and annotates payload/log safely.
+- [ ] Optional callback `log` payload (if implemented) contains lightweight
+      diagnostics only (no PII, no tracking).
 - [ ] Layout looks correct at the canvas's intended aspect ratio.
 - [ ] UI matches [DESIGN.md](DESIGN.md) — palette, typography, button
       states, pill/progress-bar anatomy.

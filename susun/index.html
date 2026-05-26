@@ -278,11 +278,12 @@ const COPY = {
 // =============================================================================
 const CONFIG = {
   GAME_DURATION_SEC: 180,
-  MAX_SCORE: 500,
+  HARD_MODE_SCORE: 500,      // past this score the sweep floor drops sharply — no counter clamp (CLAUDE.md §1.4)
   PERFECT_TOLERANCE: 3,      // world units of slack that still counts as perfect
   BASE_SWEEP: 1.6,           // seconds for the first block to cross
   SPEED_STEP: 0.02,          // seconds shaved off per placed block
-  MIN_SWEEP: 0.55,           // floor on sweep duration
+  MIN_SWEEP: 0.55,           // floor on sweep duration (normal mode)
+  HARD_MIN_SWEEP: 0.28,      // floor past HARD_MODE_SCORE — roughly 2x speed
   BLOCK_W: 200,              // world units
   BLOCK_D: 200,
   BLOCK_H: 40,
@@ -476,8 +477,9 @@ function spawnNextBlock() {
   const axis = (idx % 2 === 1) ? 'x' : 'z';   // alternate
   const dir = (Math.floor((idx - 1) / 2) % 2 === 0) ? 1 : -1;
 
+  const floor = state.score >= CONFIG.HARD_MODE_SCORE ? CONFIG.HARD_MIN_SWEEP : CONFIG.MIN_SWEEP;
   const sweepDuration = Math.max(
-    CONFIG.MIN_SWEEP,
+    floor,
     CONFIG.BASE_SWEEP - (idx - 1) * CONFIG.SPEED_STEP
   );
   const refSize = axis === 'x' ? last.w : last.d;
@@ -613,7 +615,7 @@ function onPerfect(block) {
   let points = 2 * n;
   if (state.streak >= CONFIG.STREAK_TIER_2) points += 2;
   else if (state.streak >= CONFIG.STREAK_TIER_1) points += 1;
-  state.score = Math.min(state.score + points, CONFIG.MAX_SCORE);
+  state.score += points;
 
   state.floaters.push({
     x: block.x, y: block.y + block.h + 30, z: block.z,
@@ -627,7 +629,7 @@ function onPerfect(block) {
 function onImperfect(block) {
   state.streak = 0;
   const n = state.blocksPlaced + 1;
-  state.score = Math.min(state.score + n, CONFIG.MAX_SCORE);
+  state.score += n;
   state.floaters.push({
     x: block.x, y: block.y + block.h + 20, z: block.z,
     text: `+${n}`,

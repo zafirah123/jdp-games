@@ -10,7 +10,7 @@
 window.GAMES = [
   { name: '2048', path: './2048/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Bubble Shooter', path: './bubble-shooter/', status: 'pending', author: 'Koplo3' },
-  { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-design', author: 'pandaipixel' },
+  { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-dev', author: 'pandaipixel' },
   { name: 'Kataku', path: './kataku/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Liquid Sort', path: './liquid-sort/liquid-sort.html', status: 'pending', author: 'zafirah123' },
   { name: 'Puzzle', path: './puzzle/puzzle.html', status: 'pending', author: 'iklil' },

@@ -26,6 +26,9 @@ export const COPY = {
     hudTime:     'TIME',
     magnetLabel: 'MAGNET!',
     rushLabel:   'POWER RUSH!',
+    paused:      'PAUSED',
+    pauseSub:    'End the run now and submit your score?',
+    resumeBtn:   'RESUME',
     // --- GameOverScene --------------------------------------------------
     fullRoundDone: 'Your full 3:00 is up — nice flying!',
     timeLeft:      (mmss) => `${mmss} left of your 3:00`,
@@ -52,6 +55,9 @@ export const COPY = {
     hudTime:     'MASA',
     magnetLabel: 'MAGNET!',
     rushLabel:   'KUASA RUSH!',
+    paused:      'DIJEDA',
+    pauseSub:    'Tamatkan pusingan dan hantar skor anda?',
+    resumeBtn:   'SAMBUNG',
     // --- GameOverScene --------------------------------------------------
     fullRoundDone: 'Masa 3:00 anda habis — terbangan yang hebat!',
     timeLeft:      (mmss) => `${mmss} berbaki daripada 3:00 anda`,

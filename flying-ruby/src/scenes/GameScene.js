@@ -1,5 +1,7 @@
 import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
 import { addMuteButton, pointerHitsMuteButton } from '../muteButton.js';
+import { addPauseButton } from '../pauseButton.js';
+import { claimScore } from '../claimScore.js';
 import { COPY } from '../copy.js';
 
 const FLOOR_HEIGHT       = 80;
@@ -49,6 +51,7 @@ export class GameScene extends Phaser.Scene {
     this.score          = this.carriedScore;
     this.started        = false;
     this.gameOver       = false;
+    this.paused         = false;
     this.timeRemainingMs = GAME.roundDurationMs - this.carriedTimeMs;
     this.elapsedMs      = 0;
     this.magnetActive   = false;
@@ -74,13 +77,17 @@ export class GameScene extends Phaser.Scene {
     this.events.once('shutdown', () => { this.gameBgm.stop(); this.rushBgm.stop(); });
 
     // mute toggle, created before input so the flap handler can skip it
-    this.muteBtn = addMuteButton(this, this.scale.width - 30, HUD_HEIGHT / 2);
+    this.muteBtn  = addMuteButton(this, this.scale.width - 30, HUD_HEIGHT / 2);
+    // pause / early-end toggle (§6.5 — players must be able to end early)
+    this.pauseBtn = addPauseButton(this, this.scale.width / 2, HUD_HEIGHT / 2,
+      () => this._togglePause());
 
     this._bindInput();
   }
 
   update(_, deltaMs) {
     if (this.gameOver) return;
+    if (this.paused)   return;
 
     if (this.started) {
       this.elapsedMs       += deltaMs;
@@ -283,14 +290,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   _bindInput() {
-    // A tap anywhere flaps — except on the mute button, which has its own
-    // handler. `currentlyOver` is unreliable on a fresh mobile touch (no
-    // preceding pointermove means the array can be empty even when the tap
-    // landed on the button), so we also do a direct position hit-test.
-    // Without this, tapping mute would flap pbot into the nearest pillar.
+    // A tap anywhere flaps — except on the mute / pause buttons, which have
+    // their own handlers. `currentlyOver` is unreliable on a fresh mobile
+    // touch (no preceding pointermove means the array can be empty even
+    // when the tap landed on the button), so we also do a direct position
+    // hit-test. Without this, tapping mute would flap pbot into the
+    // nearest pillar.
     this.input.on('pointerdown', (pointer, currentlyOver) => {
-      if (currentlyOver.includes(this.muteBtn)) return;
-      if (pointerHitsMuteButton(this.muteBtn, pointer)) return;
+      if (this.paused) return; // pause overlay owns input while paused
+      if (currentlyOver.includes(this.muteBtn))        return;
+      if (currentlyOver.includes(this.pauseBtn))       return;
+      if (pointerHitsMuteButton(this.muteBtn,  pointer)) return;
+      if (pointerHitsMuteButton(this.pauseBtn, pointer)) return;
       this._handleInput();
     });
     this.input.keyboard?.on('keydown-SPACE', () => this._handleInput());
@@ -299,8 +310,167 @@ export class GameScene extends Phaser.Scene {
 
   _handleInput() {
     if (this.gameOver) return;
+    if (this.paused)   return;
     if (!this.started) this._startRound();
     this._flap();
+  }
+
+  // --- pause / early-end --------------------------------------------------
+  // CLAUDE.md §6.5 requires an in-game way to end the round early and
+  // submit the score through the same CLAIM SCORE callback flow. The HUD
+  // pause button opens a small modal: RESUME (continue the round) or
+  // END RUN (submit current score via claimScore).
+
+  _togglePause() {
+    if (this.gameOver) return;
+    // No-op until the round has actually started — there's nothing yet to
+    // pause, and an overlay over the "TAP TO FLY" prompt would be confusing.
+    if (!this.started) return;
+    if (this.paused) this._resumeRound();
+    else             this._pauseRound();
+  }
+
+  _pauseRound() {
+    if (this.paused) return;
+    this.paused = true;
+    this.physics.pause();
+    this.time.paused = true;
+    // Track which BGM track was running so we resume the right one. Both
+    // can be paused via `.pause()` regardless of state, but `.resume()`
+    // would restart a stopped track from the beginning.
+    this._bgmWasPlaying = {
+      game: this.gameBgm.isPlaying,
+      rush: this.rushBgm.isPlaying,
+    };
+    if (this._bgmWasPlaying.game) this.gameBgm.pause();
+    if (this._bgmWasPlaying.rush) this.rushBgm.pause();
+    this._showPauseOverlay();
+  }
+
+  _resumeRound() {
+    if (!this.paused) return;
+    this._hidePauseOverlay();
+    this.paused = false;
+    this.physics.resume();
+    this.time.paused = false;
+    if (this._bgmWasPlaying?.game) this.gameBgm.resume();
+    if (this._bgmWasPlaying?.rush) this.rushBgm.resume();
+    this._bgmWasPlaying = null;
+  }
+
+  _showPauseOverlay() {
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Container groups every overlay object so _hidePauseOverlay() can
+    // tear the whole thing down with one destroy(). Depth 800 sits above
+    // gameplay (depths 0–50) but below the mute/pause HUD buttons (1000)
+    // so the mute toggle keeps working while the modal is open.
+    this.pauseOverlay = this.add.container(0, 0).setDepth(800).setScrollFactor(0);
+
+    // Scrim — full-screen dim. Made interactive so a stray tap on the
+    // backdrop doesn't fall through to the (now-disabled) flap handler;
+    // its pointerdown handler is a no-op, which is exactly what we want.
+    const scrim = this.add.rectangle(cx, cy, width, height, PALETTE.navy, 0.72)
+      .setInteractive();
+    this.pauseOverlay.add(scrim);
+
+    // Card
+    const cw = 320, ch = 280;
+    const card = this.add.graphics();
+    card.fillStyle(PALETTE.navy, 0.96);
+    card.fillRoundedRect(cx - cw / 2, cy - ch / 2, cw, ch, 22);
+    card.lineStyle(3, PALETTE.yellow, 0.75);
+    card.strokeRoundedRect(cx - cw / 2, cy - ch / 2, cw, ch, 22);
+    this.pauseOverlay.add(card);
+
+    const title = this.add.text(cx, cy - 96, COPY.paused, {
+      fontFamily: FONTS.ui,
+      fontSize:   '36px',
+      fontStyle:  'bold',
+      color:      PALETTE_CSS.yellow,
+    }).setOrigin(0.5);
+    this.pauseOverlay.add(title);
+
+    // Sub-copy: short, explains what END RUN actually does
+    const sub = this.add.text(cx, cy - 48, COPY.pauseSub, {
+      fontFamily: FONTS.ui,
+      fontSize:   '13px',
+      color:      PALETTE_CSS.white,
+      wordWrap:   { width: cw - 40 },
+      align:      'center',
+    }).setOrigin(0.5).setAlpha(0.85);
+    this.pauseOverlay.add(sub);
+
+    // Resume — primary, yellow
+    const resumeBtn = this._modalButton(cx, cy + 14, 220, 56,
+      COPY.resumeBtn, PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
+      () => this._resumeRound());
+    this.pauseOverlay.add(resumeBtn);
+
+    // End run — outlined secondary
+    const endBtn = this._modalButton(cx, cy + 92, 200, 48,
+      COPY.endRunBtn, PALETTE.navy, PALETTE_CSS.yellow, PALETTE.yellow,
+      () => claimScore(this.score, {
+        timeUsedMs: this.carriedTimeMs + this.elapsedMs,
+        cause:      'early',
+      }),
+      /* outlined */ true);
+    this.pauseOverlay.add(endBtn);
+
+    // entrance pop — tweens keep running while physics/time are paused
+    this.pauseOverlay.setAlpha(0);
+    this.tweens.add({
+      targets: this.pauseOverlay,
+      alpha: 1, duration: 160, ease: 'Sine.easeOut',
+    });
+  }
+
+  _hidePauseOverlay() {
+    if (!this.pauseOverlay) return;
+    this.pauseOverlay.destroy();
+    this.pauseOverlay = null;
+  }
+
+  // Single-purpose modal button factory for the pause overlay. Kept inline
+  // (rather than shared with GameOverScene._makeButton) because the
+  // GameOver one styles itself for an entire scene and adds itself to a
+  // buttonLayer container; this one just needs a self-contained button
+  // that lives inside the pauseOverlay container.
+  _modalButton(x, y, w, h, label, fill, textColor, border, onClick, outlined = false) {
+    const btn = this.add.container(x, y);
+
+    const body = this.add.graphics();
+    body.fillStyle(fill, outlined ? 0.6 : 1);
+    body.fillRoundedRect(-w / 2, -h / 2, w, h, 20);
+    body.lineStyle(outlined ? 2 : 4, border, 1);
+    body.strokeRoundedRect(-w / 2, -h / 2, w, h, 20);
+    btn.add(body);
+
+    const text = this.add.text(0, 0, label, {
+      fontFamily: FONTS.ui,
+      fontSize:   outlined ? '18px' : '24px',
+      fontStyle:  'bold',
+      color:      textColor,
+    }).setOrigin(0.5);
+    btn.add(text);
+
+    const PAD_X = 30, PAD_Y = 14;
+    btn.setSize(w, h);
+    btn.setInteractive(
+      new Phaser.Geom.Rectangle(-w / 2 - PAD_X, -h / 2 - PAD_Y, w + PAD_X * 2, h + PAD_Y * 2),
+      Phaser.Geom.Rectangle.Contains,
+    );
+    btn.on('pointerover', () => this.input.setDefaultCursor('pointer'));
+    btn.on('pointerout',  () => this.input.setDefaultCursor('default'));
+    btn.on('pointerdown', () => {
+      this.tweens.add({
+        targets: btn, scale: 0.94, duration: 80, yoyo: true,
+        onComplete: onClick,
+      });
+    });
+    return btn;
   }
 
   _startRound() {

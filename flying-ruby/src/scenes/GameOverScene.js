@@ -1,6 +1,7 @@
 import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
 import { addMuteButton } from '../muteButton.js';
 import { COPY } from '../copy.js';
+import { claimScore } from '../claimScore.js';
 
 const BEST_KEY = 'flying-ruby:best';
 
@@ -186,8 +187,15 @@ export class GameOverScene extends Phaser.Scene {
     const cx = width / 2;
     const by = height * 0.78;
 
+    // Container for the button group — letting us tear the Continue/End-Run
+    // pair down and swap in the CLAIM SCORE CTA without rebuilding the
+    // whole scene.
+    this.buttonLayer = this.add.container(0, 0);
+
     if (this.canContinue) {
-      // resume the run — carries the score and the time already flown
+      // Mid-run prompt: resume the run, or END RUN to drop into the final
+      // claim modal (CLAUDE.md §6.5 — CLAIM SCORE only on the *final* modal,
+      // after the player declines CONTINUE).
       this._makeButton(cx, by, 220, 64, COPY.continueBtn,
         PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
         () => this.scene.start('GameScene', {
@@ -195,20 +203,39 @@ export class GameOverScene extends Phaser.Scene {
           timeUsedMs: this.timeUsedMs,
         }));
 
-      this._makeButton(cx, by + 96, 200, 52, COPY.homeBtn,
+      this._makeButton(cx, by + 96, 200, 52, COPY.endRunBtn,
         PALETTE.navy, PALETTE_CSS.yellow, PALETTE.yellow,
-        () => this.scene.start('StartScene'),
+        () => this._showClaimCta(width, height),
         /* outlined */ true);
     } else {
-      // the full 3-minute budget is spent — the only way on is home
-      this._makeButton(cx, by + 32, 220, 64, COPY.homeBtn,
-        PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
-        () => this.scene.start('StartScene'));
+      // Final modal: single CLAIM SCORE CTA per §6.5.
+      this._showClaimCta(width, height);
     }
+  }
+
+  // Tears down the Continue/End-Run pair (if any) and draws the single
+  // CLAIM SCORE CTA. This is the spec-mandated terminal state — tapping it
+  // hands off to app.pandai.org with the score in the URL.
+  _showClaimCta(width, height) {
+    const cx = width / 2;
+    const by = height * 0.78;
+
+    this.buttonLayer.destroy();
+    this.buttonLayer = this.add.container(0, 0);
+
+    this._makeButton(cx, by + 32, 240, 64, COPY.claimScore,
+      PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
+      () => claimScore(this.score, {
+        timeUsedMs: this.timeUsedMs,
+        cause:      this.cause,
+      }));
   }
 
   _makeButton(x, y, w, h, label, fillColor, textColor, borderColor, onClick, outlined = false) {
     const btn = this.add.container(x, y);
+    // Group buttons under buttonLayer so _showClaimCta() can tear the
+    // Continue/End-Run pair down without leaking listeners or visuals.
+    if (this.buttonLayer) this.buttonLayer.add(btn);
 
     if (!outlined) {
       const shadow = this.add.graphics();

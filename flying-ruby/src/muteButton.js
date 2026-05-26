@@ -7,7 +7,11 @@
 // webviews (e.g. VS Code's Simple Browser) and private mode make
 // localStorage *throw*, so every access is guarded.
 
-const MUTE_KEY = 'flying-ruby:muted';
+// Canonical key per DESIGN.md §5.11 (`<game-name>:mute`). The legacy
+// `:muted` key shipped briefly; we migrate it on read so returning players
+// keep their preference, then drop the old entry.
+const MUTE_KEY        = 'flying-ruby:mute';
+const LEGACY_MUTE_KEY = 'flying-ruby:muted';
 
 // in-session source of truth; mirrors localStorage when that is available
 let muteState = false;
@@ -15,8 +19,19 @@ let muteState = false;
 // Refresh muteState from localStorage. If storage is unavailable the call
 // throws — we swallow it and keep whatever muteState already held.
 function loadMuteState() {
-  try { muteState = window.localStorage.getItem(MUTE_KEY) === '1'; }
-  catch { /* storage blocked — keep the in-memory value */ }
+  try {
+    let v = window.localStorage.getItem(MUTE_KEY);
+    if (v === null) {
+      // one-shot migration from the legacy `:muted` key
+      const legacy = window.localStorage.getItem(LEGACY_MUTE_KEY);
+      if (legacy !== null) {
+        window.localStorage.setItem(MUTE_KEY, legacy);
+        window.localStorage.removeItem(LEGACY_MUTE_KEY);
+        v = legacy;
+      }
+    }
+    muteState = v === '1';
+  } catch { /* storage blocked — keep the in-memory value */ }
   return muteState;
 }
 

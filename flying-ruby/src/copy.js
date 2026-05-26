@@ -12,11 +12,12 @@ const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 
 export const COPY = {
   en: {
     // --- canonical (§6.4) ----------------------------------------------
-    start:    'START GAME',
-    timeUp:   "TIME'S UP!",
-    gameOver: 'GAME OVER',
-    audioOn:  'AUDIO ON',
-    audioOff: 'AUDIO OFF',
+    start:      'START GAME',
+    timeUp:     "TIME'S UP!",
+    gameOver:   'GAME OVER',
+    audioOn:    'AUDIO ON',
+    audioOff:   'AUDIO OFF',
+    claimScore: 'CLAIM SCORE',
     // --- StartScene -----------------------------------------------------
     tagline:  'Tap to fly  •  Collect rubies  •  Beat 3:00',
     // --- GameScene ------------------------------------------------------
@@ -33,15 +34,16 @@ export const COPY = {
     newBest: 'NEW BEST!',
     timeFlown: (mmss) => `Time flown: ${mmss}`,
     continueBtn: 'CONTINUE',
-    homeBtn:     'HOME',
+    endRunBtn:   'END RUN',
   },
   ms: {
     // --- canonical (§6.4) ----------------------------------------------
-    start:    'MULA MAIN',
-    timeUp:   'MASA TAMAT!',
-    gameOver: 'PERMAINAN TAMAT',
-    audioOn:  'AUDIO ON',
-    audioOff: 'AUDIO OFF',
+    start:      'MULA MAIN',
+    timeUp:     'MASA TAMAT!',
+    gameOver:   'PERMAINAN TAMAT',
+    audioOn:    'AUDIO ON',
+    audioOff:   'AUDIO OFF',
+    claimScore: 'TUNTUT SKOR',
     // --- StartScene -----------------------------------------------------
     tagline:  'Ketuk untuk terbang  •  Kutip delima  •  Tewaskan 3:00',
     // --- GameScene ------------------------------------------------------
@@ -58,6 +60,6 @@ export const COPY = {
     newBest: 'REKOD BAHARU!',
     timeFlown: (mmss) => `Masa terbang: ${mmss}`,
     continueBtn: 'TERUSKAN',
-    homeBtn:     'LAMAN UTAMA',
+    endRunBtn:   'TAMATKAN PUSINGAN',
   },
 }[LANG];

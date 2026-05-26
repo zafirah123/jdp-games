@@ -42,33 +42,18 @@
             -webkit-user-select: none;
             touch-action: manipulation;
         }
-
-        /* Audio toggle — DESIGN.md §5.11 */
-        .mute {
-            position: fixed;
-            top: max(12px, env(safe-area-inset-top));
-            right: max(12px, env(safe-area-inset-right));
-            width: 44px; height: 44px;
-            border-radius: 22px;
-            border: 2px solid #FFB603;
-            background: #9E131F;
-            color: #FFD633;
-            display: flex; align-items: center; justify-content: center;
-            padding: 0;
-            cursor: pointer;
-            z-index: 30;
-            transition: transform 80ms ease;
-        }
-        .mute:active { transform: scale(0.92); }
-        .mute svg { width: 22px; height: 22px; fill: currentColor; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between items-center p-3 sm:p-6 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-950 via-slate-950 to-black">
 
-    <!-- Audio toggle — DESIGN.md §5.11 -->
-    <button id="muteBtn" class="mute" aria-label="AUDIO OFF" aria-pressed="true">
-        <svg viewBox="0 0 24 24"></svg>
-    </button>
+    <!-- Top Navigation / Header -->
+    <header class="w-full max-w-lg flex justify-end items-center mb-2 px-2">
+        <!-- Sound FX System Toggle -->
+        <button id="audioToggle" class="bg-slate-900 border border-slate-700 text-slate-400 hover:text-emerald-400 p-2.5 rounded-xl transition-all focus:outline-none flex items-center justify-center">
+            <svg id="soundOnIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M12 18.75V5.25L7.75 9.5H4.5v5h3.25L12 18.75z"/></svg>
+            <svg id="soundOffIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+        </button>
+    </header>
 
     <!-- Main Game Section -->
     <main class="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8 flex-grow">
@@ -77,14 +62,14 @@
         <div class="flex lg:flex-col justify-between items-center gap-3 w-full max-w-md lg:w-44">
             <!-- Game Time Countdown Card -->
             <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 flex-1 lg:w-full neon-border-green text-center">
-                <div id="timeRemainingLabel" class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider"></div>
+                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Time Remaining</div>
                 <div id="timerDisplay" class="text-2xl sm:text-3xl font-black neon-font neon-text-green mt-1">03:00</div>
             </div>
 
             <!-- Arcade Scoreboard Card -->
             <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 flex-1 lg:w-full border border-emerald-900/60 text-center flex flex-row lg:flex-col gap-2 justify-around">
                 <div class="w-full">
-                    <div id="scoreLabel" class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Score</div>
+                    <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Score</div>
                     <div id="scoreDisplay" class="text-2xl sm:text-3xl font-bold neon-font text-cyan-400 mt-1">000000</div>
                 </div>
             </div>
@@ -106,9 +91,11 @@
                         <circle cx="74" cy="43" r="4" fill="#00f0f0"/>
                     </svg>
                 </div>
-                <h2 id="blitzTitle" class="text-2xl font-black neon-font neon-text-green mb-2"></h2>
-                <p id="blitzIntro" class="text-xs text-slate-400 max-w-xs mb-6 leading-relaxed"></p>
-                <button id="startButton" class="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm rounded-lg shadow-lg hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"></button>
+                <h2 class="text-2xl font-black neon-font neon-text-green mb-2">PBOT'S BLITZ</h2>
+                <p class="text-xs text-slate-400 max-w-xs mb-6 leading-relaxed">Guide PBot blocks down and score maximum points in 3 minutes. Game ends immediately on Grid-Lock or when the timer hits zero!</p>
+                <button id="startButton" class="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm rounded-lg shadow-lg hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">
+                    Start Challenge
+                </button>
             </div>
 
             <!-- Game Over / Victory Screen Overlay -->
@@ -116,18 +103,20 @@
                 <div class="text-emerald-500 mb-3" id="gameOverIcon">
                     <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
-                <h2 id="gameOverTitle" class="text-2xl font-black neon-font neon-text-green mb-1"></h2>
-                <p id="gameOverSubtitle" class="text-xs text-slate-400 mb-6"></p>
+                <h2 id="gameOverTitle" class="text-2xl font-black neon-font neon-text-green mb-1">TIME'S UP!</h2>
+                <p id="gameOverSubtitle" class="text-xs text-slate-400 mb-6">Excellent effort! Here is your blitz card.</p>
 
                 <!-- Stats Dashboard -->
                 <div class="w-full max-w-xs bg-slate-900/80 border border-slate-800 rounded-xl p-4 mb-6">
                     <div class="flex justify-between items-center text-base py-1">
-                        <span id="finalScoreLabel" class="text-slate-400 font-medium"></span>
+                        <span class="text-slate-400 font-medium">Final Score</span>
                         <span id="finalScore" class="font-black text-xl text-emerald-400 neon-font">0</span>
                     </div>
                 </div>
 
-                <button id="restartButton" class="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm rounded-lg shadow-lg hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest"></button>
+                <button id="restartButton" class="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-sm rounded-lg shadow-lg hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 transition-all uppercase tracking-widest">
+                    Play Again
+                </button>
             </div>
         </div>
 
@@ -135,7 +124,7 @@
         <div class="flex lg:flex-col justify-center items-center gap-3 w-full max-w-md lg:w-44">
             <!-- Next Block Preview -->
             <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 w-full max-w-[150px] lg:max-w-none border border-emerald-900/60 text-center">
-                <div id="nextBlockLabel" class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2"></div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Next Block</div>
                 <div class="flex justify-center items-center">
                     <canvas id="nextCanvas" width="100" height="100" class="bg-slate-950/50 rounded-lg border border-slate-900 w-20 h-20"></canvas>
                 </div>
@@ -143,7 +132,7 @@
 
             <!-- PBot Assistant Mascot Widget (Themed Emerald green) -->
             <div class="bg-black/60 backdrop-blur-md rounded-xl p-3 w-full max-w-[180px] lg:max-w-none border neon-border-green text-center flex flex-col items-center justify-center gap-1.5">
-                <div id="coachPbotLabel" class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider"></div>
+                <div class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Coach PBot</div>
                 <div id="pbotContainer" class="w-20 h-16 flex items-center justify-center relative">
                     <!-- Inline Vector PBot SVG -->
                     <svg id="pbotSvg" viewBox="0 0 120 90" class="w-full h-full">
@@ -180,23 +169,25 @@
                     </svg>
                 </div>
                 <!-- Speech Bubble -->
-                <div id="pbotSpeech" class="text-[10px] text-slate-300 font-medium tracking-wide leading-tight px-1 min-h-[24px] flex items-center justify-center italic"></div>
+                <div id="pbotSpeech" class="text-[10px] text-slate-300 font-medium tracking-wide leading-tight px-1 min-h-[24px] flex items-center justify-center italic">
+                    "Ready to Blitz?"
+                </div>
             </div>
 
             <!-- Desktop Keyboard Help Guide -->
             <div class="hidden lg:block bg-black/40 rounded-xl p-3 border border-slate-900 w-full text-xs text-slate-400 space-y-1">
-                <div id="controlsTitle" class="font-bold text-slate-300 mb-2"></div>
+                <div class="font-bold text-slate-300 mb-2">Controls:</div>
                 <div class="space-y-1 text-[11px]">
-                    <p id="mouseControlsTitle" class="font-bold text-emerald-400"></p>
-                    <p id="mouseMoveText"></p>
-                    <p id="mouseLeftClickText"></p>
-                    <p id="mouseRightClickText"></p>
+                    <p class="font-bold text-emerald-400">Mouse Controls:</p>
+                    <p>• Move Mouse : Slide Block</p>
+                    <p>• Left Click : Rotate Block</p>
+                    <p>• Right Click : Hard Drop</p>
                     <div class="h-1 my-1 border-t border-slate-800"></div>
-                    <p id="keyboardControlsTitle" class="font-bold text-emerald-400"></p>
-                    <p>• <span class="text-slate-300">← / →</span> <span id="kbdMoveText"></span></p>
-                    <p>• <span class="text-slate-300">↑</span> <span id="kbdRotateText"></span></p>
-                    <p>• <span class="text-slate-300">↓</span> <span id="kbdSoftText"></span></p>
-                    <p>• <span class="text-slate-300">Space</span> <span id="kbdHardText"></span></p>
+                    <p class="font-bold text-emerald-400">Keyboard Controls:</p>
+                    <p>• <span class="text-slate-300">← / →</span> : Move Grid</p>
+                    <p>• <span class="text-slate-300">↑</span> : Rotate Piece</p>
+                    <p>• <span class="text-slate-300">↓</span> : Soft Drop</p>
+                    <p>• <span class="text-slate-300">Space</span> : Hard Drop</p>
                 </div>
             </div>
         </div>
@@ -207,149 +198,32 @@
         <!-- Rotate -->
         <button id="touchRotate" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 4H15v3"/></svg>
-            <span id="tBtnRotate" class="text-[8px] font-bold mt-0.5"></span>
+            <span class="text-[8px] font-bold mt-0.5">ROTATE</span>
         </button>
         <!-- Left -->
         <button id="touchLeft" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-            <span id="tBtnLeft" class="text-[8px] font-bold mt-0.5"></span>
+            <span class="text-[8px] font-bold mt-0.5">LEFT</span>
         </button>
         <!-- Soft Drop -->
         <button id="touchDown" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 13l-7 7-7-7m14-6l-7 7-7-7"/></svg>
-            <span id="tBtnSoft" class="text-[8px] font-bold mt-0.5"></span>
+            <span class="text-[8px] font-bold mt-0.5">SOFT</span>
         </button>
         <!-- Right -->
         <button id="touchRight" class="touch-btn h-12 bg-slate-900/80 active:bg-emerald-900/50 border border-slate-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-slate-300 active:text-emerald-400 transition-all select-none">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-            <span id="tBtnRight" class="text-[8px] font-bold mt-0.5"></span>
+            <span class="text-[8px] font-bold mt-0.5">RIGHT</span>
         </button>
         <!-- Hard Drop -->
         <button id="touchDrop" class="touch-btn h-12 bg-gradient-to-b from-emerald-900/50 to-emerald-950/70 border border-emerald-800 active:border-emerald-400 rounded-lg flex flex-col justify-center items-center text-emerald-300 active:text-emerald-400 transition-all select-none">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8"/></svg>
-            <span id="tBtnDrop" class="text-[8px] font-bold mt-0.5"></span>
+            <span class="text-[8px] font-bold mt-0.5">DROP</span>
         </button>
     </div>
 
     <!-- Synthesized Web Audio Soundscape and Game Logic Engine -->
     <script>
-        /*=========================================
-          I18N — CLAUDE.md §6.4. ?lang=ms switches to Bahasa Melayu.
-        =========================================*/
-        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
-        const COPY = {
-            en: {
-                // canonical
-                start:    'START GAME',
-                timeUp:   "TIME'S UP!",
-                gameOver: 'GAME OVER',
-                audioOn:  'AUDIO ON',
-                audioOff: 'AUDIO OFF',
-                // game-specific
-                timeRemaining:   'Time Remaining',
-                scoreLabel:      'Score',
-                nextBlock:       'Next Block',
-                coachPbot:       'Coach PBot',
-                blitzTitle:      "PBOT'S BLITZ",
-                blitzIntro:      'Guide PBot blocks down and score maximum points in 3 minutes. Game ends immediately on Grid-Lock or when the timer hits zero!',
-                gameOverSubtitle:'Excellent effort! Here is your blitz card.',
-                gridLocked:      'GRID LOCKED!',
-                finalScore:      'Final Score',
-                playAgain:       'Play Again',
-                controlsTitle:   'Controls:',
-                mouseControls:   'Mouse Controls:',
-                mouseMove:       'Move Mouse : Slide Block',
-                mouseLeftClick:  'Left Click : Rotate Block',
-                mouseRightClick: 'Right Click : Hard Drop',
-                keyboardControls:'Keyboard Controls:',
-                kbdMove:         ': Move Grid',
-                kbdRotate:       ': Rotate Piece',
-                kbdSoft:         ': Soft Drop',
-                kbdHard:         ': Hard Drop',
-                tBtnRotate:      'ROTATE',
-                tBtnLeft:        'LEFT',
-                tBtnSoft:        'SOFT',
-                tBtnRight:       'RIGHT',
-                tBtnDrop:        'DROP',
-                readyToBlitz:    'Ready to Blitz?',
-                idlePhrases: [
-                    'You got this!',
-                    'Stay focused!',
-                    'Excellent speed!',
-                    'PBot believes in you!',
-                    "Let's clear some lines!",
-                    'Make every drop count!',
-                    'Nice puzzle solving!',
-                    'Aim for that high score!',
-                ],
-                happyPhrases: [
-                    'Hooray! +100!',
-                    'Spectacular!',
-                    'Excellent move!',
-                    'We cleared it!',
-                    'Amazing work!',
-                    'Awesome score!',
-                ],
-                worried:         'Whoa! Blocks are getting high!',
-                dizzy:           'Ouch! Grid Lock!',
-                grad:            'Fantastic! Great blitz run!',
-            },
-            ms: {
-                start:    'MULA MAIN',
-                timeUp:   'MASA TAMAT!',
-                gameOver: 'PERMAINAN TAMAT',
-                audioOn:  'AUDIO ON',
-                audioOff: 'AUDIO OFF',
-                timeRemaining:   'Masa Berbaki',
-                scoreLabel:      'Skor',
-                nextBlock:       'Blok Seterusnya',
-                coachPbot:       'Jurulatih PBot',
-                blitzTitle:      "BLITZ PBOT",
-                blitzIntro:      'Bimbing blok PBot ke bawah dan kumpul skor tertinggi dalam 3 minit. Permainan tamat serta-merta jika Grid Tersekat atau masa habis!',
-                gameOverSubtitle:'Usaha hebat! Inilah kad blitz anda.',
-                gridLocked:      'GRID TERSEKAT!',
-                finalScore:      'Skor Akhir',
-                playAgain:       'Main Lagi',
-                controlsTitle:   'Kawalan:',
-                mouseControls:   'Kawalan Tetikus:',
-                mouseMove:       'Gerak Tetikus : Geser Blok',
-                mouseLeftClick:  'Klik Kiri : Putar Blok',
-                mouseRightClick: 'Klik Kanan : Jatuh Pantas',
-                keyboardControls:'Kawalan Papan Kekunci:',
-                kbdMove:         ': Gerak Grid',
-                kbdRotate:       ': Putar Blok',
-                kbdSoft:         ': Jatuh Perlahan',
-                kbdHard:         ': Jatuh Pantas',
-                tBtnRotate:      'PUTAR',
-                tBtnLeft:        'KIRI',
-                tBtnSoft:        'PERLAHAN',
-                tBtnRight:       'KANAN',
-                tBtnDrop:        'JATUH',
-                readyToBlitz:    'Sedia untuk Blitz?',
-                idlePhrases: [
-                    'Anda boleh!',
-                    'Kekal fokus!',
-                    'Laju sungguh!',
-                    'PBot percayakan anda!',
-                    'Jom bersihkan baris!',
-                    'Setiap jatuhan penting!',
-                    'Penyelesaian yang bagus!',
-                    'Sasarkan skor tertinggi!',
-                ],
-                happyPhrases: [
-                    'Yahoo! +100!',
-                    'Hebatnya!',
-                    'Pergerakan terbaik!',
-                    'Berjaya dibersihkan!',
-                    'Kerja yang menakjubkan!',
-                    'Skor mantap!',
-                ],
-                worried:         'Wah! Blok semakin tinggi!',
-                dizzy:           'Aduh! Grid Tersekat!',
-                grad:            'Mantap! Larian blitz yang hebat!',
-            },
-        }[LANG];
-
         /*=========================================
           SFX SYNTHESIZER ENGINE (Web Audio API)
         =========================================*/
@@ -357,6 +231,8 @@
             constructor() {
                 this.ctx = null;
                 this.enabled = false;
+                this.bgmInterval = null;
+                this.bgmStep = 0;
             }
 
             init() {
@@ -451,30 +327,152 @@
                     osc.stop(now + (idx * tempo) + 0.35);
                 });
             }
+
+            /* High energy 135 BPM Chiptune real-time synthesized looping sequence */
+            startBGM() {
+                if (!this.enabled || !this.ctx) return;
+                this.stopBGM();
+                this.bgmStep = 0;
+
+                // Em, G, Am, B roots
+                const roots = [82.41, 97.99, 110.00, 123.47];
+                // Scale profiles
+                const EmArp = [1, 1.2, 1.5, 2];   
+                const GArp = [1, 1.25, 1.5, 2];   
+                const AmArp = [1, 1.2, 1.5, 2];   
+                const BArp = [1, 1.25, 1.5, 2];   
+
+                // 135 BPM 16th-note step sequencer: ~111ms step interval
+                const stepDuration = 111; 
+
+                this.bgmInterval = setInterval(() => {
+                    if (!this.enabled || !this.ctx || this.ctx.state === 'suspended') return;
+
+                    const now = this.ctx.currentTime;
+                    const currentStep = this.bgmStep % 64;
+                    const chordIndex = Math.floor(currentStep / 16);
+                    const chordStep = currentStep % 16;
+                    const rootFreq = roots[chordIndex];
+
+                    // 1. Kick Drum (Beats 1, 5, 9, 13)
+                    if (chordStep % 4 === 0) {
+                        const kickOsc = this.ctx.createOscillator();
+                        const kickGain = this.ctx.createGain();
+                        kickOsc.connect(kickGain);
+                        kickGain.connect(this.ctx.destination);
+
+                        kickOsc.type = 'sine';
+                        kickOsc.frequency.setValueAtTime(120, now);
+                        kickOsc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+
+                        kickGain.gain.setValueAtTime(0.18, now);
+                        kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+                        kickOsc.start(now);
+                        kickOsc.stop(now + 0.14);
+                    }
+
+                    // 2. Off-beat Hi-Hat (Beats 3, 7, 11, 15)
+                    if (chordStep % 4 === 2) {
+                        const hatOsc = this.ctx.createOscillator();
+                        const hatGain = this.ctx.createGain();
+                        const hatFilter = this.ctx.createBiquadFilter();
+
+                        hatOsc.connect(hatFilter);
+                        hatFilter.connect(hatGain);
+                        hatGain.connect(this.ctx.destination);
+
+                        hatOsc.type = 'square';
+                        hatOsc.frequency.setValueAtTime(10000, now);
+
+                        hatFilter.type = 'bandpass';
+                        hatFilter.frequency.setValueAtTime(8000, now);
+                        hatFilter.Q.setValueAtTime(5, now);
+
+                        hatGain.gain.setValueAtTime(0.03, now);
+                        hatGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+                        hatOsc.start(now);
+                        hatOsc.stop(now + 0.06);
+                    }
+
+                    // 3. Octave alternating techno bassline
+                    if (chordStep % 2 === 0) {
+                        const bassOsc = this.ctx.createOscillator();
+                        const bassGain = this.ctx.createGain();
+                        bassOsc.connect(bassGain);
+                        bassGain.connect(this.ctx.destination);
+
+                        bassOsc.type = 'triangle';
+                        const isOctave = (chordStep % 4 === 2);
+                        const bassFreq = isOctave ? rootFreq * 2 : rootFreq;
+
+                        bassOsc.frequency.setValueAtTime(bassFreq, now);
+
+                        bassGain.gain.setValueAtTime(0.07, now);
+                        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                        bassOsc.start(now);
+                        bassOsc.stop(now + 0.18);
+                    }
+
+                    // 4. Energetic high-pitched Arpeggiator (16th notes!)
+                    let arpProfile = EmArp;
+                    if (chordIndex === 1) arpProfile = GArp;
+                    if (chordIndex === 2) arpProfile = AmArp;
+                    if (chordIndex === 3) arpProfile = BArp;
+
+                    const arpNote = arpProfile[chordStep % arpProfile.length];
+                    const pluckOsc = this.ctx.createOscillator();
+                    const pluckGain = this.ctx.createGain();
+                    pluckOsc.connect(pluckGain);
+                    pluckGain.connect(this.ctx.destination);
+
+                    pluckOsc.type = 'sine';
+                    const pluckFreq = rootFreq * 4 * arpNote;
+                    pluckOsc.frequency.setValueAtTime(pluckFreq, now);
+
+                    pluckGain.gain.setValueAtTime(0.015, now);
+                    pluckGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+                    pluckOsc.start(now);
+                    pluckOsc.stop(now + 0.11);
+
+                    this.bgmStep++;
+                }, stepDuration);
+            }
+
+            stopBGM() {
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
         }
 
         const sfx = new SoundEffects();
 
-        // Audio toggle — DESIGN.md §5.11. Canonical icon paths shared across all JDP games.
-        const MUTE_ICON_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
-        const MUTE_ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
-        const muteBtn = document.getElementById('muteBtn');
+        // Audio Toggle Action Linker
+        const audioToggleBtn = document.getElementById('audioToggle');
+        const soundOnIcon = document.getElementById('soundOnIcon');
+        const soundOffIcon = document.getElementById('soundOffIcon');
 
-        function updateMuteUI() {
-            const muted = !sfx.enabled;
-            muteBtn.querySelector('svg').innerHTML = muted ? MUTE_ICON_OFF : MUTE_ICON_ON;
-            const label = muted ? COPY.audioOff : COPY.audioOn;
-            muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
-            muteBtn.setAttribute('aria-label', label);
-            muteBtn.setAttribute('title', label);
-        }
-
-        muteBtn.addEventListener('click', () => {
+        audioToggleBtn.addEventListener('click', () => {
             sfx.init();
             sfx.enabled = !sfx.enabled;
-            updateMuteUI();
+            if (sfx.enabled) {
+                soundOnIcon.classList.remove('hidden');
+                soundOffIcon.classList.add('hidden');
+                // Play BGM if game is currently in progress
+                if (isPlaying && !isGameOver) {
+                    sfx.startBGM();
+                }
+            } else {
+                soundOnIcon.classList.add('hidden');
+                soundOffIcon.classList.remove('hidden');
+                sfx.stopBGM();
+            }
         });
-        updateMuteUI();
 
 
         /*=========================================
@@ -569,7 +567,16 @@
         const pbotEyesEl = document.getElementById('pbotEyes');
         let pbotMoodTimer = null;
 
-        const PBOT_IDLE_PHRASES = COPY.idlePhrases;
+        const PBOT_IDLE_PHRASES = [
+            "You got this!",
+            "Stay focused!",
+            "Excellent speed!",
+            "PBot believes in you!",
+            "Let's clear some lines!",
+            "Make every drop count!",
+            "Nice puzzle solving!",
+            "Aim for that high score!"
+        ];
 
         function setPbotMood(mood) {
             let eyesHtml = '';
@@ -581,7 +588,15 @@
                         <path d="M 38 45 C 41 35, 47 35, 50 45" stroke="#00f0f0" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                         <path d="M 68 45 C 71 35, 77 35, 80 45" stroke="#00f0f0" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                     `;
-                    speechText = COPY.happyPhrases[Math.floor(Math.random() * COPY.happyPhrases.length)];
+                    const happyPhrases = [
+                        "Hooray! +10!",
+                        "Spectacular!",
+                        "Excellent move!",
+                        "We cleared it!",
+                        "Amazing work!",
+                        "Awesome score!"
+                    ];
+                    speechText = happyPhrases[Math.floor(Math.random() * happyPhrases.length)];
                     break;
 
                 case 'worried':
@@ -589,7 +604,7 @@
                         <circle cx="44" cy="40" r="5" fill="#00f0f0" />
                         <circle cx="74" cy="40" r="5" fill="#00f0f0" />
                     `;
-                    speechText = COPY.worried;
+                    speechText = "Whoa! Blocks are getting high!";
                     break;
 
                 case 'dizzy':
@@ -597,7 +612,7 @@
                         <path d="M 39 36 L 49 44 M 49 36 L 39 44" stroke="#00f0f0" stroke-width="3" stroke-linecap="round" />
                         <path d="M 69 36 L 79 44 M 79 36 L 69 44" stroke="#00f0f0" stroke-width="3" stroke-linecap="round" />
                     `;
-                    speechText = COPY.dizzy;
+                    speechText = "Ouch! Grid Lock!";
                     break;
 
                 case 'grad':
@@ -605,7 +620,7 @@
                         <path d="M 40 43 C 43 38, 47 38, 50 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
                         <path d="M 70 43 C 73 38, 77 38, 80 43" stroke="#00f0f0" stroke-width="3" fill="none" stroke-linecap="round"/>
                     `;
-                    speechText = COPY.grad;
+                    speechText = "Fantastic! Great blitz run!";
                     break;
 
                 case 'idle':
@@ -937,7 +952,8 @@
                 clearedCount++;
                 triggerLineParticles(r);
                 
-                score += 100;
+                // Each line cleared contributes exactly 10 score points
+                score += 10;
             }
 
             if (clearedCount > 0) {
@@ -1030,6 +1046,9 @@
             
             setPbotMood('idle');
             startPbotTalkCycle();
+
+            // Start looped background synth music
+            sfx.startBGM();
         }
 
         function endGame(timedOut) {
@@ -1037,12 +1056,13 @@
             isGameOver = true;
             clearInterval(gameTimerInterval);
             sfx.playGameOver(timedOut);
+            sfx.stopBGM(); // Cut background music stream on game finish
 
             const titleEl = document.getElementById('gameOverTitle');
             const iconEl = document.getElementById('gameOverIcon');
 
             if (timedOut) {
-                titleEl.innerText = COPY.timeUp;
+                titleEl.innerText = "TIME'S UP!";
                 titleEl.className = "text-2xl font-black neon-font neon-text-green mb-1";
                 iconEl.innerHTML = `
                     <svg viewBox="0 0 120 90" class="w-16 h-16 mx-auto animate-bounce">
@@ -1054,7 +1074,7 @@
                 `;
                 setPbotMood('grad');
             } else {
-                titleEl.innerText = COPY.gameOver;
+                titleEl.innerText = "GRID LOCKED!";
                 titleEl.className = "text-2xl font-black neon-font neon-text-green mb-1";
                 iconEl.innerHTML = `
                     <svg viewBox="0 0 120 90" class="w-16 h-16 mx-auto animate-pulse">
@@ -1165,44 +1185,6 @@
         // Interface buttons
         document.getElementById('startButton').addEventListener('click', startGame);
         document.getElementById('restartButton').addEventListener('click', startGame);
-
-        // Apply i18n copy to static DOM elements at boot.
-        function applyCopy() {
-            const map = {
-                timeRemainingLabel:   COPY.timeRemaining,
-                scoreLabel:           COPY.scoreLabel,
-                nextBlockLabel:       COPY.nextBlock,
-                coachPbotLabel:       COPY.coachPbot,
-                blitzTitle:           COPY.blitzTitle,
-                blitzIntro:           COPY.blitzIntro,
-                startButton:          COPY.start,
-                gameOverSubtitle:     COPY.gameOverSubtitle,
-                finalScoreLabel:      COPY.finalScore,
-                restartButton:        COPY.playAgain,
-                controlsTitle:        COPY.controlsTitle,
-                mouseControlsTitle:   COPY.mouseControls,
-                mouseMoveText:        `• ${COPY.mouseMove}`,
-                mouseLeftClickText:   `• ${COPY.mouseLeftClick}`,
-                mouseRightClickText:  `• ${COPY.mouseRightClick}`,
-                keyboardControlsTitle:COPY.keyboardControls,
-                kbdMoveText:          COPY.kbdMove,
-                kbdRotateText:        COPY.kbdRotate,
-                kbdSoftText:          COPY.kbdSoft,
-                kbdHardText:          COPY.kbdHard,
-                tBtnRotate:           COPY.tBtnRotate,
-                tBtnLeft:             COPY.tBtnLeft,
-                tBtnSoft:             COPY.tBtnSoft,
-                tBtnRight:            COPY.tBtnRight,
-                tBtnDrop:             COPY.tBtnDrop,
-            };
-            for (const id in map) {
-                const el = document.getElementById(id);
-                if (el) el.innerText = map[id];
-            }
-            const speech = document.getElementById('pbotSpeech');
-            if (speech) speech.innerText = `"${COPY.readyToBlitz}"`;
-        }
-        applyCopy();
 
         // Fluid Scaling & Auto-Aspect Adjustment Handler
         function resizeCanvas() {

@@ -59,7 +59,7 @@
             z-index: 5;
         }
 
-        /* Score Info Button - Redesigned to match image custom 3D design */
+        /* Rules Button - Redesigned to match image custom 3D design */
         .rules-btn {
             position: absolute;
             top: -18px;
@@ -156,6 +156,55 @@
             stroke-width: 2.5;
         }
 
+        /* Pause Button - Centered at the top of the wrapper */
+        .pause-btn {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(to bottom, #ffe873, #ffbd25);
+            color: #cc292b;
+            border: none;
+            padding: 6px 12px 6px 8px;
+            font-size: 0.85rem;
+            font-weight: 900;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 3px 0px #dca01a, 0 4px 10px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.1s;
+            z-index: 10;
+            text-transform: uppercase;
+        }
+        .pause-btn:active { 
+            transform: translateX(-50%) translateY(3px); 
+            box-shadow: 0 0px 0px #dca01a, 0 2px 5px rgba(0,0,0,0.5); 
+        }
+        .pause-btn .btn-icon-left {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #b31616 0%, #15152a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 2px;
+        }
+        .pause-btn .btn-icon-left svg {
+            width: 10px;
+            height: 10px;
+            fill: white;
+        }
+        .pause-btn .btn-icon-right {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2.5;
+        }
+
         /* Header / Titles */
         .header {
             margin-bottom: 5px;
@@ -220,6 +269,13 @@
             grid-template-columns: repeat(5, 1fr);
             gap: 6px;
             width: 100%;
+        }
+
+        /* Blur Board completely during pause to maintain game fairness */
+        .board-container.paused-blur {
+            filter: blur(10px);
+            pointer-events: none;
+            transition: filter 0.3s ease;
         }
 
         .cell {
@@ -352,7 +408,7 @@
             width: 100%;
         }
 
-        /* Game Over Screen */
+        /* Game Over and Pause Screen Overlays */
         .overlay {
             position: absolute;
             inset: 0;
@@ -364,7 +420,7 @@
             align-items: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.5s;
+            transition: opacity 0.3s;
             z-index: 100;
             padding: 20px;
         }
@@ -442,6 +498,16 @@
             <span id="mute-text">Sound: ON</span>
         </button>
 
+        <!-- 3D Pause Button (Aligned Center Top) -->
+        <button class="pause-btn" onclick="togglePause()">
+            <div class="btn-icon-left">
+                <svg viewBox="0 0 24 24" id="pause-svg" fill="white" width="10" height="10">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+            </div>
+            <span id="pause-text">Pause</span>
+        </button>
+
         <!-- Rules Info Button -->
         <button class="rules-btn" onclick="toggleRules(true)">
             <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
@@ -449,7 +515,7 @@
                 <rect x="8.5" y="8" width="5.5" height="12" rx="1"></rect>
                 <rect x="14" y="12" width="5.5" height="8" rx="1"></rect>
             </svg>
-            <span>Score Info</span>
+            <span>Rules</span>
             <div class="btn-icon-right">
                 <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="9 18 15 12 9 6"></polyline>
@@ -527,6 +593,23 @@
             </div>
         </div>
 
+        <!-- Game Paused Modal -->
+        <div class="overlay" id="pausedModal">
+            <h2>GAME PAUSED</h2>
+            <p class="overlay-msg">Take a breath! Your score and time are safe.</p>
+            <button class="btn" onclick="togglePause()">
+                <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <span>Resume</span>
+                <div class="btn-icon-right">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+            </button>
+        </div>
+
         <!-- GameOver Screen Overlay -->
         <div class="overlay" id="gameOverModal">
             <h2 id="endTitle">TIME'S UP!</h2>
@@ -599,6 +682,7 @@
         const roundValEl = document.getElementById('round-val');
         const statusMsgEl = document.getElementById('statusMsg');
         const gameOverModal = document.getElementById('gameOverModal');
+        const pausedModal = document.getElementById('pausedModal');
         const finalScoreEl = document.getElementById('finalScore');
         const endTitleEl = document.getElementById('endTitle');
         const endMsgEl = document.getElementById('endMsg');
@@ -614,7 +698,9 @@
         let isGameActive = false;
         let isPlayerTurn = true;
         let isTimerRunning = false;
+        let isPaused = false;
         let nextRoundStarter = 'P'; // 'P' for Player, 'A' for AI
+        let aiTimeoutId = null; // AI delay trigger tracker
 
         // --- 28 Winning Combinations (4 in-a-row on 5x5 board) ---
         const winConditions = [
@@ -812,9 +898,70 @@
 
         // --- Manage Score Modal ---
         function toggleRules(show) {
+            if (isPaused) return; // Ignore rule toggle when paused
             playSound('tap');
             if(show) rulesModal.classList.add('active');
             else rulesModal.classList.remove('active');
+        }
+
+        // --- Symmetrical Pause / Resume System Handler ---
+        function togglePause() {
+            // Block pause click if the timer has expired, score cap is reached, or rules modal is currently active
+            if (timeLeft <= 0 || rulesModal.classList.contains('active') || gameOverModal.classList.contains('active')) return;
+
+            isPaused = !isPaused;
+            const boardContainer = document.querySelector('.board-container');
+            const pauseText = document.getElementById('pause-text');
+            const pauseSvg = document.getElementById('pause-svg');
+
+            playSound('tap');
+
+            if (isPaused) {
+                // Halt active timer counting
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                isGameActive = false;
+
+                // Stop active AI scheduling queues
+                if (aiTimeoutId) {
+                    clearTimeout(aiTimeoutId);
+                }
+
+                // Blur and cover board container
+                boardContainer.classList.add('paused-blur');
+                pausedModal.classList.add('active');
+
+                // Adjust UI Pause Button Icon state (Show resume play triangle)
+                pauseText.textContent = "Resume";
+                pauseSvg.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+            } else {
+                // Tear down paused constraints
+                pausedModal.classList.remove('active');
+                boardContainer.classList.remove('paused-blur');
+
+                // Restore UI Pause Button Icon state (Show pause parallel bars)
+                pauseText.textContent = "Pause";
+                pauseSvg.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+
+                isGameActive = true;
+
+                // Resume countdown timer if game had already kicked off
+                if (timeLeft < TOTAL_TIME) {
+                    startTimer();
+                }
+
+                // Restore AI turn schedule if round state belongs to bot
+                if (!isPlayerTurn) {
+                    statusMsgEl.textContent = "AI is drafting a counterstrategy...";
+                    statusMsgEl.style.color = "#ffaa00";
+                    aiTimeoutId = setTimeout(() => {
+                        if (isGameActive && !isPaused) {
+                            aiMove();
+                            checkRoundResult('A');
+                        }
+                    }, 600);
+                }
+            }
         }
 
         // --- Initialization ---
@@ -831,8 +978,19 @@
             statusMsgEl.textContent = "Click any cell to begin!";
             statusMsgEl.style.color = "#ffcccc";
             gameOverModal.classList.remove('active');
+            pausedModal.classList.remove('active');
+            document.querySelector('.board-container').classList.remove('paused-blur');
             isTimerRunning = false;
+            isPaused = false;
+            
+            // Restore static pause button UI
+            document.getElementById('pause-text').textContent = "Pause";
+            document.getElementById('pause-svg').innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+
             clearInterval(timerInterval);
+            if (aiTimeoutId) {
+                clearTimeout(aiTimeoutId);
+            }
             nextRoundStarter = 'P'; // Always reset starter to Player on whole new game initialization
             resetBoard();
         }
@@ -869,7 +1027,7 @@
         boardElements.forEach(cell => {
             cell.addEventListener('click', () => {
                 const idx = cell.getAttribute('data-index');
-                if (!isGameActive || boardState[idx] !== "" || !isPlayerTurn) return;
+                if (!isGameActive || boardState[idx] !== "" || !isPlayerTurn || isPaused) return;
 
                 startTimer();
                 playSound('chime'); // Play Player Ruby placement chime
@@ -881,8 +1039,8 @@
                 statusMsgEl.textContent = "AI is drafting a counterstrategy...";
                 statusMsgEl.style.color = "#ffaa00";
 
-                setTimeout(() => {
-                    if (isGameActive) {
+                aiTimeoutId = setTimeout(() => {
+                    if (isGameActive && !isPaused) {
                         aiMove();
                         checkRoundResult('A');
                     }
@@ -1074,8 +1232,8 @@
                 statusMsgEl.style.color = "#ffaa00";
                 
                 // Let the AI take its turn automatically if it won the last round
-                setTimeout(() => {
-                    if (isGameActive) {
+                aiTimeoutId = setTimeout(() => {
+                    if (isGameActive && !isPaused) {
                         aiMove();
                         checkRoundResult('A');
                     }
@@ -1087,6 +1245,9 @@
         function endGame(titleStr) {
             isGameActive = false;
             clearInterval(timerInterval);
+            if (aiTimeoutId) {
+                clearTimeout(aiTimeoutId);
+            }
             
             endTitleEl.textContent = titleStr;
             finalScoreEl.textContent = score;

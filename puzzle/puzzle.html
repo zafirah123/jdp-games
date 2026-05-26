@@ -586,20 +586,208 @@
                 mainCharacter = `<ellipse cx="250" cy="270" rx="170" ry="50" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/>
                 <path d="M 150 260 C 150 140 350 140 350 260 Z" fill="#38bdf8" fill-opacity="0.8" stroke="#1e293b" stroke-width="8"/>
                 <circle cx="180" cy="270" r="10" fill="#fde047"/><circle cx="250" cy="270" r="10" fill="#fde047"/><circle cx="320" cy="270" r="10" fill="#fde047"/>`;
-            } else { // Generic dynamic geometric character patterns (Forms 16-49 uniquely)
-                const innerRadius = 80 + (subjectId % 30);
-                const polyPoints = [];
-                const sides = 5 + (subjectId % 6);
-                for (let s = 0; s < sides; s++) {
-                    const angle = (s * 2 * Math.PI) / sides - Math.PI / 2;
-                    const px = 250 + innerRadius * Math.cos(angle);
-                    const py = 250 + innerRadius * Math.sin(angle);
-                    polyPoints.push(`${px},${py}`);
-                }
-                mainCharacter = `<polygon points="${polyPoints.join(' ')}" fill="${accentColor}" stroke="#1E293B" stroke-width="10"/>
-                <circle cx="250" cy="250" r="45" fill="#FFFFFF" stroke="#1E293B" stroke-width="6"/>
-                <circle cx="250" cy="250" r="18" fill="#1E293B"/>
-                <circle cx="240" cy="240" r="6" fill="#FFFFFF"/>`;
+            } else if (subjectId === 16) { // Cute Cat
+                mainCharacter = `<circle cx="250" cy="270" r="120" fill="#f97316" stroke="#1e293b" stroke-width="8"/>
+                <polygon points="150,180 140,90 210,160" fill="#c2410c" stroke="#1e293b" stroke-width="6"/>
+                <polygon points="350,180 360,90 290,160" fill="#c2410c" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="200" cy="240" r="15" fill="#1e293b"/><circle cx="300" cy="240" r="15" fill="#1e293b"/>
+                <polygon points="250,275 235,260 265,260" fill="#f43f5e" stroke="#1e293b" stroke-width="4"/>
+                <path d="M 200 310 Q 250 350 300 310" fill="none" stroke="#1e293b" stroke-width="6" stroke-linecap="round"/>`;
+            } else if (subjectId === 17) { // Green Frog
+                mainCharacter = `<ellipse cx="250" cy="290" rx="150" ry="110" fill="#22c55e" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="170" cy="180" r="45" fill="#22c55e" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="170" cy="180" r="22" fill="#fff"/><circle cx="170" cy="180" r="10" fill="#000"/>
+                <circle cx="330" cy="180" r="45" fill="#22c55e" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="330" cy="180" r="22" fill="#fff"/><circle cx="330" cy="180" r="10" fill="#000"/>
+                <ellipse cx="250" cy="310" rx="100" ry="40" fill="#bbf7d0"/>
+                <path d="M 160 300 Q 250 380 340 300" fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>`;
+            } else if (subjectId === 18) { // Wise Owl
+                mainCharacter = `<ellipse cx="250" cy="280" rx="130" ry="140" fill="#a855f7" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="190" cy="220" r="38" fill="#fff" stroke="#1e293b" stroke-width="6"/><circle cx="190" cy="220" r="16" fill="#000"/>
+                <circle cx="310" cy="220" r="38" fill="#fff" stroke="#1e293b" stroke-width="6"/><circle cx="310" cy="220" r="16" fill="#000"/>
+                <polygon points="250,240 235,280 265,280" fill="#f59e0b" stroke="#1e293b" stroke-width="5"/>
+                <ellipse cx="250" cy="340" rx="80" ry="60" fill="#f3e8ff"/>`;
+            } else if (subjectId === 19) { // Ice Cream Cone
+                mainCharacter = `<polygon points="180,290 320,290 250,470" fill="#d97706" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 160 290 C 160 170 340 170 340 290 Z" fill="#ec4899" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 180 230 C 180 140 320 140 320 230 Z" fill="#38bdf8" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="250" cy="130" r="30" fill="#ef4444" stroke="#1e293b" stroke-width="6"/>`;
+            } else if (subjectId === 20) { // Rainbow & Cloud
+                mainCharacter = `<path d="M 100 350 A 150 150 0 0 1 400 350" fill="none" stroke="#ef4444" stroke-width="25"/>
+                <path d="M 125 350 A 125 125 0 0 1 375 350" fill="none" stroke="#f59e0b" stroke-width="25"/>
+                <path d="M 150 350 A 100 100 0 0 1 350 350" fill="none" stroke="#10b981" stroke-width="25"/>
+                <path d="M 175 350 A 75 75 0 0 1 325 350" fill="none" stroke="#3b82f6" stroke-width="25"/>
+                <circle cx="110" cy="340" r="50" fill="#fff"/><circle cx="160" cy="340" r="40" fill="#fff"/>
+                <circle cx="390" cy="340" r="50" fill="#fff"/><circle cx="340" cy="340" r="40" fill="#fff"/>`;
+            } else if (subjectId === 21) { // Little Honeybee
+                mainCharacter = `<ellipse cx="250" cy="270" rx="140" ry="95" fill="#facc15" stroke="#1e293b" stroke-width="8"/>
+                <rect x="180" y="178" width="25" height="184" fill="#1e293b"/>
+                <rect x="240" y="175" width="25" height="190" fill="#1e293b"/>
+                <rect x="290" y="178" width="25" height="184" fill="#1e293b"/>
+                <ellipse cx="210" cy="200" rx="35" ry="60" fill="#e2e8f0" stroke="#1e293b" stroke-width="6" transform="rotate(-30 210 200)"/>
+                <ellipse cx="290" cy="200" rx="35" ry="60" fill="#e2e8f0" stroke="#1e293b" stroke-width="6" transform="rotate(30 290 200)"/>
+                <circle cx="150" cy="250" r="10" fill="#000"/><circle cx="150" cy="290" r="10" fill="#000"/>`;
+            } else if (subjectId === 22) { // Red Ladybug
+                mainCharacter = `<circle cx="250" cy="280" r="130" fill="#ef4444" stroke="#1e293b" stroke-width="8"/>
+                <line x1="250" y1="150" x2="250" y2="410" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="250" cy="140" r="50" fill="#1e293b"/>
+                <circle cx="180" cy="220" r="18" fill="#1e293b"/><circle cx="320" cy="220" r="18" fill="#1e293b"/>
+                <circle cx="170" cy="310" r="22" fill="#1e293b"/><circle cx="330" cy="310" r="22" fill="#1e293b"/>
+                <line x1="220" y1="100" x2="180" y2="50" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+                <line x1="280" y1="100" x2="320" y2="50" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>`;
+            } else if (subjectId === 23) { // Butterfly
+                mainCharacter = `<ellipse cx="170" cy="220" rx="90" ry="110" fill="#a855f7" stroke="#1e293b" stroke-width="6"/>
+                <ellipse cx="330" cy="220" rx="90" ry="110" fill="#a855f7" stroke="#1e293b" stroke-width="6"/>
+                <ellipse cx="180" cy="320" rx="70" ry="80" fill="#ec4899" stroke="#1e293b" stroke-width="6"/>
+                <ellipse cx="320" cy="320" rx="70" ry="80" fill="#ec4899" stroke="#1e293b" stroke-width="6"/>
+                <ellipse cx="250" cy="270" rx="25" ry="140" fill="#facc15" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="250" cy="110" r="12" fill="#1e293b"/>`;
+            } else if (subjectId === 24) { // Penguin
+                mainCharacter = `<ellipse cx="250" cy="280" rx="120" ry="140" fill="#1e293b" stroke="#1e293b" stroke-width="4"/>
+                <ellipse cx="250" cy="290" rx="85" ry="110" fill="#fff"/>
+                <circle cx="210" cy="190" r="14" fill="#000"/><circle cx="290" cy="190" r="14" fill="#000"/>
+                <polygon points="250,210 235,235 265,235" fill="#f97316" stroke="#1e293b" stroke-width="4"/>
+                <ellipse cx="180" cy="390" rx="30" ry="15" fill="#f97316"/><ellipse cx="320" cy="390" rx="30" ry="15" fill="#f97316"/>`;
+            } else if (subjectId === 25) { // Fire Truck
+                mainCharacter = `<rect x="80" y="200" width="240" height="160" fill="#ef4444" stroke="#1e293b" stroke-width="8" rx="10"/>
+                <rect x="320" y="240" width="100" height="120" fill="#ef4444" stroke="#1e293b" stroke-width="8" rx="15"/>
+                <rect x="340" y="250" width="60" height="50" fill="#38bdf8" stroke="#1e293b" stroke-width="4"/>
+                <circle cx="150" cy="360" r="35" fill="#1e293b" stroke="#fff" stroke-width="6"/>
+                <circle cx="330" cy="360" r="35" fill="#1e293b" stroke="#fff" stroke-width="6"/>
+                <rect x="120" y="170" width="160" height="30" fill="#94a3b8" stroke="#1e293b" stroke-width="4"/>`;
+            } else if (subjectId === 26) { // Worm in Apple
+                mainCharacter = `<circle cx="250" cy="280" r="130" fill="#ea580c" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 230 150 Q 250 90 280 130" fill="none" stroke="#78350F" stroke-width="12" stroke-linecap="round"/>
+                <path d="M 270 120 Q 320 80 340 120 Z" fill="#22c55e" stroke="#1e293b" stroke-width="4"/>
+                <rect x="160" y="220" width="50" height="100" fill="#86efac" stroke="#1e293b" stroke-width="6" rx="25"/>
+                <circle cx="185" cy="245" r="5" fill="#000"/>`;
+            } else if (subjectId === 27) { // Submarine
+                mainCharacter = `<ellipse cx="250" cy="280" rx="160" ry="100" fill="#eab308" stroke="#1e293b" stroke-width="8"/>
+                <rect x="220" y="140" width="60" height="50" fill="#eab308" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 250 140 L 250 90 L 280 90" fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="170" cy="280" r="22" fill="#38bdf8" stroke="#1e293b" stroke-width="5"/>
+                <circle cx="250" cy="280" r="22" fill="#38bdf8" stroke="#1e293b" stroke-width="5"/>
+                <circle cx="330" cy="280" r="22" fill="#38bdf8" stroke="#1e293b" stroke-width="5"/>`;
+            } else if (subjectId === 28) { // Mushroom House
+                mainCharacter = `<rect x="180" y="270" width="140" height="150" fill="#fef3c7" stroke="#1e293b" stroke-width="8" rx="20"/>
+                <path d="M 110 270 Q 250 100 390 270 Z" fill="#ef4444" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="180" cy="190" r="20" fill="#fff"/><circle cx="250" cy="160" r="18" fill="#fff"/><circle cx="320" cy="200" r="22" fill="#fff"/>
+                <rect x="220" y="340" width="60" height="80" fill="#78350F" rx="5"/>`;
+            } else if (subjectId === 29) { // Volcano
+                mainCharacter = `<polygon points="100,430 400,430 330,220 170,220" fill="#4b5563" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 170 220 Q 250 300 330 220" fill="#ef4444" stroke="#1e293b" stroke-width="6"/>
+                <path d="M 210 220 L 250 80 L 290 220" fill="#f97316"/>`;
+            } else if (subjectId === 30) { // King Lion
+                mainCharacter = `<circle cx="250" cy="260" r="145" fill="#d97706" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="250" cy="260" r="110" fill="#fbbf24" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="200" cy="230" r="14" fill="#000"/><circle cx="300" cy="230" r="14" fill="#000"/>
+                <polygon points="250,280 230,260 270,260" fill="#78350F"/>
+                <path d="M 210 300 Q 250 340 290 300" fill="none" stroke="#1e293b" stroke-width="6"/>`;
+            } else if (subjectId === 31) { // Monkey
+                mainCharacter = `<circle cx="140" cy="220" r="38" fill="#78350F" stroke="#1e293b" stroke-width="6"/><circle cx="360" cy="220" r="38" fill="#78350F" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="250" cy="270" r="120" fill="#78350F" stroke="#1e293b" stroke-width="8"/>
+                <ellipse cx="250" cy="290" rx="90" ry="75" fill="#fbcfe8"/>
+                <circle cx="210" cy="230" r="14" fill="#000"/><circle cx="290" cy="230" r="14" fill="#000"/>
+                <path d="M 200 310 Q 250 360 300 310" fill="none" stroke="#1e293b" stroke-width="6"/>`;
+            } else if (subjectId === 32) { // Cute Panda
+                mainCharacter = `<circle cx="150" cy="150" r="50" fill="#000"/><circle cx="350" cy="150" r="50" fill="#000"/>
+                <circle cx="250" cy="270" r="135" fill="#fff" stroke="#000" stroke-width="10"/>
+                <ellipse cx="190" cy="240" rx="35" ry="50" fill="#000" transform="rotate(-20 190 240)"/>
+                <ellipse cx="310" cy="240" rx="35" ry="50" fill="#000" transform="rotate(20 310 240)"/>
+                <circle cx="190" cy="230" r="12" fill="#fff"/><circle cx="310" cy="230" r="12" fill="#fff"/>
+                <ellipse cx="250" cy="290" rx="20" ry="12" fill="#000"/>`;
+            } else if (subjectId === 33) { // Whale
+                mainCharacter = `<path d="M 80 300 Q 250 140 420 300 Q 300 380 80 300 Z" fill="#3b82f6" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 420 300 L 470 240 L 450 320 Z" fill="#3b82f6" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="160" cy="260" r="14" fill="#000"/>
+                <path d="M 230 180 Q 250 100 270 180" fill="none" stroke="#60a5fa" stroke-width="10" stroke-linecap="round"/>`;
+            } else if (subjectId === 34) { // Seahorse
+                mainCharacter = `<path d="M 220 100 Q 280 60 270 180 Q 220 220 280 280 T 220 420" fill="none" stroke="#f472b6" stroke-width="40" stroke-linecap="round"/>
+                <circle cx="250" cy="130" r="45" fill="#f472b6" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="260" cy="120" r="8" fill="#000"/>`;
+            } else if (subjectId === 35) { // Koala
+                mainCharacter = `<circle cx="140" cy="170" r="55" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/><circle cx="140" cy="170" r="30" fill="#fbcfe8"/>
+                <circle cx="360" cy="170" r="55" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/><circle cx="360" cy="170" r="30" fill="#fbcfe8"/>
+                <circle cx="250" cy="270" r="115" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/>
+                <ellipse cx="250" cy="260" rx="30" ry="45" fill="#1e293b"/>
+                <circle cx="195" cy="220" r="12" fill="#000"/><circle cx="305" cy="220" r="12" fill="#000"/>`;
+            } else if (subjectId === 36) { // Racing Car
+                mainCharacter = `<rect x="100" y="240" width="300" height="90" fill="#3b82f6" stroke="#1e293b" stroke-width="8" rx="20"/>
+                <path d="M 160 240 L 210 160 L 320 160 L 350 240 Z" fill="#cbd5e1" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="160" cy="330" r="38" fill="#1e293b" stroke="#fff" stroke-width="6"/>
+                <circle cx="340" cy="330" r="38" fill="#1e293b" stroke="#fff" stroke-width="6"/>`;
+            } else if (subjectId === 37) { // Toy Airplane
+                mainCharacter = `<ellipse cx="250" cy="250" rx="180" ry="50" fill="#f8fafc" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 210 210 L 250 80 L 290 210 Z" fill="#ef4444" stroke="#1e293b" stroke-width="6"/>
+                <path d="M 210 290 L 250 420 L 290 290 Z" fill="#ef4444" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="350" cy="250" r="16" fill="#38bdf8"/>`;
+            } else if (subjectId === 38) { // Magic Crown
+                mainCharacter = `<polygon points="100,380 400,380 400,240 325,310 250,150 175,310 100,240" fill="#facc15" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="100" cy="230" r="15" fill="#f43f5e"/><circle cx="250" cy="140" r="15" fill="#3b82f6"/><circle cx="400" cy="230" r="15" fill="#10b981"/>
+                <rect x="130" y="340" width="240" height="20" fill="#3b82f6" rx="5"/>`;
+            } else if (subjectId === 39) { // Squirrel & Acorn
+                mainCharacter = `<ellipse cx="250" cy="270" rx="110" ry="130" fill="#ea580c" stroke="#1e293b" stroke-width="8"/>
+                <polygon points="160,180 140,90 200,160" fill="#ea580c" stroke="#1e293b" stroke-width="6"/>
+                <polygon points="340,180 360,90 300,160" fill="#ea580c" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="210" cy="230" r="12" fill="#000"/><circle cx="290" cy="230" r="12" fill="#000"/>
+                <ellipse cx="250" cy="320" rx="50" ry="40" fill="#ffedd5"/>`;
+            } else if (subjectId === 40) { // Green Turtle
+                mainCharacter = `<circle cx="360" cy="250" r="45" fill="#4ade80" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="375" cy="240" r="8" fill="#000"/>
+                <ellipse cx="230" cy="270" rx="120" ry="95" fill="#15803d" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="160" cy="350" r="22" fill="#4ade80" stroke="#1e293b" stroke-width="5"/>
+                <circle cx="300" cy="350" r="22" fill="#4ade80" stroke="#1e293b" stroke-width="5"/>`;
+            } else if (subjectId === 41) { // Cute Fox
+                mainCharacter = `<polygon points="120,290 380,290 250,420" fill="#ea580c" stroke="#1e293b" stroke-width="8"/>
+                <polygon points="140,290 120,180 200,250" fill="#ea580c" stroke="#1e293b" stroke-width="6"/>
+                <polygon points="360,290 380,180 300,250" fill="#ea580c" stroke="#1e293b" stroke-width="6"/>
+                <polygon points="120,290 250,420 180,290" fill="#fff" stroke="#1e293b" stroke-width="4"/>
+                <polygon points="380,290 250,420 320,290" fill="#fff" stroke="#1e293b" stroke-width="4"/>
+                <circle cx="190" cy="270" r="12" fill="#000"/><circle cx="310" cy="270" r="12" fill="#000"/>
+                <circle cx="250" cy="410" r="15" fill="#000"/>`;
+            } else if (subjectId === 42) { // Fluffy Sheep
+                mainCharacter = `<rect x="180" y="320" width="30" height="90" fill="#000"/><rect x="290" y="320" width="30" height="90" fill="#000"/>
+                <circle cx="250" cy="240" r="110" fill="#e2e8f0" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="190" cy="200" r="30" fill="#e2e8f0"/><circle cx="250" cy="170" r="35" fill="#e2e8f0"/><circle cx="310" cy="200" r="30" fill="#e2e8f0"/>
+                <ellipse cx="250" cy="280" rx="45" ry="60" fill="#1e293b"/>
+                <circle cx="235" cy="265" r="8" fill="#fff"/><circle cx="265" cy="265" r="8" fill="#fff"/>`;
+            } else if (subjectId === 43) { // Trophy Cup
+                mainCharacter = `<polygon points="150,120 350,120 320,280 180,280" fill="#facc15" stroke="#1e293b" stroke-width="8"/>
+                <rect x="230" y="280" width="40" height="110" fill="#d97706" stroke="#1e293b" stroke-width="6"/>
+                <ellipse cx="250" cy="390" rx="90" ry="25" fill="#d97706" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 150 160 Q 90 200 180 240" fill="none" stroke="#facc15" stroke-width="12" stroke-linecap="round"/>
+                <path d="M 350 160 Q 410 200 320 240" fill="none" stroke="#facc15" stroke-width="12" stroke-linecap="round"/>`;
+            } else if (subjectId === 44) { // Saturn Planet
+                mainCharacter = `<circle cx="250" cy="250" r="110" fill="#f59e0b" stroke="#1e293b" stroke-width="8"/>
+                <ellipse cx="250" cy="250" rx="210" ry="35" fill="none" stroke="#38bdf8" stroke-width="18" transform="rotate(-15 250 250)"/>
+                <ellipse cx="250" cy="250" rx="180" ry="25" fill="none" stroke="#cbd5e1" stroke-width="8" transform="rotate(-15 250 250)"/>`;
+            } else if (subjectId === 45) { // Astronaut Helmet
+                mainCharacter = `<circle cx="250" cy="260" r="130" fill="#f8fafc" stroke="#1e293b" stroke-width="8"/>
+                <rect x="160" y="200" width="180" height="110" fill="#1e1b4b" stroke="#1e293b" stroke-width="6" rx="30"/>
+                <path d="M 180 220 Q 250 190 320 220" fill="none" stroke="#38bdf8" stroke-width="8" stroke-linecap="round"/>
+                <rect x="130" y="230" width="30" height="50" fill="#ef4444" rx="5"/>
+                <rect x="340" y="230" width="30" height="50" fill="#ef4444" rx="5"/>`;
+            } else if (subjectId === 46) { // Donut
+                mainCharacter = `<circle cx="250" cy="250" r="130" fill="#fbcfe8" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="250" cy="250" r="45" fill="#38BDF8" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="190" cy="180" r="8" fill="#3b82f6"/><circle cx="310" cy="180" r="8" fill="#ef4444"/><circle cx="220" cy="310" r="8" fill="#10b981"/><circle cx="300" cy="300" r="8" fill="#facc15"/>`;
+            } else if (subjectId === 47) { // Flower Garden
+                mainCharacter = `<rect x="235" y="240" width="30" height="200" fill="#22c55e" rx="5"/>
+                <circle cx="250" cy="200" r="75" fill="#ef4444" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="200" cy="160" r="40" fill="#facc15"/><circle cx="300" cy="160" r="40" fill="#facc15"/>
+                <circle cx="200" cy="240" r="40" fill="#facc15"/><circle cx="300" cy="240" r="40" fill="#facc15"/>
+                <circle cx="250" cy="200" r="35" fill="#78350F"/>`;
+            } else if (subjectId === 48) { // Cute Alien
+                mainCharacter = `<ellipse cx="250" cy="280" rx="140" ry="100" fill="#a855f7" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="250" cy="220" r="30" fill="#fff" stroke="#1e293b" stroke-width="5"/><circle cx="250" cy="220" r="12" fill="#000"/>
+                <circle cx="170" cy="250" r="22" fill="#fff" stroke="#1e293b" stroke-width="5"/><circle cx="170" cy="250" r="8" fill="#000"/>
+                <circle cx="330" cy="250" r="22" fill="#fff" stroke="#1e293b" stroke-width="5"/><circle cx="330" cy="250" r="8" fill="#000"/>
+                <path d="M 200 320 Q 250 360 300 320" fill="none" stroke="#1e293b" stroke-width="6" stroke-linecap="round"/>`;
+            } else { // 49. Castle Tower
+                mainCharacter = `<rect x="170" y="180" width="160" height="250" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/>
+                <polygon points="150,180 250,60 350,180" fill="#f43f5e" stroke="#1e293b" stroke-width="8"/>
+                <rect x="220" y="320" width="60" height="110" fill="#78350F" rx="5"/>
+                <circle cx="250" cy="240" r="25" fill="#38bdf8" stroke="#1e293b" stroke-width="5"/>`;
             }
 
             // Return synthesized standalone structured raw SVG string converted to safe URI format

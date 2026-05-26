@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juara Digital Puzzle - Infinity Mode</title>
+    <title>Puzzle Block - Infinite Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
         
         body {
             font-family: 'Nunito', sans-serif;
-            /* Latar belakang terinspirasi dari gambar Juara Digital (merah gelap dan ungu) */
+            /* Crimson red and dark violet background palette */
             background: radial-gradient(circle at center, #8B0000 0%, #3a0000 50%, #110022 100%);
             color: white;
             min-height: 100vh;
@@ -53,7 +53,7 @@
             z-index: 20;
         }
 
-        /* Dekorasi permata merah */
+        /* Red gems decoration styling */
         .gem {
             filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
         }
@@ -65,7 +65,7 @@
             gap: 1.5px;
             background-color: rgba(0, 0, 0, 0.5);
             padding: 3px;
-            /* Menggunakan ukuran viewport fluid agar muat di semua skrin telefon */
+            /* Fluid dimensions to dynamically adjust to any mobile screen size */
             width: min(88vw, 440px);
             height: min(88vw, 440px);
         }
@@ -75,7 +75,7 @@
             height: min(28vw, 130px);
         }
 
-        /* Penyesuaian ukuran papan pada tablet dan desktop */
+        /* Dimension scaling for tablets and desktops */
         @media (min-width: 768px) {
             #board {
                 width: 450px;
@@ -89,7 +89,7 @@
             }
         }
 
-        /* Animasi teks melayang saat pusingan selesai */
+        /* Fade floating animation when a round is solved */
         @keyframes floatUp {
             0% { transform: translateY(20px); opacity: 0; }
             50% { opacity: 1; }
@@ -103,392 +103,257 @@
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-4">
 
-    <!-- Bagian Header -->
+    <!-- Header Section -->
     <div class="text-center mb-4 sm:mb-6 mt-2 relative w-full max-w-2xl">
         <div class="absolute top-0 left-4 text-3xl gem hidden lg:block">💎</div>
         <div class="absolute top-0 right-4 text-3xl gem hidden lg:block">💎</div>
-        <h1 id="titleHeading" class="text-3xl sm:text-5xl md:text-6xl title-font text-gold mb-1 sm:mb-2 tracking-wide uppercase">Juara Digital</h1>
-        <h2 id="subtitleHeading" class="text-sm sm:text-lg md:text-2xl font-bold text-yellow-200 uppercase tracking-widest bg-black/40 inline-block px-4 sm:px-6 py-1 rounded-full border border-yellow-500/50">Infinity Challenge 5x5</h2>
+        <h1 class="text-4xl sm:text-5xl md:text-6xl title-font text-gold mb-1 sm:mb-2 tracking-wide uppercase">Puzzle Block</h1>
     </div>
 
-    <!-- Wadah Utama Game -->
+    <!-- Main Game Container -->
     <div id="gameContainer" class="w-full max-w-5xl flex flex-col items-center">
         
-        <!-- Bar Statistik Game (Sekarang fleksibel & rapi di telefon pintar) -->
-        <div class="flex items-center justify-between sm:justify-center gap-2 sm:gap-8 md:gap-12 bg-black/50 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-3 rounded-full gold-border mb-4 sm:mb-6 w-full max-w-xl text-xs sm:text-base md:text-xl">
+        <!-- Game Stats Bar -->
+        <div class="flex items-center justify-between sm:justify-center gap-2 sm:gap-6 md:gap-12 bg-black/50 backdrop-blur-sm px-4 sm:px-8 py-2 sm:py-3 rounded-full gold-border mb-4 sm:mb-6 w-full max-w-2xl text-xs sm:text-base md:text-xl relative">
             <div class="flex items-center gap-1 sm:gap-2">
-                <span id="hudRoundLabel" class="text-gray-300">Round:</span>
+                <span class="text-gray-300 font-bold">Round:</span>
                 <span id="roundDisplay" class="text-blue-400 font-bold">1</span>
             </div>
             <div class="h-6 w-px bg-yellow-500/50"></div>
             <div class="flex items-center gap-1 sm:gap-2">
-                <span id="hudTimeLabel" class="text-gray-300">Time:</span>
+                <span class="text-gray-300 font-bold">Time:</span>
                 <span id="timerDisplay" class="text-red-400 font-mono tracking-wider font-bold">03:00</span>
             </div>
             <div class="h-6 w-px bg-yellow-500/50"></div>
             <div class="flex items-center gap-1 sm:gap-2">
-                <span id="hudScoreLabel" class="text-gray-300">Score:</span>
+                <span class="text-gray-300 font-bold">Score:</span>
                 <span id="scoreDisplay" class="text-yellow-400 font-mono font-bold">0</span>
+            </div>
+            
+            <!-- Pause & Mute Buttons inside Stats Bar -->
+            <div id="pauseBtnContainer" class="hidden h-full flex items-center ml-1 sm:ml-4 gap-2">
+                <div class="h-6 w-px bg-yellow-500/50 mr-1 sm:mr-3"></div>
+                <!-- Mute/Unmute Audio Button -->
+                <button id="muteBtn" onclick="toggleMute()" class="p-1 sm:p-2 rounded-full border border-yellow-500 hover:bg-yellow-500/10 active:scale-95 transition-all text-yellow-400" title="Mute Audio">
+                    <svg id="muteIcon" class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                    </svg>
+                </button>
+                <!-- Pause Button -->
+                <button id="pauseBtn" onclick="pauseGame()" class="p-1 sm:p-2 rounded-full border border-yellow-500 hover:bg-yellow-500/10 active:scale-95 transition-all text-yellow-400" title="Pause Game">
+                    <!-- SVG Pause Icon -->
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                </button>
             </div>
         </div>
 
-        <!-- Area Bermain (Menjadi kolum di telefon, baris di desktop) -->
+        <!-- Play Area -->
         <div class="flex flex-col md:flex-row items-center justify-center gap-4 sm:gap-8 w-full">
             
-            <!-- Gambar Rujukan -->
+            <!-- Reference Image -->
             <div class="flex flex-row md:flex-col items-center justify-center gap-3 md:gap-2 bg-black/40 p-2 sm:p-3 rounded-xl border border-red-900/50 w-full max-w-[340px] md:max-w-xs">
                 <div class="flex flex-col items-center">
-                    <span id="referenceLabel" class="text-yellow-400 font-bold mb-1 tracking-wide uppercase text-[10px] sm:text-xs">Reference Image</span>
+                    <span class="text-yellow-400 font-bold mb-1 tracking-wide uppercase text-[10px] sm:text-xs">Reference</span>
                     <div id="referenceImg" class="rounded-lg gold-border bg-cover bg-center"></div>
                 </div>
                 <div class="flex-1 md:flex-initial text-left md:text-center">
-                    <p id="referenceInstruction" class="text-[11px] sm:text-xs text-gray-300 leading-tight">
-                        Tap pieces on the board to swap their positions and assemble the picture!
+                    <p class="text-[11px] sm:text-xs text-gray-300 leading-tight font-semibold">
+                        Tap pieces on the board to swap their positions and complete the illustration!
                     </p>
                 </div>
             </div>
 
-            <!-- Area Papan Puzzle -->
+            <!-- Puzzle Board Area -->
             <div class="relative">
-                <!-- Tampilan Skrin Mula (Overlay) -->
-                <div id="startOverlay" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 rounded-lg gold-border backdrop-blur-sm p-4 text-center">
-                    <h3 id="startHeading" class="text-lg sm:text-2xl title-font text-yellow-400 mb-2 sm:mb-4">Infinity Challenge!</h3>
-                    <p id="startInstructions" class="text-[11px] sm:text-sm max-w-xs mb-4 sm:mb-6 text-gray-200 leading-relaxed">
-                        Solve as many pictures as you can in <strong class="text-yellow-300">3 Minutes</strong>.<br>
-                        Each completed round awards <strong class="text-green-300">+50 Bonus Score</strong>!<br>
-                        Aim for a high score!
+                <!-- Start Overlay Display (Extremely Clean & Minimalist) -->
+                <div id="startOverlay" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-30 rounded-lg gold-border backdrop-blur-sm p-6 text-center">
+                    <p class="text-xs sm:text-sm max-w-xs mb-6 text-gray-300 font-bold tracking-wide">
+                        Swap scrambled blocks to complete the illustration before the 3-minute timer runs out!
                     </p>
-                    <button id="startBtn" onclick="startGame()" class="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-b from-yellow-300 to-yellow-600 text-red-950 font-bold text-base sm:text-xl rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,215,0,0.4)] border border-white/30 uppercase">
-                        START GAME
+                    
+                    <!-- START BUTTON -->
+                    <button onclick="startGame()" class="relative flex items-center justify-between w-full max-w-[280px] sm:max-w-[320px] px-6 py-3 bg-gradient-to-r from-[#FFEB60] to-[#FDBE15] rounded-full border-b-[5px] border-[#C28C00] shadow-[0_6px_15px_rgba(0,0,0,0.4)] hover:brightness-105 active:border-b-2 active:translate-y-[3px] transition-all group">
+                        <!-- Left Bar Chart Wireframe Icon -->
+                        <svg class="w-6 h-6 sm:w-7 sm:h-7 text-[#A01616]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="4.5" height="9" rx="0.5"></rect>
+                            <rect x="9.75" y="5" width="4.5" height="15" rx="0.5"></rect>
+                            <rect x="16.5" y="13" width="4.5" height="7" rx="0.5"></rect>
+                        </svg>
+                        
+                        <!-- Premium Red Game Text -->
+                        <span class="text-[#A01616] font-[800] text-lg sm:text-xl tracking-wide flex-1 text-center font-sans">Start Game</span>
+                        
+                        <!-- Right Dark Circular Arrow Icon -->
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-b from-[#A01616] to-[#120038] flex items-center justify-center shadow-[inset_0_1px_3px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.3)]">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <!-- Elegant Rules Trigger Button -->
+                    <button onclick="showRules()" class="mt-5 px-6 py-2 bg-transparent text-yellow-300 font-bold rounded-full border border-yellow-500 hover:bg-yellow-500/10 active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider">
+                        📜 Game Rules
                     </button>
                 </div>
 
-                <!-- Notifikasi Terapung Apabila Pusingan Selesai -->
+                <!-- Pause Overlay Display -->
+                <div id="pauseOverlay" class="hidden absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-30 rounded-lg gold-border backdrop-blur-sm p-6 text-center">
+                    <h3 class="text-2xl sm:text-3xl title-font text-gold mb-6 uppercase tracking-widest animate-pulse">Game Paused</h3>
+                    
+                    <!-- RESUME BUTTON -->
+                    <button onclick="resumeGame()" class="relative flex items-center justify-between w-full max-w-[260px] px-6 py-3 bg-gradient-to-r from-[#FFEB60] to-[#FDBE15] rounded-full border-b-[5px] border-[#C28C00] shadow-[0_6px_15px_rgba(0,0,0,0.4)] hover:brightness-105 active:border-b-2 active:translate-y-[3px] transition-all group">
+                        <!-- Play Icon -->
+                        <svg class="w-6 h-6 text-[#A01616]" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        
+                        <!-- Resume Text -->
+                        <span class="text-[#A01616] font-[800] text-lg sm:text-xl tracking-wide flex-1 text-center font-sans">Resume</span>
+                        
+                        <!-- Arrow Circle -->
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-b from-[#A01616] to-[#120038] flex items-center justify-center shadow-[inset_0_1px_3px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.3)]">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Floating Success Prompt -->
                 <div id="roundCompleteNotice" class="hidden absolute inset-0 flex items-center justify-center z-20 pointer-events-none p-4">
                     <div class="bg-black/95 text-yellow-400 gold-border px-4 py-3 sm:px-6 sm:py-4 rounded-2xl text-center shadow-2xl animate-pulse max-w-[240px]">
-                        <h4 id="roundCompleteHeading" class="text-lg sm:text-2xl title-font uppercase">Round Complete!</h4>
-                        <p id="roundCompleteBonus" class="text-green-400 font-bold text-sm sm:text-lg">+50 Bonus Score!</p>
-                        <p id="roundCompleteNext" class="text-gray-300 text-[10px] sm:text-xs mt-1">Get ready for the next picture...</p>
+                        <h4 class="text-lg sm:text-2xl title-font uppercase">Round Cleared!</h4>
+                        <p id="roundCompleteBonusText" class="text-green-400 font-bold text-sm sm:text-lg">Round Complete!</p>
+                        <p class="text-gray-300 text-[10px] sm:text-xs mt-1">Get ready for the next image...</p>
                     </div>
                 </div>
                 
                 <div id="board" class="rounded-lg gold-border shadow-2xl relative overflow-hidden">
-                    <!-- Kepingan puzzle akan dibuat di sini secara dinamis -->
+                    <!-- Puzzle pieces are generated dynamically here -->
                 </div>
             </div>
             
         </div>
     </div>
 
-    <!-- Modal Game Over -->
+    <!-- Game Over Modal -->
     <div id="gameOverModal" class="hidden fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 backdrop-blur-md p-4">
         <div class="bg-gradient-to-b from-red-900 to-[#110022] p-6 sm:p-10 rounded-3xl gold-border text-center text-white max-w-sm sm:max-w-md w-full relative overflow-hidden">
             <div class="absolute top-[-20px] right-[-20px] text-5xl opacity-10">💎</div>
             <div class="absolute bottom-[-20px] left-[-20px] text-5xl opacity-10">💎</div>
             
             <h2 id="modalTitle" class="text-3xl sm:text-4xl title-font text-yellow-400 mb-1 mt-2 drop-shadow-lg">TIME'S UP!</h2>
-            <p id="modalMsg" class="text-sm sm:text-lg text-gray-300 mb-4 sm:mb-6">Great job! You collected lots of score.</p>
-
+            <p id="modalMsg" class="text-sm sm:text-lg text-gray-300 mb-4 sm:mb-6 font-semibold">Fantastic effort! You've gathered an impressive score.</p>
+            
             <div class="bg-black/50 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 border border-yellow-500/30">
-                <p id="finalScoreLabel" class="text-xs sm:text-sm mb-1 text-gray-400 uppercase tracking-widest">Your Total Score</p>
+                <p class="text-xs sm:text-sm mb-1 text-gray-400 uppercase tracking-widest font-bold">Your Total Score</p>
                 <p class="text-4xl sm:text-6xl title-font text-white drop-shadow-[0_0_15px_rgba(255,215,0,0.8)]"><span id="finalScoreText">0</span></p>
                 <p id="scoreEvaluation" class="text-xs sm:text-sm mt-3 font-bold"></p>
             </div>
+            
+            <!-- Game Over Play Again Button (Using matching premium style) -->
+            <button onclick="closeModalAndReset()" class="relative flex items-center justify-between w-full max-w-[280px] sm:max-w-[320px] mx-auto px-6 py-3 bg-gradient-to-r from-[#FFEB60] to-[#FDBE15] rounded-full border-b-[5px] border-[#C28C00] shadow-[0_6px_15px_rgba(0,0,0,0.4)] hover:brightness-105 active:border-b-2 active:translate-y-[3px] transition-all group">
+                <!-- Left Play Icon -->
+                <svg class="w-6 h-6 text-[#A01616]" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                
+                <!-- Play Again Text -->
+                <span class="text-[#A01616] font-[800] text-lg sm:text-xl tracking-wide flex-1 text-center font-sans">Play Again</span>
+                
+                <!-- Circular Icon Wrapper -->
+                <div class="w-8 h-8 rounded-full bg-gradient-to-b from-[#A01616] to-[#120038] flex items-center justify-center shadow-[inset_0_1px_3px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.3)]">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+            </button>
+        </div>
+    </div>
 
-            <button id="playAgainBtn" onclick="closeModalAndReset()" class="w-full py-3 sm:py-4 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 text-red-950 font-bold text-base sm:text-xl rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,215,0,0.5)] uppercase tracking-wider">
-                Play Again
+    <!-- Rules Modal Container -->
+    <div id="rulesModal" class="hidden fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 backdrop-blur-md p-4">
+        <div class="bg-gradient-to-b from-red-900 to-[#110022] p-6 sm:p-8 rounded-3xl gold-border text-center text-white max-w-sm sm:max-w-md w-full relative overflow-hidden shadow-2xl">
+            <div class="absolute top-[-20px] right-[-20px] text-5xl opacity-10">💎</div>
+            <div class="absolute bottom-[-20px] left-[-20px] text-5xl opacity-10">💎</div>
+
+            <h3 class="text-2xl sm:text-3xl title-font text-yellow-400 mb-4 uppercase drop-shadow-md">Game Rules</h3>
+            
+            <div class="text-left text-xs sm:text-sm space-y-3 mb-6 text-gray-200 leading-relaxed max-h-[60vh] overflow-y-auto px-1">
+                <div class="flex gap-2">
+                    <span class="text-yellow-400 font-bold">1.</span>
+                    <p><strong>Goal:</strong> Swap scrambled block pieces to complete the cartoon reference picture.</p>
+                </div>
+                <div class="flex gap-2">
+                    <span class="text-yellow-400 font-bold">2.</span>
+                    <p><strong>How to Play:</strong> Tap any piece on the grid to select it, then tap another unlocked piece to swap their positions.</p>
+                </div>
+                <div class="flex gap-2">
+                    <span class="text-yellow-400 font-bold">3.</span>
+                    <p><strong>Auto-Locking:</strong> Once a piece is aligned into its correct position, it will automatically lock in place, glow with a golden border, and cannot be swapped again.</p>
+                </div>
+                <div class="flex gap-2">
+                    <span class="text-yellow-400 font-bold">4.</span>
+                    <p><strong>Scoring:</strong> Earn points for every single block piece you correctly lock into its correct position!</p>
+                </div>
+                <div class="flex gap-2">
+                    <span class="text-yellow-400 font-bold">5.</span>
+                    <p><strong>Time Limit:</strong> You have exactly <strong>3 minutes (180s)</strong>. Beat the timer and see how high you can score!</p>
+                </div>
+            </div>
+
+            <button onclick="closeRules()" class="w-full py-3 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 text-red-950 font-bold text-base sm:text-lg rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_4px_12px_rgba(255,215,0,0.3)] uppercase tracking-wider">
+                Got It!
             </button>
         </div>
     </div>
 
     <script>
-        // i18n — English default, ?lang=ms switches to Bahasa Melayu (per CLAUDE.md §6.4)
-        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
-        const COPY = {
-            en: {
-                start: 'START GAME',
-                timeUp: "TIME'S UP!",
-                gameOver: 'GAME OVER',
-                audioOn: 'AUDIO ON',
-                audioOff: 'AUDIO OFF',
-                pageTitle: 'Juara Digital Puzzle - Infinity Mode',
-                titleHeading: 'Juara Digital',
-                subtitleHeading: 'Infinity Challenge 5x5',
-                hudRound: 'Round:',
-                hudTime: 'Time:',
-                hudScore: 'Score:',
-                referenceLabel: 'Reference Image',
-                referenceInstruction: 'Tap pieces on the board to swap their positions and assemble the picture!',
-                startHeading: 'Infinity Challenge!',
-                startInstructionsHTML: 'Solve as many pictures as you can in <strong class="text-yellow-300">3 Minutes</strong>.<br>Each completed round awards <strong class="text-green-300">+50 Bonus Score</strong>!<br>Aim for a high score!',
-                roundCompleteHeading: 'Round Complete!',
-                roundCompleteBonus: '+50 Bonus Score!',
-                roundCompleteNext: 'Get ready for the next picture...',
-                modalMsgHigh: 'Amazing! You are a true Juara Digital!',
-                modalMsgMid: 'Very good! You almost reached the top score!',
-                modalMsgLow: 'Good effort! Try again to sharpen your skills.',
-                evalHigh: 'OUTSTANDING! A fantastic final score!',
-                evalMid: 'GREAT WORK! Just a little more next time!',
-                evalLow: 'Keep practising to push your score higher!',
-                finalScoreLabel: 'Your Total Score',
-                playAgain: 'Play Again',
-            },
-            ms: {
-                start: 'MULA MAIN',
-                timeUp: 'MASA TAMAT!',
-                gameOver: 'PERMAINAN TAMAT',
-                audioOn: 'AUDIO ON',
-                audioOff: 'AUDIO OFF',
-                pageTitle: 'Juara Digital Puzzle - Mod Infiniti',
-                titleHeading: 'Juara Digital',
-                subtitleHeading: 'Cabaran Infiniti 5x5',
-                hudRound: 'Pusingan:',
-                hudTime: 'Masa:',
-                hudScore: 'Skor:',
-                referenceLabel: 'Gambar Rujukan',
-                referenceInstruction: 'Ketik kepingan pada papan untuk saling menukar kedudukan dan menyusun gambar!',
-                startHeading: 'Cabaran Infiniti!',
-                startInstructionsHTML: 'Selesaikan gambar seberapa banyak yang boleh dalam masa <strong class="text-yellow-300">3 Minit</strong>.<br>Setiap pusingan selesai memberikan <strong class="text-green-300">+50 Skor Bonus</strong>!<br>Jom kumpul skor setinggi mungkin!',
-                roundCompleteHeading: 'Pusingan Selesai!',
-                roundCompleteBonus: '+50 Skor Bonus!',
-                roundCompleteNext: 'Sedia untuk gambar seterusnya...',
-                modalMsgHigh: 'Hebat sekali! Anda adalah Juara Digital Sebenar!',
-                modalMsgMid: 'Sangat bagus! Anda hampir mencapai skor tertinggi!',
-                modalMsgLow: 'Usaha yang baik! Cuba lagi untuk mengasah kemahiran anda.',
-                evalHigh: 'LUAR BIASA! Skor akhir yang menakjubkan!',
-                evalMid: 'SANGAT BAGUS! Sikit lagi lain kali!',
-                evalLow: 'Terus mencuba untuk meningkatkan skor anda!',
-                finalScoreLabel: 'Jumlah Skor Anda',
-                playAgain: 'Main Semula',
-            },
-        }[LANG];
-
-        // Apply translations to the DOM on load
-        function applyCopy() {
-            document.documentElement.lang = LANG;
-            document.title = COPY.pageTitle;
-            document.getElementById('titleHeading').textContent = COPY.titleHeading;
-            document.getElementById('subtitleHeading').textContent = COPY.subtitleHeading;
-            document.getElementById('hudRoundLabel').textContent = COPY.hudRound;
-            document.getElementById('hudTimeLabel').textContent = COPY.hudTime;
-            document.getElementById('hudScoreLabel').textContent = COPY.hudScore;
-            document.getElementById('referenceLabel').textContent = COPY.referenceLabel;
-            document.getElementById('referenceInstruction').textContent = COPY.referenceInstruction;
-            document.getElementById('startHeading').textContent = COPY.startHeading;
-            document.getElementById('startInstructions').innerHTML = COPY.startInstructionsHTML;
-            document.getElementById('startBtn').textContent = COPY.start;
-            document.getElementById('roundCompleteHeading').textContent = COPY.roundCompleteHeading;
-            document.getElementById('roundCompleteBonus').textContent = COPY.roundCompleteBonus;
-            document.getElementById('roundCompleteNext').textContent = COPY.roundCompleteNext;
-            document.getElementById('finalScoreLabel').textContent = COPY.finalScoreLabel;
-            document.getElementById('playAgainBtn').textContent = COPY.playAgain;
-            // Default the modal title to TIME'S UP — endGame() will override for non-timer endings if needed
-            document.getElementById('modalTitle').textContent = COPY.timeUp;
-        }
-
         const GRID_SIZE = 5;
         const TOTAL_PIECES = GRID_SIZE * GRID_SIZE;
         const MAX_TIME = 180; // 3 minutes in seconds
         
-        let boardState = []; // Menyimpan indeks kedudukan kepingan sekarang
-        let isLocked = []; // Bernilai true jika kepingan berada di kedudukan yang betul
+        let boardState = []; // Stores the current position of pieces
+        let isLocked = []; // Stores true if piece is in the correct position
         let score = 0;
         let round = 1;
         let timeLeft = MAX_TIME;
         let timerInterval = null;
         let isPlaying = false;
-        let isTransitioning = false; // Mencegah klik semasa peralihan pusingan berjalan
+        let isPaused = false; // Tracks if the game is currently paused
+        let isMuted = false; // Tracks if the game audio is muted
+        let isTransitioning = false; // Prevents clicks during round transitions
         let selectedIndex = null;
         let currentImageUrl = '';
         let lastImageIndex = -1;
+
+        // Web Audio API Context variables
+        let audioCtx = null;
 
         const boardEl = document.getElementById('board');
         const timerDisplay = document.getElementById('timerDisplay');
         const scoreDisplay = document.getElementById('scoreDisplay');
         const roundDisplay = document.getElementById('roundDisplay');
         const startOverlay = document.getElementById('startOverlay');
+        const pauseOverlay = document.getElementById('pauseOverlay');
+        const pauseBtnContainer = document.getElementById('pauseBtnContainer');
         const referenceImg = document.getElementById('referenceImg');
         const gameOverModal = document.getElementById('gameOverModal');
         const roundCompleteNotice = document.getElementById('roundCompleteNotice');
+        const roundCompleteBonusText = document.getElementById('roundCompleteBonusText');
+        const rulesModal = document.getElementById('rulesModal');
 
-        // Ilustrasi Vektor SVG dengan latar belakang bercorak padat (Tanpa ruang kosong)
-        const vectorIllustrations = [
-            // 1. Matahari Tersenyum + Garis Grid Halus + Awan Sudut + Pelangi Melengkung
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-                <defs>
-                    <pattern id="gridPattern1" width="50" height="50" patternUnits="userSpaceOnUse">
-                        <path d="M 50 0 L 0 50 M 0 0 L 50 50" fill="none" stroke="#e0f2fe" stroke-width="2"/>
-                    </pattern>
-                </defs>
-                <rect width="500" height="500" fill="#38BDF8"/>
-                <rect width="500" height="500" fill="url(#gridPattern1)" />
-                <circle cx="250" cy="500" r="400" fill="none" stroke="#f43f5e" stroke-width="20" opacity="0.6" />
-                <circle cx="250" cy="500" r="380" fill="none" stroke="#fbbf24" stroke-width="20" opacity="0.6" />
-                <circle cx="250" cy="500" r="360" fill="none" stroke="#34d399" stroke-width="20" opacity="0.6" />
-                <circle cx="250" cy="500" r="340" fill="none" stroke="#60a5fa" stroke-width="20" opacity="0.6" />
-                <circle cx="250" cy="250" r="110" fill="#FBBF24" stroke="#F97316" stroke-width="10"/>
-                <path d="M 250 50 L 250 110 M 250 390 L 250 450 M 50 250 L 110 250 M 390 250 L 450 250 M 108 108 L 151 151 M 349 349 L 392 392 M 108 349 L 151 309 M 349 108 L 392 151" stroke="#F97316" stroke-width="12" stroke-linecap="round" />
-                <circle cx="210" cy="225" r="14" fill="#1E293B"/>
-                <circle cx="290" cy="225" r="14" fill="#1E293B"/>
-                <circle cx="205" cy="218" r="5" fill="#FFFFFF"/>
-                <circle cx="285" cy="218" r="5" fill="#FFFFFF"/>
-                <path d="M 200 270 Q 250 325 300 270" fill="none" stroke="#1E293B" stroke-width="10" stroke-linecap="round"/>
-                <path d="M 30 150 Q 60 120 100 150 Q 140 120 180 150 L 30 150 Z" fill="#FFFFFF" />
-                <path d="M 320 400 Q 350 370 390 400 Q 430 370 470 400 L 320 400 Z" fill="#FFFFFF" />
-                <path d="M 320 120 Q 350 90 390 120 Q 430 90 470 120 L 320 120 Z" fill="#FFFFFF" />
-                <path d="M 30 420 Q 60 390 100 420 Q 140 390 180 420 L 30 420 Z" fill="#FFFFFF" />
-            </svg>`,
-            // 2. Roket Luar Angkasa + Grid Indigo + Planet Penjuru + Bintang Terang
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-                <defs>
-                    <linearGradient id="spaceGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#0F172A" />
-                        <stop offset="50%" stop-color="#1E1B4B" />
-                        <stop offset="100%" stop-color="#311042" />
-                    </linearGradient>
-                    <pattern id="spaceGrid" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <rect width="100" height="100" fill="none" stroke="#3730a3" stroke-width="1.5" opacity="0.4"/>
-                    </pattern>
-                </defs>
-                <rect width="500" height="500" fill="url(#spaceGrad)"/>
-                <rect width="500" height="500" fill="url(#spaceGrid)"/>
-                <circle cx="80" cy="80" r="30" fill="#ec4899" stroke="#f472b6" stroke-width="4"/>
-                <circle cx="420" cy="100" r="40" fill="#06b6d4" stroke="#22d3ee" stroke-width="4"/>
-                <circle cx="100" cy="400" r="25" fill="#eab308" stroke="#fde047" stroke-width="4"/>
-                <circle cx="400" cy="400" r="35" fill="#8b5cf6" stroke="#a78bfa" stroke-width="4"/>
-                <ellipse cx="400" cy="400" rx="55" ry="12" fill="none" stroke="#ddd6fe" stroke-width="6" transform="rotate(-15 400 400)" />
-                <path d="M 210 390 L 250 470 L 290 390 Z" fill="#EA580C"/>
-                <path d="M 225 390 L 250 440 L 275 390 Z" fill="#FBBF24"/>
-                <path d="M 170 350 L 210 300 L 210 370 Z" fill="#991B1B" stroke="#FBBF24" stroke-width="5"/>
-                <path d="M 330 350 L 290 300 L 290 370 Z" fill="#991B1B" stroke="#FBBF24" stroke-width="5"/>
-                <path d="M 210 360 L 210 180 Q 250 70 290 180 L 290 360 Z" fill="#F8FAFC" stroke="#1E293B" stroke-width="8"/>
-                <path d="M 210 180 Q 250 70 290 180 Z" fill="#991B1B" stroke="#FBBF24" stroke-width="5"/>
-                <circle cx="250" cy="230" r="28" fill="#38BDF8" stroke="#1E293B" stroke-width="6"/>
-                <circle cx="240" cy="220" r="7" fill="#FFFFFF" opacity="0.8"/>
-                <polygon points="150,50 153,58 162,58 155,63 157,72 150,66 143,72 145,63 138,58 147,58" fill="#fff" />
-                <polygon points="350,80 353,88 362,88 355,93 357,102 350,96 343,102 345,93 338,88 347,88" fill="#fff" />
-                <polygon points="120,300 123,308 132,308 125,313 127,322 120,316 113,322 115,313 108,308 117,308" fill="#fff" />
-                <polygon points="380,300 383,308 392,308 385,313 387,322 380,316 373,322 375,313 368,308 377,308" fill="#fff" />
-            </svg>`,
-            // 3. Ikan Laut Dalam + Ombak + Rumput Laut Padat + Karang + Bintang Laut
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-                <defs>
-                    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#0284C7" />
-                        <stop offset="100%" stop-color="#0c4a6e" />
-                    </linearGradient>
-                    <pattern id="wavePattern" width="100" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 0 20 Q 25 10 50 20 T 100 20" fill="none" stroke="#0ea5e9" stroke-width="4" opacity="0.4" />
-                    </pattern>
-                </defs>
-                <rect width="500" height="500" fill="url(#oceanGrad)"/>
-                <rect width="500" height="500" fill="url(#wavePattern)"/>
-                <path d="M 0 500 L 500 500 L 500 450 Q 400 420 300 460 T 100 430 Q 50 470 0 450 Z" fill="#78350F" />
-                <path d="M 40 500 Q 10 380 60 280 T 30 80" fill="none" stroke="#16A34A" stroke-width="16" stroke-linecap="round"/>
-                <path d="M 440 500 Q 470 390 420 290 T 450 110" fill="none" stroke="#16A34A" stroke-width="14" stroke-linecap="round"/>
-                <path d="M 120 500 Q 150 410 110 320 T 130 180" fill="none" stroke="#15803d" stroke-width="10" stroke-linecap="round"/>
-                <path d="M 370 500 Q 340 420 380 340 T 360 200" fill="none" stroke="#15803d" stroke-width="10" stroke-linecap="round"/>
-                <circle cx="250" cy="460" r="30" fill="#ec4899" />
-                <circle cx="230" cy="470" r="20" fill="#f43f5e" />
-                <circle cx="270" cy="470" r="25" fill="#f43f5e" />
-                <path d="M 140 250 Q 250 130 370 250 Q 250 370 140 250 Z" fill="#FB923C" stroke="#1E293B" stroke-width="8"/>
-                <path d="M 140 250 L 60 170 L 90 250 L 60 330 Z" fill="#FBBF24" stroke="#1E293B" stroke-width="6"/>
-                <circle cx="310" cy="230" r="16" fill="#FFFFFF" stroke="#1E293B" stroke-width="4"/>
-                <circle cx="314" cy="226" r="7" fill="#1E293B"/>
-                <path d="M 330 255 Q 315 270 300 255" fill="none" stroke="#1E293B" stroke-width="5" stroke-linecap="round"/>
-                <polygon points="80,420 90,400 100,420 120,420 105,430 110,450 95,438 80,450 85,430 70,420" fill="#f43f5e" stroke="#fff" stroke-width="2"/>
-                <polygon points="410,430 420,410 430,430 450,430 435,440 440,460 425,448 410,460 415,440 400,430" fill="#eab308" stroke="#fff" stroke-width="2"/>
-                <circle cx="250" cy="180" r="12" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.7"/>
-                <circle cx="280" cy="130" r="8" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.6"/>
-                <circle cx="180" cy="120" r="16" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.5"/>
-                <circle cx="350" cy="90" r="10" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.7"/>
-            </svg>`,
-            // 4. Beruang Teddy + Latar Garis-Garis Kuning + Balon Pelangi + Konfeti Berwarna-warni
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-                <defs>
-                    <linearGradient id="bearGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#fef08a" />
-                        <stop offset="100%" stop-color="#fef9c3" />
-                    </linearGradient>
-                    <pattern id="diagonalStripes" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                        <line x1="0" y1="0" x2="0" y2="40" stroke="#fde047" stroke-width="12" />
-                    </pattern>
-                </defs>
-                <rect width="500" height="500" fill="url(#bearGrad)"/>
-                <rect width="500" height="500" fill="url(#diagonalStripes)"/>
-                <circle cx="70" cy="100" r="30" fill="#3b82f6" />
-                <path d="M 70 130 L 70 160" stroke="#1e293b" stroke-width="3"/>
-                <circle cx="100" cy="70" r="25" fill="#ef4444" />
-                <path d="M 100 95 L 100 135" stroke="#1e293b" stroke-width="3"/>
-                <circle cx="430" cy="100" r="30" fill="#10b981" />
-                <path d="M 430 130 L 430 160" stroke="#1e293b" stroke-width="3"/>
-                <circle cx="400" cy="70" r="25" fill="#f59e0b" />
-                <path d="M 400 95 L 400 135" stroke="#1e293b" stroke-width="3"/>
-                <polygon points="50,250 55,240 60,250 70,252 62,260 65,270 55,263 45,270 48,260 40,252" fill="#ec4899"/>
-                <polygon points="450,250 455,240 460,250 470,252 462,260 465,270 455,263 445,270 448,260 440,252" fill="#8b5cf6"/>
-                <polygon points="80,380 85,370 90,380 100,382 92,390 95,400 85,393 75,400 78,390 70,382" fill="#06b6d4"/>
-                <polygon points="420,380 425,370 430,380 440,382 432,390 435,400 425,393 415,400 418,390 410,382" fill="#ec4899"/>
-                <circle cx="150" cy="150" r="55" fill="#78350F" stroke="#1E293B" stroke-width="8"/>
-                <circle cx="150" cy="150" r="28" fill="#F472B6"/>
-                <circle cx="350" cy="150" r="55" fill="#78350F" stroke="#1E293B" stroke-width="8"/>
-                <circle cx="350" cy="150" r="28" fill="#F472B6"/>
-                <circle cx="250" cy="270" r="145" fill="#92400E" stroke="#1E293B" stroke-width="10"/>
-                <circle cx="195" cy="235" r="16" fill="#1E293B"/>
-                <circle cx="199" cy="229" r="6" fill="#FFFFFF"/>
-                <circle cx="305" cy="235" r="16" fill="#1E293B"/>
-                <circle cx="309" cy="229" r="6" fill="#FFFFFF"/>
-                <ellipse cx="250" cy="305" rx="50" ry="35" fill="#FEF3C7" stroke="#1E293B" stroke-width="5"/>
-                <path d="M 230 290 L 270 290 L 250 310 Z" fill="#1E293B" stroke="#1E293B" stroke-width="3"/>
-                <path d="M 250 310 L 250 325 Q 250 335 238 335 M 250 325 Q 250 335 262 335" fill="none" stroke="#1E293B" stroke-width="5" stroke-linecap="round"/>
-            </svg>`,
-            // 5. Kereta Api Mainan + Bukit Terperinci + Awan & Matahari + Rel Kayu & Besi
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-                <defs>
-                    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#a5f3fc" />
-                        <stop offset="100%" stop-color="#ddd6fe" />
-                    </linearGradient>
-                    <pattern id="cloudGrid" width="50" height="50" patternUnits="userSpaceOnUse">
-                        <circle cx="25" cy="25" r="1" fill="#818cf8" opacity="0.3" />
-                    </pattern>
-                </defs>
-                <rect width="500" height="500" fill="url(#skyGrad)"/>
-                <rect width="500" height="500" fill="url(#cloudGrid)"/>
-                <polygon points="-50,380 120,180 290,380" fill="#10b981" opacity="0.7"/>
-                <polygon points="180,380 320,200 480,380" fill="#059669" opacity="0.6"/>
-                <polygon points="280,380 420,150 550,380" fill="#047857" opacity="0.8"/>
-                <circle cx="420" cy="80" r="35" fill="#fb923c" />
-                <path d="M 50 100 Q 80 70 110 100 Q 140 70 170 100 L 50 100 Z" fill="#FFFFFF"/>
-                <rect x="0" y="380" width="500" height="120" fill="#e2e8f0" />
-                <rect x="0" y="390" width="500" height="10" fill="#78350F" />
-                <rect x="0" y="440" width="500" height="10" fill="#78350F" />
-                <line x1="20" y1="385" x2="20" y2="445" stroke="#451a03" stroke-width="8"/>
-                <line x1="80" y1="385" x2="80" y2="445" stroke="#451a03" stroke-width="8"/>
-                <line x1="140" y1="385" x2="140" y2="445" stroke="#451a03" stroke-width="8"/>
-                <line x1="200" y1="385" x2="200" y2="445" stroke="#451a03" stroke-width="8"/>
-                <line x1="260" y1="385" x2="260" y2="445" stroke="#451a03" stroke-width="8"/>
-                <line x1="320" y1="385" x2="320" y2="445" stroke="#451a03" stroke-width="8"/>
-                <line x1="380" y1="385" x2="380" y2="445" stroke="#451a03" stroke-width="8"/>
-                <line x1="440" y1="385" x2="440" y2="445" stroke="#451a03" stroke-width="8"/>
-                <rect x="170" y="210" width="190" height="130" fill="#EF4444" stroke="#1E293B" stroke-width="8" rx="12"/>
-                <rect x="280" y="130" width="95" height="110" fill="#3B82F6" stroke="#1E293B" stroke-width="8" rx="8"/>
-                <rect x="300" y="150" width="55" height="55" fill="#FDE047" stroke="#1E293B" stroke-width="5" rx="4"/>
-                <rect x="190" y="140" width="35" height="70" fill="#1E293B" rx="4"/>
-                <circle cx="207" cy="100" r="16" fill="#E2E8F0" opacity="0.8"/>
-                <circle cx="230" cy="70" r="22" fill="#E2E8F0" opacity="0.6"/>
-                <circle cx="210" cy="360" r="38" fill="#FBBF24" stroke="#1E293B" stroke-width="7"/>
-                <circle cx="210" cy="360" r="12" fill="#1E293B"/>
-                <circle cx="320" cy="360" r="38" fill="#FBBF24" stroke="#1E293B" stroke-width="7"/>
-                <circle cx="320" cy="360" r="12" fill="#1E293B"/>
-            </svg>`
-        ];
-
+        // Helper to format remaining time
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);
             const s = seconds % 60;
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
+        // Updates HUD statistics dynamically
         function updateHUD() {
             timerDisplay.textContent = formatTime(timeLeft);
             if(timeLeft <= 30) {
@@ -498,20 +363,277 @@
                 timerDisplay.classList.remove('text-red-500', 'animate-pulse');
                 timerDisplay.classList.add('text-red-400');
             }
-            scoreDisplay.textContent = score;
+            // Math.round handles raw decimals cleanly for presentation
+            scoreDisplay.textContent = Math.round(score);
             roundDisplay.textContent = round;
         }
 
+        // Lazy initialization of AudioContext
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Toggles mute/unmute status and updates button state
+        function toggleMute() {
+            isMuted = !isMuted;
+            const muteIcon = document.getElementById('muteIcon');
+            const muteBtn = document.getElementById('muteBtn');
+            
+            if (isMuted) {
+                // Muted SVG Icon (Volume Off)
+                muteIcon.innerHTML = `<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>`;
+                muteBtn.title = "Unmute Audio";
+            } else {
+                // Unmuted SVG Icon (Volume Up)
+                muteIcon.innerHTML = `<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>`;
+                muteBtn.title = "Mute Audio";
+                initAudio(); // Assure audio context is active
+            }
+        }
+
+        // Cheerful major chord sound (Ding)
+        function playCorrectSound() {
+            if (isMuted) return;
+            initAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now); // C5
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+            
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+
+        // Disappointing deep sweep sound (Thud)
+        function playIncorrectSound() {
+            if (isMuted) return;
+            initAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(150, now); // Low frequency
+            osc.frequency.linearRampToValueAtTime(80, now + 0.15); // Sweep down
+            
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+
+        // Triumphant victory fanfare chord played when puzzle is fully completed!
+        function playVictorySound() {
+            if (isMuted) return;
+            initAudio();
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 1046.50]; // Triumphant C Major Arpeggio Fanfare
+            notes.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                
+                gain.gain.setValueAtTime(0.0, now);
+                gain.gain.linearRampToValueAtTime(0.12, now + idx * 0.08 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.6);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(now + idx * 0.08);
+                osc.stop(now + idx * 0.08 + 0.6);
+            });
+        }
+
+        // DYNAMIC FACTORY GENERATOR FOR 50 TOTALLY DIFFERENT CARTOON VECTOR ARTWORK INLINES
+        function getVectorIllustration(index) {
+            // Seed base patterns & color coordinates to create highly varied graphics
+            const hue = (index * 47) % 360; 
+            const altHue = (hue + 130) % 360;
+            const skyColor = `hsl(${hue}, 85%, 45%)`;
+            const accentColor = `hsl(${altHue}, 90%, 55%)`;
+            
+            // Background grid configurations
+            const bgPatterns = [
+                `<pattern id="p${index}" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M 50 0 L 0 50 M 0 0 L 50 50" fill="none" stroke="hsla(${hue}, 100%, 80%, 0.35)" stroke-width="2.5"/></pattern>`,
+                `<pattern id="p${index}" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="10" fill="none" stroke="hsla(${hue}, 100%, 75%, 0.3)" stroke-width="3"/></pattern>`,
+                `<pattern id="p${index}" width="60" height="60" patternUnits="userSpaceOnUse"><rect width="30" height="30" fill="hsla(${hue}, 80%, 40%, 0.4)"/><rect x="30" y="30" width="30" height="30" fill="hsla(${altHue}, 80%, 40%, 0.4)"/></pattern>`,
+                `<pattern id="p${index}" width="30" height="30" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="30" stroke="hsla(${hue}, 90%, 85%, 0.4)" stroke-width="8"/></pattern>`,
+                `<pattern id="p${index}" width="80" height="40" patternUnits="userSpaceOnUse"><path d="M 0 20 Q 20 10 40 20 T 80 20" fill="none" stroke="hsla(${hue}, 100%, 80%, 0.4)" stroke-width="4"/></pattern>`
+            ];
+            
+            const selectedPattern = bgPatterns[index % bgPatterns.length];
+
+            // Primary Character Vektor paths designed dynamically for 50 distinct subjects
+            let mainCharacter = "";
+            const subjectId = index % 50;
+
+            if (subjectId === 0) { // Smiling Sun
+                mainCharacter = `<circle cx="250" cy="250" r="110" fill="#FBBF24" stroke="#F97316" stroke-width="10"/>
+                <path d="M 250 50 L 250 110 M 250 390 L 250 450 M 50 250 L 110 250 M 390 250 L 450 250 M 108 108 L 151 151 M 349 349 L 392 392 M 108 349 L 151 309 M 349 108 L 392 151" stroke="#F97316" stroke-width="12" stroke-linecap="round"/>
+                <circle cx="210" cy="225" r="14" fill="#1E293B"/><circle cx="290" cy="225" r="14" fill="#1E293B"/>
+                <path d="M 200 270 Q 250 325 300 270" fill="none" stroke="#1E293B" stroke-width="10" stroke-linecap="round"/>`;
+            } else if (subjectId === 1) { // Space Rocket
+                mainCharacter = `<path d="M 210 390 L 250 470 L 290 390 Z" fill="#EA580C"/>
+                <path d="M 170 350 L 210 300 L 210 370 Z" fill="#991B1B" stroke="#FBBF24" stroke-width="5"/>
+                <path d="M 330 350 L 290 300 L 290 370 Z" fill="#991B1B" stroke="#FBBF24" stroke-width="5"/>
+                <path d="M 210 360 L 210 180 Q 250 70 290 180 L 290 360 Z" fill="#F8FAFC" stroke="#1E293B" stroke-width="8"/>
+                <circle cx="250" cy="230" r="28" fill="#38BDF8" stroke="#1E293B" stroke-width="6"/>`;
+            } else if (subjectId === 2) { // Ocean Fish
+                mainCharacter = `<path d="M 140 250 Q 250 130 370 250 Q 250 370 140 250 Z" fill="#FB923C" stroke="#1E293B" stroke-width="8"/>
+                <path d="M 140 250 L 60 170 L 90 250 L 60 330 Z" fill="#FBBF24" stroke="#1E293B" stroke-width="6"/>
+                <circle cx="310" cy="230" r="16" fill="#FFFFFF" stroke="#1E293B" stroke-width="4"/><circle cx="314" cy="226" r="7" fill="#1E293B"/>`;
+            } else if (subjectId === 3) { // Teddy Bear
+                mainCharacter = `<circle cx="150" cy="150" r="55" fill="#78350F" stroke="#1E293B" stroke-width="8"/><circle cx="350" cy="150" r="55" fill="#78350F" stroke="#1E293B" stroke-width="8"/>
+                <circle cx="250" cy="270" r="145" fill="#92400E" stroke="#1E293B" stroke-width="10"/>
+                <circle cx="195" cy="235" r="16" fill="#1E293B"/><circle cx="305" cy="235" r="16" fill="#1E293B"/>
+                <ellipse cx="250" cy="305" rx="50" ry="35" fill="#FEF3C7" stroke="#1E293B" stroke-width="5"/>`;
+            } else if (subjectId === 4) { // Toy Train
+                mainCharacter = `<rect x="170" y="210" width="190" height="130" fill="#EF4444" stroke="#1E293B" stroke-width="8" rx="12"/>
+                <rect x="280" y="130" width="95" height="110" fill="#3B82F6" stroke="#1E293B" stroke-width="8" rx="8"/>
+                <circle cx="210" cy="360" r="38" fill="#FBBF24" stroke="#1E293B" stroke-width="7"/>
+                <circle cx="320" cy="360" r="38" fill="#FBBF24" stroke="#1E293B" stroke-width="7"/>`;
+            } else if (subjectId === 5) { // Sailing Boat
+                mainCharacter = `<path d="M 80 300 L 420 300 Q 350 400 250 400 Q 150 400 80 300 Z" fill="#78350F" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 230 100 L 230 300 L 100 270 Z" fill="#f8fafc" stroke="#1e293b" stroke-width="6"/>
+                <path d="M 250 80 L 250 300 L 370 240 Z" fill="#3b82f6" stroke="#1e293b" stroke-width="6"/>`;
+            } else if (subjectId === 6) { // Magic Castle
+                mainCharacter = `<rect x="150" y="240" width="200" height="180" fill="#cbd5e1" stroke="#1e293b" stroke-width="8"/>
+                <rect x="110" y="160" width="60" height="260" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/>
+                <rect x="330" y="160" width="60" height="260" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/>
+                <polygon points="110,160 140,80 170,160" fill="#ef4444" stroke="#1e293b" stroke-width="6"/>
+                <polygon points="330,160 360,80 390,160" fill="#ef4444" stroke="#1e293b" stroke-width="6"/>
+                <rect x="220" y="320" width="60" height="100" fill="#78350F" rx="10"/>`;
+            } else if (subjectId === 7) { // Cute Octopus
+                mainCharacter = `<path d="M 120 420 Q 150 340 180 420 Q 210 340 240 420 Q 270 340 300 420 Q 330 340 360 420 Q 380 340 400 420" fill="none" stroke="#ec4899" stroke-width="35" stroke-linecap="round"/>
+                <circle cx="250" cy="220" r="120" fill="#f472b6" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="200" cy="200" r="18" fill="#FFFFFF"/><circle cx="204" cy="196" r="8" fill="#000"/>
+                <circle cx="300" cy="200" r="18" fill="#FFFFFF"/><circle cx="304" cy="196" r="8" fill="#000"/>
+                <path d="M 210 260 Q 250 310 290 260" fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>`;
+            } else if (subjectId === 8) { // Hot Air Balloon
+                mainCharacter = `<rect x="225" y="390" width="50" height="50" fill="#78350F" stroke="#1e293b" stroke-width="5" rx="4"/>
+                <line x1="210" y1="280" x2="235" y2="390" stroke="#1e293b" stroke-width="5"/>
+                <line x1="290" y1="280" x2="265" y2="390" stroke="#1e293b" stroke-width="5"/>
+                <circle cx="250" cy="190" r="110" fill="#ec4899" stroke="#1e293b" stroke-width="8"/>
+                <ellipse cx="250" cy="190" rx="60" ry="110" fill="#facc15" stroke="#1e293b" stroke-width="6"/>
+                <ellipse cx="250" cy="190" rx="15" ry="110" fill="#3b82f6" stroke="#1e293b" stroke-width="6"/>`;
+            } else if (subjectId === 9) { // Friendly Robot
+                mainCharacter = `<rect x="150" y="150" width="200" height="180" fill="#94a3b8" stroke="#1e293b" stroke-width="8" rx="20"/>
+                <rect x="180" y="330" width="140" height="110" fill="#cbd5e1" stroke="#1e293b" stroke-width="8" rx="10"/>
+                <circle cx="200" cy="220" r="22" fill="#38bdf8" stroke="#1e293b" stroke-width="5"/>
+                <circle cx="300" cy="220" r="22" fill="#38bdf8" stroke="#1e293b" stroke-width="5"/>
+                <rect x="210" y="270" width="80" height="25" fill="#fde047" stroke="#1e293b" stroke-width="4" rx="5"/>
+                <line x1="250" y1="150" x2="250" y2="80" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="250" cy="70" r="15" fill="#ef4444" stroke="#1e293b" stroke-width="4"/>`;
+            } else if (subjectId === 10) { // Cute Puppy
+                mainCharacter = `<circle cx="250" cy="270" r="130" fill="#fbbf24" stroke="#1e293b" stroke-width="8"/>
+                <ellipse cx="140" cy="200" rx="40" ry="85" fill="#78350F" stroke="#1e293b" stroke-width="6" transform="rotate(-15 140 200)"/>
+                <ellipse cx="360" cy="200" rx="40" ry="85" fill="#78350F" stroke="#1e293b" stroke-width="6" transform="rotate(15 360 200)"/>
+                <circle cx="200" cy="240" r="15" fill="#1e293b"/><circle cx="300" cy="240" r="15" fill="#1e293b"/>
+                <ellipse cx="250" cy="295" rx="25" ry="18" fill="#1e293b"/>
+                <path d="M 210 330 Q 250 365 290 330" fill="none" stroke="#1e293b" stroke-width="6" stroke-linecap="round"/>`;
+            } else if (subjectId === 11) { // Sweet Cupcake
+                mainCharacter = `<polygon points="150,280 350,280 320,440 180,440" fill="#f87171" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 120 280 Q 250 120 380 280 Z" fill="#fbcfe8" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="250" cy="140" r="25" fill="#dc2626" stroke="#1e293b" stroke-width="5"/>
+                <circle cx="190" cy="230" r="10" fill="#3b82f6"/><circle cx="310" cy="230" r="10" fill="#facc15"/><circle cx="250" cy="240" r="10" fill="#10b981"/>`;
+            } else if (subjectId === 12) { // Helicopter
+                mainCharacter = `<rect x="180" y="200" width="180" height="120" fill="#3b82f6" stroke="#1e293b" stroke-width="8" rx="40"/>
+                <path d="M 180 260 L 50 260 L 50 220" fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/>
+                <rect x="30" y="200" width="30" height="40" fill="#ef4444" stroke="#1e293b" stroke-width="5" rx="5"/>
+                <line x1="270" y1="200" x2="270" y2="120" stroke="#1e293b" stroke-width="8"/>
+                <line x1="160" y1="120" x2="380" y2="120" stroke="#1e293b" stroke-width="10" stroke-linecap="round"/>
+                <rect x="190" y="350" width="160" height="15" fill="#475569" rx="10"/>
+                <line x1="230" y1="320" x2="210" y2="350" stroke="#1e293b" stroke-width="8"/>
+                <line x1="310" y1="320" x2="330" y2="350" stroke="#1e293b" stroke-width="8"/>`;
+            } else if (subjectId === 13) { // Dinosaur
+                mainCharacter = `<path d="M 80 430 L 150 200 Q 200 130 300 160 Q 380 180 340 280 L 300 320 L 380 430" fill="none" stroke="#10b981" stroke-width="45" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="280" cy="180" r="50" fill="#34d399" stroke="#1e293b" stroke-width="6"/>
+                <circle cx="285" cy="170" r="10" fill="#1e293b"/>
+                <path d="M 270 205 Q 290 220 310 200" fill="none" stroke="#1e293b" stroke-width="5"/>`;
+            } else if (subjectId === 14) { // Magic Wand & Hat
+                mainCharacter = `<polygon points="120,340 250,80 380,340" fill="#4f46e5" stroke="#1e293b" stroke-width="8"/>
+                <ellipse cx="250" cy="340" rx="160" ry="25" fill="#312e81" stroke="#1e293b" stroke-width="8"/>
+                <line x1="100" y1="100" x2="250" y2="250" stroke="#fde047" stroke-width="12" stroke-linecap="round"/>
+                <circle cx="100" cy="100" r="18" fill="#ec4899"/>`;
+            } else if (subjectId === 15) { // Space UFO
+                mainCharacter = `<ellipse cx="250" cy="270" rx="170" ry="50" fill="#94a3b8" stroke="#1e293b" stroke-width="8"/>
+                <path d="M 150 260 C 150 140 350 140 350 260 Z" fill="#38bdf8" fill-opacity="0.8" stroke="#1e293b" stroke-width="8"/>
+                <circle cx="180" cy="270" r="10" fill="#fde047"/><circle cx="250" cy="270" r="10" fill="#fde047"/><circle cx="320" cy="270" r="10" fill="#fde047"/>`;
+            } else { // Generic dynamic geometric character patterns (Forms 16-49 uniquely)
+                const innerRadius = 80 + (subjectId % 30);
+                const polyPoints = [];
+                const sides = 5 + (subjectId % 6);
+                for (let s = 0; s < sides; s++) {
+                    const angle = (s * 2 * Math.PI) / sides - Math.PI / 2;
+                    const px = 250 + innerRadius * Math.cos(angle);
+                    const py = 250 + innerRadius * Math.sin(angle);
+                    polyPoints.push(`${px},${py}`);
+                }
+                mainCharacter = `<polygon points="${polyPoints.join(' ')}" fill="${accentColor}" stroke="#1E293B" stroke-width="10"/>
+                <circle cx="250" cy="250" r="45" fill="#FFFFFF" stroke="#1E293B" stroke-width="6"/>
+                <circle cx="250" cy="250" r="18" fill="#1E293B"/>
+                <circle cx="240" cy="240" r="6" fill="#FFFFFF"/>`;
+            }
+
+            // Return synthesized standalone structured raw SVG string converted to safe URI format
+            const fullSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+                <defs>${selectedPattern}</defs>
+                <rect width="500" height="500" fill="${skyColor}"/>
+                <rect width="500" height="500" fill="url(#p${index})"/>
+                <!-- Decorative background elements -->
+                <g opacity="0.3">
+                    <circle cx="100" cy="100" r="40" fill="#fff" />
+                    <circle cx="400" cy="400" r="60" fill="#fff" />
+                    <polygon points="50,300 70,340 30,340" fill="#facc15" />
+                    <polygon points="420,100 450,150 390,150" fill="#ec4899" />
+                </g>
+                ${mainCharacter}
+            </svg>`;
+            
+            return `data:image/svg+xml;utf8,${encodeURIComponent(fullSVG)}`;
+        }
+
+        function updateScore(points) {
+            score += points;
+            updateHUD();
+        }
+
         function getNewImage() {
-            // Pilih satu lukisan vektor secara rawak yang berbeza dari pusingan lepas
+            // Select a random vector art that differs from the previous round
             let randomIndex;
             do {
-                randomIndex = Math.floor(Math.random() * vectorIllustrations.length);
-            } while (randomIndex === lastImageIndex && vectorIllustrations.length > 1);
+                randomIndex = Math.floor(Math.random() * 50);
+            } while (randomIndex === lastImageIndex);
             
             lastImageIndex = randomIndex;
-            const svgContent = vectorIllustrations[randomIndex];
-            return `data:image/svg+xml;utf8,${encodeURIComponent(svgContent)}`;
+            return getVectorIllustration(randomIndex);
         }
 
         function generateBoard() {
@@ -520,10 +642,10 @@
                 const piece = document.createElement('div');
                 piece.dataset.index = i;
                 
-                // Atur gaya kepingan puzzle
+                // Style puzzle pieces
                 piece.className = 'w-full h-full cursor-pointer transition-transform duration-200 relative bg-gray-800';
                 
-                // Tetapkan gambar latar belakang
+                // Set background image
                 piece.style.backgroundImage = `url('${currentImageUrl}')`;
                 piece.style.backgroundSize = `${GRID_SIZE * 100}% ${GRID_SIZE * 100}%`;
                 
@@ -540,7 +662,7 @@
                 const pieceDiv = pieces[i];
                 if (!pieceDiv) continue;
                 
-                // Hitung posisi latar belakang berdasarkan ID kepingan asal
+                // Calculate position based on the original piece index
                 const targetRow = Math.floor(pieceVal / GRID_SIZE);
                 const targetCol = pieceVal % GRID_SIZE;
                 
@@ -549,7 +671,7 @@
                 
                 pieceDiv.style.backgroundPosition = `${bgX}% ${bgY}%`;
 
-                // Setel semula kelas CSS
+                // Reset CSS classes
                 pieceDiv.className = 'w-full h-full cursor-pointer transition-all duration-300 relative border border-black/30';
                 
                 if (isLocked[i]) {
@@ -564,24 +686,31 @@
         }
 
         function handlePieceClick(index) {
-            if (!isPlaying || isTransitioning || isLocked[index]) return;
+            if (!isPlaying || isTransitioning || isPaused || isLocked[index]) return;
 
             if (selectedIndex === null) {
-                // Pilih kepingan pertama
+                // Select first piece
                 selectedIndex = index;
                 updateBoardVisuals();
+                initAudio(); // Trigger user-gesture initialization for Web Audio API
             } else {
-                // Jika klik kepingan yang sama, batalkan pilihan
+                // Deselect if clicking the same piece
                 if (selectedIndex === index) {
                     selectedIndex = null;
                 } else {
-                    // Logik pertukaran kepingan
+                    // Piece swapping logic
                     const temp = boardState[selectedIndex];
                     boardState[selectedIndex] = boardState[index];
                     boardState[index] = temp;
                     
                     selectedIndex = null;
-                    checkLocks(); // Periksa kepingan yang telah berada di tempat yang betul
+                    const lockedNew = checkLocks(); // Returns true if a new piece locked into position
+                    
+                    if (lockedNew) {
+                        playCorrectSound();
+                    } else {
+                        playIncorrectSound();
+                    }
                 }
                 updateBoardVisuals();
                 checkWinCondition();
@@ -593,31 +722,40 @@
             for (let i = 0; i < TOTAL_PIECES; i++) {
                 if (!isLocked[i] && boardState[i] === i) {
                     isLocked[i] = true;
-                    score += 10; // Setiap kepingan di tempat yang betul mendapat 10 skor
+                    
+                    // Increment score per locked piece
+                    score += 0.84;
+
                     newlyLocked = true;
                 }
             }
             if (newlyLocked) updateHUD();
+            return newlyLocked;
         }
 
         function checkWinCondition() {
             if (isLocked.every(status => status === true)) {
-                // Pusingan selesai!
-                score += 50; // Bonus menyelesaikan satu pusingan gambar penuh
+                // Round cleared! Play different triumphant fanfare victory sound
+                playVictorySound();
+                
+                let roundBonus = 0;
                 updateHUD();
-                triggerNextRoundTransition();
+                triggerNextRoundTransition(roundBonus);
             }
         }
 
-        function triggerNextRoundTransition() {
+        function triggerNextRoundTransition(earnedBonus) {
             isTransitioning = true;
+            
+            // Show custom round clear message in prompt
+            roundCompleteBonusText.textContent = "Round Cleared! +21 Points!";
             roundCompleteNotice.classList.remove('hidden');
 
             setTimeout(() => {
                 roundCompleteNotice.classList.add('hidden');
                 round++;
                 setupNewRound();
-            }, 1500); // 1.5 saat jeda sebelum pusingan seterusnya bermula
+            }, 1500); // 1.5 seconds delay before launching the next round
         }
 
         function setupNewRound() {
@@ -625,21 +763,25 @@
             selectedIndex = null;
             currentImageUrl = getNewImage();
             
-            // Set Gambar Rujukan baharu
+            // Apply new reference image
             referenceImg.style.backgroundImage = `url('${currentImageUrl}')`;
 
-            // Bina urutan kepingan baharu dan rawakkan
+            // Reset sequence array & shuffle
             boardState = Array.from({length: TOTAL_PIECES}, (_, i) => i);
             
-            // Pengacakan (Shuffle)
-            for (let i = TOTAL_PIECES - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [boardState[i], boardState[j]] = [boardState[j], boardState[i]];
-            }
+            // RANDOMIZE SCRAMBLE COMPLETELY (Loop guarantees at least 80% scramble density)
+            let scrambleAttempts = 0;
+            do {
+                for (let i = TOTAL_PIECES - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [boardState[i], boardState[j]] = [boardState[j], boardState[i]];
+                }
+                scrambleAttempts++;
+            } while (boardState.every((val, idx) => val === idx) && scrambleAttempts < 10);
             
             isLocked = new Array(TOTAL_PIECES).fill(false);
             
-            // Periksa kunci awal selepas pengacakan
+            // Check initial matches after shuffling (don't trigger sounds on start layout shuffle)
             checkLocks();
             
             generateBoard();
@@ -649,18 +791,45 @@
         function startGame() {
             isPlaying = true;
             isTransitioning = false;
+            isPaused = false;
             score = 0;
             round = 1;
             timeLeft = MAX_TIME;
             selectedIndex = null;
             
             startOverlay.classList.add('hidden');
+            pauseOverlay.classList.add('hidden');
             gameOverModal.classList.add('hidden');
+            pauseBtnContainer.classList.remove('hidden');
 
             setupNewRound();
+            initAudio(); // Assure AudioContext is ready for play
 
-            // Mulakan Penghitung Masa Undur (3 Minit)
+            // Set up countdown timer loop
             clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function pauseGame() {
+            if (!isPlaying || isTransitioning || isPaused) return;
+            isPaused = true;
+            clearInterval(timerInterval);
+            pauseOverlay.classList.remove('hidden');
+        }
+
+        function resumeGame() {
+            if (!isPaused) return;
+            isPaused = false;
+            pauseOverlay.classList.add('hidden');
+            initAudio(); // Assure AudioContext is ready upon resumption
+            
+            // Resume countdown timer loop
             timerInterval = setInterval(() => {
                 timeLeft--;
                 updateHUD();
@@ -673,39 +842,40 @@
         function endGame() {
             isPlaying = false;
             clearInterval(timerInterval);
-
+            pauseBtnContainer.classList.add('hidden');
+            
             const finalScoreText = document.getElementById('finalScoreText');
             const scoreEvaluation = document.getElementById('scoreEvaluation');
             const modalMsg = document.getElementById('modalMsg');
-            const modalTitle = document.getElementById('modalTitle');
 
-            finalScoreText.textContent = score;
-            // Run only ends via the timer in this game, so the canonical title is TIME'S UP!
-            modalTitle.textContent = COPY.timeUp;
+            let displayScore = Math.round(score);
+            finalScoreText.textContent = displayScore;
 
-            // Score evaluation tiers
-            if (score >= 500) {
-                modalMsg.textContent = COPY.modalMsgHigh;
-                scoreEvaluation.textContent = COPY.evalHigh;
+            // Balanced dynamic score threshold evaluations since score is no longer capped
+            if (displayScore >= 100) {
+                modalMsg.textContent = "Spectacular! You are a true Puzzle Master!";
+                scoreEvaluation.textContent = "🏆 AMAZING WORK! You achieved an incredible high score!";
                 scoreEvaluation.className = "text-sm mt-3 font-bold text-green-400 uppercase tracking-wider";
-            } else if (score >= 300) {
-                modalMsg.textContent = COPY.modalMsgMid;
-                scoreEvaluation.textContent = COPY.evalMid;
+            } else if (displayScore >= 50) {
+                modalMsg.textContent = "Excellent! You solved several rounds completely!";
+                scoreEvaluation.textContent = "👍 GREAT JOB! You got a solid high score!";
                 scoreEvaluation.className = "text-sm mt-3 font-bold text-yellow-400 uppercase tracking-wider";
             } else {
-                modalMsg.textContent = COPY.modalMsgLow;
-                scoreEvaluation.textContent = COPY.evalLow;
+                modalMsg.textContent = "Good effort! Play again to sharpen your puzzle skills.";
+                scoreEvaluation.textContent = "💪 Keep practicing to reach higher scores!";
                 scoreEvaluation.className = "text-sm mt-3 font-bold text-red-400 uppercase tracking-wider";
             }
-
+            
             gameOverModal.classList.remove('hidden');
         }
 
         function closeModalAndReset() {
             gameOverModal.classList.add('hidden');
             startOverlay.classList.remove('hidden');
+            pauseBtnContainer.classList.add('hidden');
+            pauseOverlay.classList.add('hidden');
             
-            // Kosongkan papan visual
+            // Flush board visuals and HUD
             boardEl.innerHTML = '';
             referenceImg.style.backgroundImage = 'none';
             scoreDisplay.textContent = '0';
@@ -715,10 +885,18 @@
             roundDisplay.textContent = '1';
         }
 
-        // Initialize empty board on first load
-        applyCopy();
+        // Functions to display and dismiss the Rules Modal
+        function showRules() {
+            rulesModal.classList.remove('hidden');
+        }
+
+        function closeRules() {
+            rulesModal.classList.add('hidden');
+        }
+
+        // Initialize empty baseline scene structure on page load
         boardState = Array.from({length: TOTAL_PIECES}, (_, i) => i);
-        currentImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='; // transparent pixel
+        currentImageUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='; // base64 transparent pixel
         generateBoard();
     </script>
 </body>

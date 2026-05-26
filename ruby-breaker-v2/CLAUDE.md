@@ -101,16 +101,23 @@ Or, while developing the source: `cd Downloads/ruby-breaker-v2 && npm run dev` (
 ## Audio
 
 All SFX/BGM are **synthesized at runtime** via the Web Audio API in `src/utils/AudioManager.js`
-(no files), EXCEPT the **game-over BGM**, which loops `public/game-over.m4a`:
+(no files), EXCEPT the **game-over BGM**, which loops `public/pacman-die.mp3`:
 - Loaded + decoded in `AudioManager.init()` (`loadGameoverSound`), routed through `masterGain`
-  so it respects the mute toggle. Falls back to the synth jingle if the file fails to load.
+  so it respects the mute toggle. Cache-busted with `?v=${Date.now()}` so swapping the file on
+  disk takes effect without a stale browser cache. Falls back to the synth jingle if the file
+  fails to load.
 - `AudioManager.gameover()` plays the BufferSource with `src.loop = true` and stores it in a
   module-scoped `gameoverSource` variable so it can be stopped later. `AudioManager.stopGameover()`
   stops the looping source — `GameOverScene` calls this when the user clicks PLAY AGAIN or MAIN
   MENU. Calling `gameover()` again (e.g. retry → game over) stops the previous loop first.
+- **MP3 exception to root §5.2 (AAC mandatory).** During the 2026-05-26 audio swap the
+  AAC/.m4a produced by `afconvert` decoded inconsistently through Web Audio's `decodeAudioData`
+  — game-over silently fell back to the synth jingle. MP3 decodes universally; for a 19 KB
+  short clip the bytes-per-quality tradeoff doesn't matter. If you re-encode game-over audio
+  later as a clean AAC and verify it decodes in Chrome + Safari, you can move back to .m4a.
 - To swap other sounds for files: add the file to `public/`, decode it the same way, and play a
-  `BufferSource` through `masterGain` inside the relevant `SFX.*` entry. Prefer **MP3** for the
-  widest browser support; m4a works on Safari/Chrome.
+  `BufferSource` through `masterGain` inside the relevant `SFX.*` entry. **Prefer MP3** for the
+  widest browser support given the above.
 
 ## Cosmetics
 
@@ -200,11 +207,12 @@ the scale never changed.
 
 ### Audio (DONE, stable)
 
-`game-over.m4a` loops as game-over BGM. `AudioManager.gameover()` plays a `BufferSource`
-with `src.loop = true`, stored in `gameoverSource`. `AudioManager.stopGameover()` stops
-it. `GameOverScene` calls `stopGameover()` on **PLAY AGAIN** and **MAIN MENU**. Retrying
-into another game-over stops the previous loop first. Don't touch unless changing the
-m4a file.
+`pacman-die.mp3` loops as game-over BGM (was `game-over.m4a` before 2026-05-26 — see the
+MP3-exception note above for why we swapped formats). `AudioManager.gameover()` plays a
+`BufferSource` with `src.loop = true`, stored in `gameoverSource`. `AudioManager.stopGameover()`
+stops it. `GameOverScene` calls `stopGameover()` on **PLAY AGAIN** and **MAIN MENU**. Retrying
+into another game-over stops the previous loop first. Don't touch unless changing the audio
+file — and if you do, keep MP3 unless you've re-verified AAC decoding across browsers.
 
 ### If you have to change this code
 
@@ -229,3 +237,66 @@ At scale `110/1664 ≈ 0.066`, those map to world-pixel zones below `mascot.y` (
 - Texture top → world y `GAME_H - 127` (transparent — DON'T let body extend up to here)
 - Visible shield disc top → world y ~`GAME_H - 105`  ← body top should be here
 - Visible bottom of mascot → world y `GAME_H + 20` (below screen)
+
+---
+
+## STABLE CHECKPOINT — playfield top-bounce, score copy, pacman game-over (2026-05-26)
+
+User confirmed "everything is perfect now" on bundle `index-RzqmVFOx.js`. Three independent
+changes layered on top of the 2026-05-25 checkpoint:
+
+### 1. Playfield top now bounces the ball (was: ball flew behind HUD)
+
+Previously `setCollideWorldBounds(true)` bounced balls at world y=0 — the canvas top, which
+sits *behind* the HUD strip. Visually the ball disappeared into the HUD before bouncing.
+Now `GameScene.create()` shrinks the physics world: `physics.world.setBounds(0, 50, W, H-50)`,
+so the top wall is at world y=50 (just under the HUD). `drawBorder()` also moved its red
+`strokeRect` down to y=50 so the visible red rectangle exactly matches the wall — left, right,
+and top all read as the same playfield boundary. Rubies (also `setCollideWorldBounds(true)`)
+bounce off the same top edge for consistency.
+
+If you change the HUD height, update **both** `setBounds(0, 50, ...)` and `strokeRect(1, 50, W-2, H-51)`.
+
+### 2. Score reads "RUBY\n<n>" — no "/500"
+
+`buildHUD` initial text and `addScore`'s `setText` both dropped the `/500` suffix. The cap
+still exists in the gameplay logic (`if (this.score >= 500) endGame(true)`), but is no
+longer telegraphed to the player. If you ever decide to remove the cap entirely, also delete
+the `>= 500` branch in `update()` and the `RUBIES COLLECTED / 500` line in `GameOverScene`.
+
+### 3. Game-over audio: pacman-die.mp3, one-shot, BGM dies cleanly
+
+**File swap.** `game-over.m4a` (the old AAC clip) was replaced with `pacman-die.mp3`
+(15 KB, ~1 s). Stored at `public/pacman-die.mp3` in source and at the deployed folder root.
+See the "Audio" section above for the MP3-over-AAC rationale (root §5.2 says AAC mandatory;
+we documented the exception there).
+
+**No more looping.** `SFX.gameover()` no longer sets `src.loop = true` on the BufferSource —
+the clip plays exactly once. `stopGameover()` calls in `GameOverScene` still work (calling
+`.stop()` on a finished source throws but is caught).
+
+**BGM tail no longer bleeds into the death jingle.** Root cause: the BGM scheduler
+pre-queues 16 oscillators into the Web Audio graph at once; `clearTimeout` only stops the
+*next* batch, so up to ~3 seconds of already-scheduled notes still fire after `stopBGM()`.
+Fix: introduced a dedicated `bgmGain` sub-bus (BGM notes connect to `bgmGain`, which in turn
+connects to `masterGain`). `stopBGM()` now also does
+`bgmGain.gain.setValueAtTime(0, ctx.currentTime)` — instantly silencing in-flight notes
+without affecting `pacman-die` (which routes directly through `masterGain`). `playBGM()`
+restores `bgmGain.gain` to 1.
+
+**"Life lost" arpeggio suppressed on the final ball.** `GameScene.onBallLost()` guards
+`AudioManager.play('life')` with `if (this.lives > 0)` so the run-ending death is silent
+until pacman-die plays. Same function now also calls `AudioManager.stopBGM()` immediately
+when `lives <= 0`, rather than waiting for `endGame`'s `stopBGM` 500 ms later — keeps that
+half-second pause silent so the hand-off to pacman-die is clean.
+
+### Audio gotchas if you have to touch this code
+
+- Don't bring back `src.loop = true` on game-over without a UX reason — the 1 s pacman clip
+  looping gets annoying fast (we tried).
+- Don't connect new BGM-related oscillators directly to `masterGain` — they'll bypass the
+  `bgmGain` mute and leak past `stopBGM()`.
+- SFX (paddle, hit, break, life, etc.) intentionally still connect to `masterGain` directly,
+  so they're not killed by `stopBGM`. That's correct — they're short one-shots, not loops.
+- The fetch URL is cache-busted: `pacman-die.mp3?v=${Date.now()}` so swapping the file on
+  disk during dev doesn't require a hard refresh of the audio (only the bundle).

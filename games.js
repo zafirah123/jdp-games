@@ -7,10 +7,14 @@
 //
 // `author` is the GitHub username of the game's original developer.
 // Required for every new game.
+//
+// Optional flags for games in `approved-dev`:
+// - `staging`: true if available in staging environment
+// - `production`: true if available in production environment
 window.GAMES = [
   { name: '2048', path: './2048/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Bubble Shooter', path: './bubble-shooter/', status: 'pending', author: 'Koplo3' },
-  { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-dev', author: 'pandaipixel' },
+  { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-dev', author: 'pandaipixel', staging: true, production: false },
   { name: 'Kataku', path: './kataku/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Liquid Sort', path: './liquid-sort/liquid-sort.html', status: 'pending', author: 'zafirah123' },
   { name: 'Puzzle', path: './puzzle/puzzle.html', status: 'pending', author: 'iklil' },

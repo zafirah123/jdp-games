@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Juara Digital - Tic Tac Toe 5x5</title>
+    <title>Straight 4 Ruby</title>
     <style>
         :root {
             --primary-red: #d30c0c;
@@ -23,7 +23,7 @@
         }
 
         body {
-            /* Latar belakang grid dan efek cahaya ganda */
+            /* Premium dark red background with grid lines and central glow */
             background: 
                 linear-gradient(var(--bg-grid) 1px, transparent 1px),
                 linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px),
@@ -33,12 +33,13 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh; /* Cadangan */
-            height: 100dvh; /* Sesuai tinggi layar ponsel */
-            overflow: hidden; /* Mencegah munculnya scroll bar */
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            position: relative;
         }
 
-        /* Wadah Utama Permainan */
+        /* Main Game Container */
         .game-wrapper {
             background: radial-gradient(circle at top, rgba(100, 0, 0, 0.9) 0%, rgba(20, 0, 0, 0.95) 100%);
             border: 4px solid var(--gold);
@@ -46,36 +47,68 @@
             padding: 1.2rem 1rem;
             width: 95%;
             max-width: 420px;
-            max-height: 98dvh; /* Memastikan muat sempurna di layar */
+            max-height: 98dvh;
             display: flex;
             flex-direction: column;
-            justify-content: center; /* Diubah ke center untuk menghilangkan getaran layar */
+            justify-content: center;
             align-items: center;
-            gap: 12px; /* Menggunakan gap tetap untuk stabilitas layout */
+            gap: 12px;
             text-align: center;
             box-shadow: 0 0 40px rgba(211, 12, 12, 0.6), inset 0 0 20px rgba(255, 215, 0, 0.2);
             position: relative;
+            z-index: 5;
         }
 
-        /* Tombol Info Skor */
+        /* Score Info Button - Redesigned to match image custom 3D design */
         .rules-btn {
             position: absolute;
-            top: -15px;
+            top: -18px;
             right: 20px;
-            background: var(--gold);
-            color: #300000;
-            border: 2px solid #fff;
-            border-radius: 20px;
-            padding: 5px 15px;
-            font-size: 0.8rem;
-            font-weight: bold;
+            background: linear-gradient(to bottom, #ffe873, #ffbd25);
+            color: #cc292b;
+            border: none;
+            padding: 6px 8px 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 900;
+            border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 3px 0px #dca01a, 0 4px 10px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.1s;
             z-index: 10;
+            text-transform: uppercase;
         }
-        .rules-btn:active { transform: translateY(2px); }
+        .rules-btn:active { 
+            transform: translateY(3px); 
+            box-shadow: 0 0px 0px #dca01a, 0 2px 5px rgba(0,0,0,0.5); 
+        }
+        .rules-btn .btn-icon-left {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2.5;
+        }
+        .rules-btn .btn-icon-right {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #b31616 0%, #15152a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-left: 2px;
+        }
+        .rules-btn .btn-icon-right svg {
+            width: 10px;
+            height: 10px;
+            stroke: white;
+            stroke-width: 3.5;
+        }
 
-        /* Bagian Kepala / Judul */
+        /* Header / Titles */
         .header {
             margin-bottom: 5px;
             width: 100%;
@@ -89,17 +122,12 @@
             letter-spacing: 2px;
             margin-bottom: 2px;
         }
-        .header h2 {
-            font-size: clamp(0.8rem, 2.5vw, 1rem);
-            color: #ffcccc;
-            letter-spacing: 2px;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
-        }
 
-        /* Panel Dashboard Informasi (Waktu & Skor) */
+        /* Dashboard (Timer, Round & Score) */
         .dashboard {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             background: rgba(0, 0, 0, 0.4);
             border: 2px solid var(--primary-red);
             border-radius: 12px;
@@ -110,8 +138,18 @@
         .stat {
             display: flex;
             flex-direction: column;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #ff9999;
+            flex: 1;
+        }
+        .stat-left {
+            text-align: left;
+        }
+        .stat-center {
+            text-align: center;
+        }
+        .stat-right {
+            text-align: right;
         }
         .stat-value {
             font-size: clamp(1.1rem, 4.5vw, 1.5rem);
@@ -122,11 +160,11 @@
         }
         .score-gold { color: var(--gold); text-shadow: 0 0 10px var(--gold); }
 
-        /* Wadah Papan Grid 5x5 */
+        /* 5x5 Board Container */
         .board-container {
             position: relative;
             width: 100%;
-            max-width: 310px; /* Ukuran papan tetap */
+            max-width: 310px;
             margin: 0 auto;
         }
         .board {
@@ -137,7 +175,7 @@
         }
 
         .cell {
-            aspect-ratio: 1; /* Menjaga sel selalu berbentuk kotak sempurna 1:1 */
+            aspect-ratio: 1;
             background: linear-gradient(145deg, #400000, #1a0000);
             border: 2px solid #ff3333;
             border-radius: 8px;
@@ -170,18 +208,28 @@
             to { transform: scale(1.05); }
         }
 
-        /* Animasi Ikon SVG */
+        /* SVG Icon Animations & Shining Styles */
         .icon {
-            width: 82%;
-            height: 82%;
+            width: 86%;
+            height: 86%;
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
+
+        /* Specular High-Contrast Shadows (No Pulsing Glows) */
+        .ruby-icon {
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.65));
+        }
+
+        .gold-icon {
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.65));
+        }
+
         @keyframes popIn {
             0% { transform: scale(0) rotate(-15deg); opacity: 0; }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        /* Overlay Menang/Kalah Setiap Babak */
+        /* Round Results Float Text overlay */
         .round-result-overlay {
             position: absolute;
             inset: 0;
@@ -203,10 +251,10 @@
             transform: scale(1);
         }
 
-        /* Teks Pesan Status (Tinggi dikunci tetap untuk menghentikan getaran layar) */
+        /* Fixed-height Status Message to eliminate screen jitter */
         .status-message {
             font-size: 0.9rem;
-            height: 40px; /* Tinggi tetap mencegah perubahan layout yang menyebabkan getaran */
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -215,7 +263,7 @@
             transition: color 0.3s;
         }
 
-        /* Modal Aturan / Informasi Skor */
+        /* Modal / Popups */
         .rules-modal {
             position: absolute;
             inset: 0;
@@ -256,7 +304,7 @@
             width: 100%;
         }
 
-        /* Layar Selesai Permainan (Game Over Overlay) */
+        /* Game Over Screen */
         .overlay {
             position: absolute;
             inset: 0;
@@ -278,21 +326,50 @@
         .overlay-score span { font-size: clamp(2.5rem, 10vw, 3.2rem); color: var(--gold); display: block; margin: 5px 0; text-shadow: 0 0 15px var(--primary-red); }
         .overlay-msg { font-size: 0.95rem; color: #ffcccc; margin-bottom: 20px; max-width: 90%; }
 
-        /* Tombol Aksi */
+        /* Action Buttons */
         .btn {
-            background: linear-gradient(to bottom, var(--light-gold), #b38f00);
-            color: #300000;
+            background: linear-gradient(to bottom, #ffe873, #ffbd25);
+            color: #cc292b;
             border: none;
-            padding: 12px 30px;
-            font-size: 1.1rem;
+            padding: 10px 14px 10px 20px;
+            font-size: 1.5rem;
+            font-weight: 900;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 6px 0px #806600, 0 10px 20px rgba(0,0,0,0.5);
-            text-transform: uppercase;
+            box-shadow: 0 6px 0px #dca01a, 0 10px 20px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.1s;
         }
-        .btn:active { transform: translateY(6px); box-shadow: 0 0px 0px #806600, 0 5px 10px rgba(0,0,0,0.5); }
+        .btn:active { 
+            transform: translateY(6px); 
+            box-shadow: 0 0px 0px #dca01a, 0 5px 10px rgba(0,0,0,0.5); 
+        }
+        .btn-icon-left {
+            width: 24px;
+            height: 24px;
+            stroke: currentColor;
+        }
+        .btn-icon-right {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #b31616 0%, #15152a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-left: 6px;
+        }
+        .btn-icon-right svg {
+            width: 16px;
+            height: 16px;
+            stroke: white;
+            stroke-width: 3;
+        }
 
-        /* Responsivitas untuk Layar Pendek */
+        /* Responsive styling tweaks for short screens */
         @media (max-height: 650px) {
             .header h1 { font-size: 1.6rem; }
             .dashboard { padding: 4px 10px; margin-bottom: 5px; }
@@ -306,27 +383,42 @@
 <body>
 
     <div class="game-wrapper">
-        <button class="rules-btn" id="rulesBtn" onclick="toggleRules(true)"></button>
+        <button class="rules-btn" onclick="toggleRules(true)">
+            <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
+                <rect x="3" y="14" width="5.5" height="6" rx="1"></rect>
+                <rect x="8.5" y="8" width="5.5" height="12" rx="1"></rect>
+                <rect x="14" y="12" width="5.5" height="8" rx="1"></rect>
+            </svg>
+            <span>Score Info</span>
+            <div class="btn-icon-right">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </div>
+        </button>
 
         <div class="header">
-            <h1>Juara<br>Digital</h1>
-            <h2 id="subtitle"></h2>
+            <h1>Straight<br>4 Ruby</h1>
         </div>
 
         <div class="dashboard">
-            <div class="stat">
-                <span id="timerLabel"></span>
+            <div class="stat stat-left">
+                TIME LEFT
                 <span class="stat-value" id="timer">03:00</span>
             </div>
-            <div class="stat" style="text-align: right;">
-                <span id="scoreLabel"></span>
-                <span class="stat-value score-gold"><span id="score">0</span></span>
+            <div class="stat stat-center">
+                ROUND
+                <span class="stat-value" id="round-val">1</span>
+            </div>
+            <div class="stat stat-right">
+                SCORE
+                <span class="stat-value score-gold" id="score">0</span>
             </div>
         </div>
 
         <div class="board-container">
             <div class="board" id="board">
-                <!-- 25 Sel Grid untuk 5x5 -->
+                <!-- 25 Sel Grid for 5x5 -->
                 <div class="cell" data-index="0"></div>
                 <div class="cell" data-index="1"></div>
                 <div class="cell" data-index="2"></div>
@@ -353,162 +445,98 @@
                 <div class="cell" data-index="23"></div>
                 <div class="cell" data-index="24"></div>
             </div>
-            <!-- Overlay Hasil Babak di Tengah Papan -->
+            <!-- Overlay Result in Center Board -->
             <div id="roundResultOverlay" class="round-result-overlay"></div>
         </div>
 
-        <div class="status-message" id="statusMsg"></div>
+        <div class="status-message" id="statusMsg">Click any cell to begin!</div>
 
-        <!-- Modal Aturan / Informasi Skor -->
+        <!-- Rules & Score Information Modal -->
         <div class="rules-modal" id="rulesModal">
             <div class="rules-box">
-                <h3 id="rulesTitle"></h3>
-                <p id="rulesTime"></p>
-                <p id="rulesWinCond"></p>
-                <p id="rulesWinPts"></p>
-                <p id="rulesDrawPts"></p>
-                <p id="rulesLosePts"></p>
-                <p id="rulesGoal"></p>
-                <button class="close-rules-btn" id="closeRulesBtn" onclick="toggleRules(false)"></button>
+                <h3>Game Play Rules</h3>
+                <p>Time Limit: <span>3 Minutes</span></p>
+                <p>Winning Condition: Align <span>4 IN A ROW</span> (Horizontal, Vertical, or Diagonal)</p>
+                <p>Round <span>WIN</span>: <span>+8 Score</span></p>
+                <p>Round <span>DRAW</span>: <span>+4 Score</span></p>
+                <p>Round <span>LOSS</span>: <span>0 Score (No penalty)</span></p>
+                <p style="margin-top: 8px; border-top: 1px solid rgba(255, 215, 0, 0.2); padding-top: 8px;">
+                    Goal: Accumulate as many points as possible before the 3-minute timer runs out! There is no score limit!
+                </p>
+                <button class="close-rules-btn" onclick="toggleRules(false)">CLOSE</button>
             </div>
         </div>
 
-        <!-- Overlay Selesai Permainan Keseluruhan -->
+        <!-- GameOver Screen Overlay -->
         <div class="overlay" id="gameOverModal">
-            <h2 id="endTitle"></h2>
+            <h2 id="endTitle">TIME'S UP!</h2>
             <div class="overlay-score">
-                <span id="finalScoreLabel"></span>
+                FINAL SCORE
                 <span id="finalScore">0</span>
             </div>
-            <p class="overlay-msg" id="endMsg"></p>
-            <button class="btn" id="playAgainBtn" onclick="initGame()"></button>
+            <p class="overlay-msg" id="endMsg">Keep practicing to become the ultimate Digital Champion!</p>
+            <button class="btn" onclick="initGame()">
+                <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+                    <rect x="3" y="14" width="5.5" height="6" rx="1"></rect>
+                    <rect x="8.5" y="8" width="5.5" height="12" rx="1"></rect>
+                    <rect x="14" y="12" width="5.5" height="8" rx="1"></rect>
+                </svg>
+                <span>Start Game</span>
+                <div class="btn-icon-right">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </div>
+            </button>
         </div>
     </div>
 
     <script>
-        // --- i18n: default English, ?lang=ms switches to Bahasa Melayu ---
-        const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
-        const COPY = {
-            en: {
-                // Canonical (§6.4)
-                start: 'START GAME',
-                timeUp: "TIME'S UP!",
-                gameOver: 'GAME OVER',
-                audioOn: 'AUDIO ON',
-                audioOff: 'AUDIO OFF',
-                // Game-specific
-                infoScore: 'INFO SCORE',
-                subtitle: '5x5 ENDLESS CHALLENGE',
-                timerLabel: 'TIME LEFT',
-                scoreLabel: 'SCORE',
-                clickToStart: 'Tap any square to begin!',
-                aiThinking: 'AI is plotting...',
-                yourTurn: 'Your turn 💎',
-                roundWin: 'WIN!',
-                roundLose: 'LOSE!',
-                roundDraw: 'DRAW!',
-                youWon: '🔥 You won! (+20)',
-                aiWon: '💀 AI won! (Lose: +0)',
-                drawMsg: 'Draw! (+10)',
-                newRound: 'New round! Find the best space.',
-                champion: 'Congrats, Champion!',
-                rulesTitle: '5x5 Edition Rules',
-                rulesTime: 'Time given: <span>3 Minutes</span>',
-                rulesWinCond: 'Win condition: Line up <span>4 IN A ROW</span> (Horizontal, Vertical, or Diagonal)',
-                rulesWinPts: 'Each round <span>WON</span>: <span>+20 Points</span>',
-                rulesDrawPts: 'Each round <span>DRAW</span>: <span>+10 Points</span>',
-                rulesLosePts: 'Each round <span>LOST</span>: <span>0 Points (no deduction)</span>',
-                rulesGoal: 'Goal: Collect as many points as you can before time runs out to become a true 5x5 Juara Digital!',
-                closeRules: 'CLOSE',
-                finalScoreLabel: 'FINAL SCORE',
-                playAgain: 'PLAY AGAIN',
-                endMsgChampion: 'Amazing score!<br>True <b>JUARA DIGITAL 5x5</b> status confirmed! 👑💎',
-                endMsgGreat: 'Great tactics! You almost claimed the Champion title.',
-                endMsgKeepGoing: "Was the AI's defense too strong? Keep practicing to break through!"
-            },
-            ms: {
-                // Canonical (§6.4)
-                start: 'MULA MAIN',
-                timeUp: 'MASA TAMAT!',
-                gameOver: 'PERMAINAN TAMAT',
-                audioOn: 'AUDIO ON',
-                audioOff: 'AUDIO OFF',
-                // Game-specific
-                infoScore: 'INFO SKOR',
-                subtitle: 'CABARAN 5x5 TANPA BATAS',
-                timerLabel: 'MASA TINGGAL',
-                scoreLabel: 'SKOR TERKUMPUL',
-                clickToStart: 'Klik kotak mana saja untuk memulai!',
-                aiThinking: 'AI sedang menyusun taktik...',
-                yourTurn: 'Giliran Anda 💎',
-                roundWin: 'MENANG!',
-                roundLose: 'KALAH!',
-                roundDraw: 'SERI!',
-                youWon: '🔥 Anda Menang! (+20)',
-                aiWon: '💀 AI Menang! (Kalah: +0)',
-                drawMsg: 'Seri! (+10)',
-                newRound: 'Babak Baru! Cari ruang terbaik.',
-                champion: 'Tahniah, Juara!',
-                rulesTitle: 'Aturan Edisi 5x5',
-                rulesTime: 'Waktu yang diberikan: <span>3 Minit</span>',
-                rulesWinCond: 'Syarat Kemenangan: Susun <span>4 SEBARIS</span> (Mendatar, Tegak, atau Diagonal)',
-                rulesWinPts: 'Setiap babak yang <span>MENANG</span>: <span>+20 Poin</span>',
-                rulesDrawPts: 'Setiap babak yang <span>SERI</span>: <span>+10 Poin</span>',
-                rulesLosePts: 'Setiap babak yang <span>KALAH</span>: <span>0 Poin (tiada pengurangan)</span>',
-                rulesGoal: 'Tujuan: Kumpulkan seberapa banyak poin sebelum waktu habis untuk menjadi Juara Digital 5x5 Sejati!',
-                closeRules: 'TUTUP',
-                finalScoreLabel: 'SKOR AKHIR',
-                playAgain: 'MAIN LAGI',
-                endMsgChampion: 'Skor yang hebat!<br>Status <b>JUARA DIGITAL 5x5</b> Sejati dikonfirmasi! 👑💎',
-                endMsgGreat: 'Taktik yang hebat! Hampir membuat Anda bergelar Juara.',
-                endMsgKeepGoing: 'Pertahanan AI terlalu kuat? Teruskan latihan untuk menembus taktik AI!'
-            }
-        }[LANG];
-
-        // --- Apply static UI copy on load ---
-        function applyStaticCopy() {
-            document.getElementById('rulesBtn').innerHTML = 'ℹ️ ' + COPY.infoScore;
-            document.getElementById('subtitle').textContent = COPY.subtitle;
-            document.getElementById('timerLabel').textContent = COPY.timerLabel;
-            document.getElementById('scoreLabel').textContent = COPY.scoreLabel;
-            document.getElementById('rulesTitle').textContent = COPY.rulesTitle;
-            document.getElementById('rulesTime').innerHTML = COPY.rulesTime;
-            document.getElementById('rulesWinCond').innerHTML = COPY.rulesWinCond;
-            document.getElementById('rulesWinPts').innerHTML = COPY.rulesWinPts;
-            document.getElementById('rulesDrawPts').innerHTML = COPY.rulesDrawPts;
-            document.getElementById('rulesLosePts').innerHTML = COPY.rulesLosePts;
-            document.getElementById('rulesGoal').innerHTML = COPY.rulesGoal;
-            document.getElementById('closeRulesBtn').textContent = COPY.closeRules;
-            document.getElementById('finalScoreLabel').textContent = COPY.finalScoreLabel;
-            document.getElementById('playAgainBtn').textContent = COPY.playAgain;
-        }
-
-        // --- Aset SVG Ruby Merah (Kekal reka bentuk asal) ---
+        // --- Brighter Red Ruby Vector SVG Asset (5-Facet static high-contrast style) ---
         const svgGemDiamond = `
-            <svg class="icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="50,15 85,40 50,90 15,40" fill="#ff0000" stroke="#ffcccc" stroke-width="2"/>
-                <polygon points="50,15 85,40 50,45 15,40" fill="#ff4d4d"/>
-                <polygon points="50,45 85,40 50,90" fill="#cc0000"/>
-                <polygon points="15,40 50,45 50,90" fill="#990000"/>
-                <polygon points="35,35 65,35 50,15" fill="#ff9999"/>
-                <circle cx="50" cy="50" r="40" fill="none" stroke="#ff0000" stroke-width="4" opacity="0.4" filter="blur(4px)"/>
+            <svg class="icon ruby-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- Top Center Facet (Bright Red) -->
+                <polygon points="30,25 70,25 50,45" fill="#ff3b50"/>
+                <!-- Top Left Facet (Light Neon Pinkish Red) -->
+                <polygon points="30,25 15,45 50,45" fill="#ff6b7e"/>
+                <!-- Top Right Facet (Deep Bright Red) -->
+                <polygon points="70,25 85,45 50,45" fill="#e61e38"/>
+                <!-- Bottom Left Facet (Vibrant Solid Red) -->
+                <polygon points="15,45 50,85 50,45" fill="#ff213b"/>
+                <!-- Bottom Right Facet (Deep Crimson Shadow) -->
+                <polygon points="85,45 50,85 50,45" fill="#b30b20"/>
+
+                <!-- Specular Permanent Shine Highlights -->
+                <polygon points="30,25 50,25 50,45" fill="#ffffff" fill-opacity="0.3"/>
+                <polygon points="15,45 30,25 50,45" fill="#ffffff" fill-opacity="0.2"/>
             </svg>
         `;
 
-        // Perisai Emas (AI)
+        // --- Brighter Gold Diamond Vector SVG Asset (5-Facet static high-contrast style) ---
         const svgShield = `
-            <svg class="icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <path d="M 15,25 Q 50,15 85,25 L 80,60 Q 50,95 20,60 Z" fill="#ffd700" stroke="#fff" stroke-width="2"/>
-                <path d="M 25,35 Q 50,25 75,35 L 70,55 Q 50,80 30,55 Z" fill="#ffaa00"/>
-                <polygon points="50,40 60,60 40,60" fill="#fff"/>
-                <circle cx="50" cy="50" r="40" fill="none" stroke="#ffd700" stroke-width="4" opacity="0.4" filter="blur(4px)"/>
+            <svg class="icon gold-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- Top Center Facet (Bright Sunflower Gold) -->
+                <polygon points="30,25 70,25 50,45" fill="#ffcc33"/>
+                <!-- Top Left Facet (Warm Neon Yellow Highlight) -->
+                <polygon points="30,25 15,45 50,45" fill="#ffe066"/>
+                <!-- Top Right Facet (Rich Deep Gold) -->
+                <polygon points="70,25 85,45 50,45" fill="#e6b41f"/>
+                <!-- Bottom Left Facet (Vibrant Pure Yellow) -->
+                <polygon points="15,45 50,85 50,45" fill="#ffd64d"/>
+                <!-- Bottom Right Facet (Warm Bronze Shadow) -->
+                <polygon points="85,45 50,85 50,45" fill="#b3860b"/>
+
+                <!-- Specular Permanent Shine Highlights -->
+                <polygon points="30,25 50,25 50,45" fill="#ffffff" fill-opacity="0.3"/>
+                <polygon points="15,45 30,25 50,45" fill="#ffffff" fill-opacity="0.2"/>
             </svg>
         `;
 
-        // --- Variabel State Permainan ---
+        // --- Game Elements & Variables ---
         const boardElements = document.querySelectorAll('.cell');
         const scoreEl = document.getElementById('score');
         const timerEl = document.getElementById('timer');
+        const roundValEl = document.getElementById('round-val');
         const statusMsgEl = document.getElementById('statusMsg');
         const gameOverModal = document.getElementById('gameOverModal');
         const finalScoreEl = document.getElementById('finalScore');
@@ -519,60 +547,64 @@
 
         let boardState = Array(25).fill("");
         let score = 0;
-        const MAX_SCORE = 500;
-        let timeLeft = 180; // 3 menit dalam detik
+        let round = 1;
+        let timeLeft = 180; // 3 minutes
         const TOTAL_TIME = 180;
         let timerInterval;
         let isGameActive = false;
         let isPlayerTurn = true;
         let isTimerRunning = false;
+        let nextRoundStarter = 'P'; // 'P' for Player, 'A' for AI
 
-        // --- Daftar 28 Kombinasi Kemenangan (4 Sebaris dalam Grid 5x5) ---
+        // --- 28 Winning Combinations (4 in-a-row on 5x5 board) ---
         const winConditions = [
-            // Horizontal (Baris) - 10 kombinasi
+            // Horizontal rows
             [0, 1, 2, 3], [1, 2, 3, 4],
             [5, 6, 7, 8], [6, 7, 8, 9],
             [10, 11, 12, 13], [11, 12, 13, 14],
             [15, 16, 17, 18], [16, 17, 18, 19],
             [20, 21, 22, 23], [21, 22, 23, 24],
 
-            // Vertikal (Kolom) - 10 kombinasi
+            // Vertical columns
             [0, 5, 10, 15], [5, 10, 15, 20],
             [1, 6, 11, 16], [6, 11, 16, 21],
             [2, 7, 12, 17], [7, 12, 17, 22],
             [3, 8, 13, 18], [8, 13, 18, 23],
             [4, 9, 14, 19], [9, 14, 19, 24],
 
-            // Diagonal Turun (\) - 4 kombinasi
+            // Diagonal down (\)
             [0, 6, 12, 18], [6, 12, 18, 24],
             [1, 7, 13, 19],
             [5, 11, 17, 23],
 
-            // Diagonal Naik (/) - 4 kombinasi
+            // Diagonal up (/)
             [4, 8, 12, 16], [8, 12, 16, 20],
             [3, 7, 11, 15],
             [9, 13, 17, 21]
         ];
 
-        // --- Kontrol Tampilan Aturan ---
+        // --- Manage Score Modal ---
         function toggleRules(show) {
             if(show) rulesModal.classList.add('active');
             else rulesModal.classList.remove('active');
         }
 
-        // --- Mengatur Ulang Permainan Baru ---
+        // --- Initialization ---
         function initGame() {
             score = 0;
+            round = 1;
             timeLeft = TOTAL_TIME;
             scoreEl.textContent = "0";
+            roundValEl.textContent = "1";
             timerEl.textContent = "03:00";
             timerEl.style.color = "white";
             timerEl.style.textShadow = "0 0 10px rgba(255,255,255,0.5)";
-            statusMsgEl.textContent = COPY.clickToStart;
+            statusMsgEl.textContent = "Click any cell to begin!";
             statusMsgEl.style.color = "#ffcccc";
             gameOverModal.classList.remove('active');
             isTimerRunning = false;
             clearInterval(timerInterval);
+            nextRoundStarter = 'P'; // Always reset starter to Player on whole new game initialization
             resetBoard();
         }
 
@@ -582,7 +614,7 @@
             timerInterval = setInterval(() => {
                 timeLeft--;
                 updateTimerUI();
-                if (timeLeft <= 0) endGame(COPY.timeUp);
+                if (timeLeft <= 0) endGame("Time's Up!");
             }, 1000);
         }
 
@@ -594,7 +626,7 @@
             let percentage = (timeLeft / TOTAL_TIME) * 100;
 
             if (percentage < 20) {
-                // Efek visual merah menyala jika waktu tinggal sedikit (<20%)
+                // Glow critical red alert if time is running out (<20%)
                 timerEl.style.color = "#ff3333";
                 timerEl.style.textShadow = "0 0 15px #ff3333, 0 0 30px #ff0000";
             } else {
@@ -603,7 +635,7 @@
             }
         }
 
-        // --- Event Listener untuk Sel Grid ---
+        // --- Grid Clicks handler ---
         boardElements.forEach(cell => {
             cell.addEventListener('click', () => {
                 const idx = cell.getAttribute('data-index');
@@ -615,7 +647,7 @@
                 if (checkRoundResult('P')) return;
 
                 isPlayerTurn = false;
-                statusMsgEl.textContent = COPY.aiThinking;
+                statusMsgEl.textContent = "AI is drafting a counterstrategy...";
                 statusMsgEl.style.color = "#ffaa00";
 
                 setTimeout(() => {
@@ -623,7 +655,7 @@
                         aiMove();
                         checkRoundResult('A');
                     }
-                }, 600); // Waktu respons tindakan bot AI
+                }, 600); 
             });
         });
 
@@ -634,38 +666,40 @@
             cell.classList.add('occupied');
         }
 
-        // --- Logika Kecerdasan Buatan (AI) 5x5 Tingkat Tinggi (90% Akurasi Taktis) ---
+        // --- Sophisticated AI Algorithm (90% Tactical Strength) ---
         function aiMove() {
+            startTimer(); // Ensure game timer is running if AI starts first
+            
             let available = boardState.map((val, i) => val === "" ? i : null).filter(val => val !== null);
             if (available.length === 0) return;
 
             let chosenIdx = -1;
 
             if (Math.random() < 0.90) {
-                // 1. Prioritas Utama: Cari gerakan untuk menang langsung (3/4 selesai)
+                // 1. Critical priority: Capture direct winning spot (3/4 matches)
                 chosenIdx = findStrategicMove('A', 3);
 
-                // 2. Blokir lawan jika lawan hampir menang (3/4 selesai)
+                // 2. Defense block: Restrict opponent from scoring (3/4 matches)
                 if (chosenIdx === -1) {
                     chosenIdx = findStrategicMove('P', 3);
                 }
 
-                // 3. Kuasai posisi tengah utama (Indeks 12)
+                // 3. Command Central board index (12)
                 if (chosenIdx === -1 && boardState[12] === "") {
                     chosenIdx = 12;
                 }
 
-                // 4. Bangun pola penyerangan sendiri (2/4 selesai)
+                // 4. Form offensive branches (2/4 matches)
                 if (chosenIdx === -1) {
                     chosenIdx = findStrategicMove('A', 2);
                 }
 
-                // 5. Ganggu pola permainan lawan (2/4 selesai)
+                // 5. Block enemy progress (2/4 matches)
                 if (chosenIdx === -1) {
                     chosenIdx = findStrategicMove('P', 2);
                 }
 
-                // 6. Utamakan memojokkan sel sudut papan (0, 4, 20, 24)
+                // 6. Prefer corner cells (0, 4, 20, 24)
                 if (chosenIdx === -1) {
                     const corners = [0, 4, 20, 24].filter(idx => boardState[idx] === "");
                     if (corners.length > 0) {
@@ -674,7 +708,7 @@
                 }
             }
 
-            // Jika tidak ada taktik mumpuni, lakukan langkah acak dari sel yang tersedia
+            // Fallback random selection
             if (chosenIdx === -1) {
                 let r = Math.floor(Math.random() * available.length);
                 chosenIdx = available[r];
@@ -682,11 +716,11 @@
 
             makeMove(chosenIdx, 'A');
             isPlayerTurn = true;
-            statusMsgEl.textContent = COPY.yourTurn;
+            statusMsgEl.textContent = "Your Turn 💎";
             statusMsgEl.style.color = "#ffcccc";
         }
 
-        // Pencarian Taktis Sel Strategis berdasarkan jumlah simbol sebaris
+        // AI helper finding strategic alignments
         function findStrategicMove(type, targetCount) {
             for (let condition of winConditions) {
                 let count = 0;
@@ -707,7 +741,7 @@
             return -1;
         }
 
-        // --- Menampilkan Pesan Hasil Babak ---
+        // --- Display Round floating message ---
         function showRoundOverlay(text, color) {
             roundResultOverlay.textContent = text;
             roundResultOverlay.style.color = color;
@@ -717,7 +751,7 @@
             }, 1200);
         }
 
-        // --- Evaluasi Hasil Babak & Penghitungan Skor ---
+        // --- Evaluate Results & Award points ---
         function checkRoundResult(lastPlayer) {
             let winningCombo = null;
             
@@ -732,21 +766,23 @@
             if (winningCombo) {
                 isGameActive = false;
                 
-                // Terangi kombinasi pemenang
+                // Illuminate winning series
                 winningCombo.forEach(idx => {
                     document.querySelector(`.cell[data-index="${idx}"]`).classList.add('winning-cell');
                 });
 
                 if (lastPlayer === 'P') {
-                    showRoundOverlay(COPY.roundWin, "#ffd700");
-                    statusMsgEl.textContent = COPY.youWon;
+                    showRoundOverlay("VICTORY!", "#ffd700");
+                    statusMsgEl.textContent = "🔥 You Won! (+8)";
                     statusMsgEl.style.color = "#ffd700";
-                    addScore(20);
+                    addScore(8);
+                    nextRoundStarter = 'P'; // Winner starts the next round
                 } else {
-                    showRoundOverlay(COPY.roundLose, "#ff3333");
-                    statusMsgEl.textContent = COPY.aiWon;
+                    showRoundOverlay("DEFEAT!", "#ff3333");
+                    statusMsgEl.textContent = "💀 AI Won! (+0)";
                     statusMsgEl.style.color = "#ff3333";
                     addScore(0);
+                    nextRoundStarter = 'A'; // Winner starts the next round
                 }
                 scheduleNextRound();
                 return true;
@@ -754,10 +790,11 @@
 
             if (!boardState.includes("")) {
                 isGameActive = false;
-                showRoundOverlay(COPY.roundDraw, "#aaaaaa");
-                statusMsgEl.textContent = COPY.drawMsg;
+                showRoundOverlay("DRAW!", "#aaaaaa"); 
+                statusMsgEl.textContent = "Draw! (+4)";
                 statusMsgEl.style.color = "#aaaaaa";
-                addScore(10);
+                addScore(4);
+                nextRoundStarter = 'P'; // Default back to Player on draws
                 scheduleNextRound();
                 return true;
             }
@@ -765,6 +802,7 @@
             return false;
         }
 
+        // --- Accumulate points ---
         function addScore(points) {
             score = score + points;
             scoreEl.textContent = score;
@@ -775,11 +813,11 @@
 
         function scheduleNextRound() {
             if (timeLeft <= 0) return;
-
+            
             setTimeout(() => {
                 resetBoard();
-                statusMsgEl.textContent = COPY.newRound;
-                statusMsgEl.style.color = "#ffcccc";
+                round++;
+                roundValEl.textContent = round;
             }, 1500);
         }
 
@@ -791,10 +829,26 @@
             });
 
             isGameActive = true;
-            isPlayerTurn = true;
+            isPlayerTurn = (nextRoundStarter === 'P');
+
+            if (isPlayerTurn) {
+                statusMsgEl.textContent = "New Round! Seize the initiative.";
+                statusMsgEl.style.color = "#ffcccc";
+            } else {
+                statusMsgEl.textContent = "AI is drafting a counterstrategy...";
+                statusMsgEl.style.color = "#ffaa00";
+                
+                // Let the AI take its turn automatically if it won the last round
+                setTimeout(() => {
+                    if (isGameActive) {
+                        aiMove();
+                        checkRoundResult('A');
+                    }
+                }, 600);
+            }
         }
 
-        // --- Menyelesaikan Seluruh Durasi Permainan (3 Menit Selesai) ---
+        // --- End of All Game Stages ---
         function endGame(titleStr) {
             isGameActive = false;
             clearInterval(timerInterval);
@@ -802,22 +856,22 @@
             endTitleEl.textContent = titleStr;
             finalScoreEl.textContent = score;
 
-            if (score >= 500) {
-                endMsgEl.innerHTML = COPY.endMsgChampion;
+            // Thresholds adapted to new maximum potential limit (~432 max)
+            if (score >= 180) {
+                endMsgEl.innerHTML = "Incredible! You scored an amazing high score!<br>Status <b>STRAIGHT 4 RUBY CHAMPION</b> Confirmed! 👑💎";
                 endTitleEl.style.color = "var(--gold)";
-            } else if (score >= 300) {
-                endMsgEl.textContent = COPY.endMsgGreat;
+            } else if (score >= 80) {
+                endMsgEl.textContent = "Great job! Your performance shows high strategic capacity.";
                 endTitleEl.style.color = "#ffaa00";
             } else {
-                endMsgEl.textContent = COPY.endMsgKeepGoing;
+                endMsgEl.textContent = "Keep practicing to breach the smart AI tactics!";
                 endTitleEl.style.color = "#ff3333";
             }
 
             gameOverModal.classList.add('active');
         }
 
-        // Memulai permainan saat halaman dimuat
-        applyStaticCopy();
+        // Launch Game
         initGame();
 
     </script>

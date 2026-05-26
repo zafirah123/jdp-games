@@ -108,6 +108,54 @@
             stroke-width: 3.5;
         }
 
+        /* Audio Toggle Button - Matches the rules button styling symmetrically */
+        .audio-btn {
+            position: absolute;
+            top: -18px;
+            left: 20px;
+            background: linear-gradient(to bottom, #ffe873, #ffbd25);
+            color: #cc292b;
+            border: none;
+            padding: 6px 12px 6px 8px;
+            font-size: 0.85rem;
+            font-weight: 900;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 3px 0px #dca01a, 0 4px 10px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.1s;
+            z-index: 10;
+            text-transform: uppercase;
+        }
+        .audio-btn:active { 
+            transform: translateY(3px); 
+            box-shadow: 0 0px 0px #dca01a, 0 2px 5px rgba(0,0,0,0.5); 
+        }
+        .audio-btn .btn-icon-left {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #b31616 0%, #15152a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 2px;
+        }
+        .audio-btn .btn-icon-left svg {
+            width: 11px;
+            height: 11px;
+            fill: white;
+        }
+        .audio-btn .btn-icon-right {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2.5;
+        }
+
         /* Header / Titles */
         .header {
             margin-bottom: 5px;
@@ -383,6 +431,18 @@
 <body>
 
     <div class="game-wrapper">
+        <!-- Interactive 3D Audio Toggle Button -->
+        <button class="audio-btn" onclick="toggleMute()">
+            <div class="btn-icon-left" id="mute-icon-container">
+                <svg viewBox="0 0 24 24" id="sound-svg">
+                    <!-- Default Unmuted Speaker Icon -->
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+            </div>
+            <span id="mute-text">Sound: ON</span>
+        </button>
+
+        <!-- Rules Info Button -->
         <button class="rules-btn" onclick="toggleRules(true)">
             <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round">
                 <rect x="3" y="14" width="5.5" height="6" rx="1"></rect>
@@ -583,14 +643,183 @@
             [9, 13, 17, 21]
         ];
 
+        // ========================================================
+        // WEB AUDIO SYSTEM SYNTHESIS (NO EXTERNAL MP3/WAV FILES)
+        // ========================================================
+        let audioCtx = null;
+        let isMuted = false;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            switch(type) {
+                case 'chime': // Player Ruby placement (high glass crystal ring)
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(987.77, now); // B5 note
+                        osc.frequency.exponentialRampToValueAtTime(1975.53, now + 0.08); // slide up spark
+                        
+                        gain.gain.setValueAtTime(0.12, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.4);
+                    }
+                    break;
+                case 'click_ai': // AI Gold Gem placement (lower metallic solid chime)
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(554.37, now); // C#5 Note
+                        osc.frequency.exponentialRampToValueAtTime(277.18, now + 0.15); // metallic sweep down
+                        
+                        gain.gain.setValueAtTime(0.18, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.35);
+                    }
+                    break;
+                case 'victory': // Upbeat chord arpeggio
+                    {
+                        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                        notes.forEach((freq, idx) => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.type = 'triangle';
+                            osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                            
+                            gain.gain.setValueAtTime(0.12, now + idx * 0.1);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.6);
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.start(now + idx * 0.1);
+                            osc.stop(now + idx * 0.1 + 0.6);
+                        });
+                    }
+                    break;
+                case 'defeat': // Low descending disappointing notes
+                    {
+                        const notes = [392.00, 349.23, 311.13, 261.63]; // G4, F4, Eb4, C4
+                        notes.forEach((freq, idx) => {
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.type = 'sawtooth';
+                            osc.frequency.setValueAtTime(freq, now + idx * 0.15);
+                            
+                            gain.gain.setValueAtTime(0.08, now + idx * 0.15);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.15 + 0.5);
+                            
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.start(now + idx * 0.15);
+                            osc.stop(now + idx * 0.15 + 0.5);
+                        });
+                    }
+                    break;
+                case 'draw': // Two flat static mechanical tones
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(349.23, now); // F4
+                        osc.frequency.setValueAtTime(349.23, now + 0.15);
+                        
+                        gain.gain.setValueAtTime(0.15, now);
+                        gain.gain.setValueAtTime(0, now + 0.12);
+                        gain.gain.setValueAtTime(0.15, now + 0.15);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.4);
+                    }
+                    break;
+                case 'tick': // Low volume high warning beep
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(1500, now);
+                        
+                        gain.gain.setValueAtTime(0.02, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.05);
+                    }
+                    break;
+                case 'tap': // Light UI tap feedback
+                    {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(650, now);
+                        osc.frequency.exponentialRampToValueAtTime(320, now + 0.08);
+                        
+                        gain.gain.setValueAtTime(0.08, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.08);
+                    }
+                    break;
+            }
+        }
+
+        // Mute / Unmute handler
+        function toggleMute() {
+            isMuted = !isMuted;
+            const muteText = document.getElementById('mute-text');
+            const soundSvg = document.getElementById('sound-svg');
+
+            if (isMuted) {
+                muteText.textContent = "Sound: OFF";
+                soundSvg.innerHTML = `<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>`;
+            } else {
+                initAudio();
+                muteText.textContent = "Sound: ON";
+                soundSvg.innerHTML = `<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>`;
+                playSound('tap');
+            }
+        }
+
         // --- Manage Score Modal ---
         function toggleRules(show) {
+            playSound('tap');
             if(show) rulesModal.classList.add('active');
             else rulesModal.classList.remove('active');
         }
 
         // --- Initialization ---
         function initGame() {
+            playSound('tap');
             score = 0;
             round = 1;
             timeLeft = TOTAL_TIME;
@@ -629,6 +858,7 @@
                 // Glow critical red alert if time is running out (<20%)
                 timerEl.style.color = "#ff3333";
                 timerEl.style.textShadow = "0 0 15px #ff3333, 0 0 30px #ff0000";
+                playSound('tick'); // Play a ticking clock audio pop
             } else {
                 timerEl.style.color = "white";
                 timerEl.style.textShadow = "0 0 10px rgba(255,255,255,0.5)";
@@ -642,6 +872,7 @@
                 if (!isGameActive || boardState[idx] !== "" || !isPlayerTurn) return;
 
                 startTimer();
+                playSound('chime'); // Play Player Ruby placement chime
 
                 makeMove(idx, 'P');
                 if (checkRoundResult('P')) return;
@@ -669,6 +900,7 @@
         // --- Sophisticated AI Algorithm (90% Tactical Strength) ---
         function aiMove() {
             startTimer(); // Ensure game timer is running if AI starts first
+            playSound('click_ai'); // Play AI Gold Gem placement solid chime
             
             let available = boardState.map((val, i) => val === "" ? i : null).filter(val => val !== null);
             if (available.length === 0) return;
@@ -776,12 +1008,14 @@
                     statusMsgEl.textContent = "🔥 You Won! (+8)";
                     statusMsgEl.style.color = "#ffd700";
                     addScore(8);
+                    playSound('victory'); // Play upbeat victory arpeggio chord
                     nextRoundStarter = 'P'; // Winner starts the next round
                 } else {
                     showRoundOverlay("DEFEAT!", "#ff3333");
                     statusMsgEl.textContent = "💀 AI Won! (+0)";
                     statusMsgEl.style.color = "#ff3333";
                     addScore(0);
+                    playSound('defeat'); // Play low disappointing defeat cascade
                     nextRoundStarter = 'A'; // Winner starts the next round
                 }
                 scheduleNextRound();
@@ -794,6 +1028,7 @@
                 statusMsgEl.textContent = "Draw! (+4)";
                 statusMsgEl.style.color = "#aaaaaa";
                 addScore(4);
+                playSound('draw'); // Play double flat draw hum
                 nextRoundStarter = 'P'; // Default back to Player on draws
                 scheduleNextRound();
                 return true;
@@ -860,12 +1095,15 @@
             if (score >= 180) {
                 endMsgEl.innerHTML = "Incredible! You scored an amazing high score!<br>Status <b>STRAIGHT 4 RUBY CHAMPION</b> Confirmed! 👑💎";
                 endTitleEl.style.color = "var(--gold)";
+                playSound('victory');
             } else if (score >= 80) {
                 endMsgEl.textContent = "Great job! Your performance shows high strategic capacity.";
                 endTitleEl.style.color = "#ffaa00";
+                playSound('victory');
             } else {
                 endMsgEl.textContent = "Keep practicing to breach the smart AI tactics!";
                 endTitleEl.style.color = "#ff3333";
+                playSound('defeat');
             }
 
             gameOverModal.classList.add('active');

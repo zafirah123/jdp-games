@@ -257,7 +257,11 @@ export class StartScene extends Phaser.Scene {
         y: by + 4,
         duration: 80,
         yoyo: true,
-        onComplete: () => this.scene.start('GameScene'),
+        // Pass an explicit fresh payload: Phaser's Systems.start only overwrites
+        // settings.data when the new data is truthy, so a bare scene.start()
+        // would let a previous Continue's {score, timeUsedMs} leak into the
+        // new round, starting it mid-timer.
+        onComplete: () => this.scene.start('GameScene', { score: 0, timeUsedMs: 0 }),
       });
     });
   }

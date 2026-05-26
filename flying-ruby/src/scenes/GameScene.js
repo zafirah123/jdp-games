@@ -1,5 +1,5 @@
 import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
-import { addMuteButton } from '../muteButton.js';
+import { addMuteButton, pointerHitsMuteButton } from '../muteButton.js';
 import { COPY } from '../copy.js';
 
 const FLOOR_HEIGHT       = 80;
@@ -283,10 +283,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   _bindInput() {
-    // a tap anywhere flaps — except on the mute button, which has its own
-    // handler and should not also start the round / flap the mascot
-    this.input.on('pointerdown', (_pointer, currentlyOver) => {
+    // A tap anywhere flaps — except on the mute button, which has its own
+    // handler. `currentlyOver` is unreliable on a fresh mobile touch (no
+    // preceding pointermove means the array can be empty even when the tap
+    // landed on the button), so we also do a direct position hit-test.
+    // Without this, tapping mute would flap pbot into the nearest pillar.
+    this.input.on('pointerdown', (pointer, currentlyOver) => {
       if (currentlyOver.includes(this.muteBtn)) return;
+      if (pointerHitsMuteButton(this.muteBtn, pointer)) return;
       this._handleInput();
     });
     this.input.keyboard?.on('keydown-SPACE', () => this._handleInput());

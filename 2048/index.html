@@ -7,7 +7,7 @@
 <title>2048 — JDP Games</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   html, body {
@@ -29,53 +29,90 @@
   }
   .hidden { display: none !important; }
 
-  /* HUD */
-  #hud {
-    position: fixed;
-    top: 16px; left: 16px; right: 72px;
+  /* Top HUD bar — DESIGN.md §5.12 */
+  .hud-bar {
+    position: fixed; left: 0; right: 0; top: 0;
+    display: flex; justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) 8px 0;
+    z-index: 10;
     pointer-events: none;
-    z-index: 5;
   }
   .hud-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-  }
-  .pill {
-    background: rgba(2, 13, 38, 0.85);
-    border: 2px solid #FFD633;
-    border-radius: 999px;
-    padding: 8px 16px;
-    font-weight: 700;
-    font-size: 16px;
-    line-height: 1;
-    color: #FFD633;
-    letter-spacing: 0.4px;
+    width: 100%; max-width: 28rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    flex-shrink: 0;
     pointer-events: auto;
-    min-width: 96px;
-    text-align: center;
-    box-shadow: 0 2px 0 rgba(0,0,0,0.4);
   }
-  .pill.timer { color: #FFFFFF; }
-  .pill.timer.urgent {
-    animation: pulse 0.4s ease-in-out infinite alternate;
-    border-color: #AF1726;
-    color: #FFE258;
+  .jdp-pill {
+    flex: 1;
+    display: flex; align-items: stretch;
+    background: #fff;
+    border: 2px solid #FFB603;
+    border-radius: 30px;
+    overflow: hidden;
+    height: 40px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
   }
-  .pill.score.warn { border-color: #ff7b00; color: #ffd633; }
-  .pill.score.danger { border-color: #AF1726; color: #FFE258; animation: pulse 0.5s ease-in-out infinite alternate; }
-  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+  .jdp-pill .pill-label {
+    background: #9E131F;
+    color: #FFD633;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex; align-items: center;
+    padding: 0 10px;
+  }
+  .jdp-pill .pill-value {
+    flex: 1;
+    background: #133B9F;
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 6px;
+    transition: background 0.25s;
+  }
+  .jdp-pill .pill-value.font-mono { font-family: 'Roboto Mono', monospace; font-size: 15px; }
+  .jdp-pill .pill-value.warn   { background: #C76A00; }
+  .jdp-pill .pill-value.danger { background: #9E131F; }
+  @keyframes pulse-urgent {
+    0%, 100% { transform: scale(1);    color: #FFFFFF; }
+    50%      { transform: scale(1.15); color: #FFD633; }
+  }
+  .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
+  @keyframes pulse-card {
+    from { transform: scale(1); } to { transform: scale(1.06); }
+  }
+
+  /* Audio toggle — DESIGN.md §5.11 (in-row variant) */
+  .mute {
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    border: 2px solid #FFB603;
+    background: #9E131F;
+    color: #FFD633;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; cursor: pointer;
+    transition: transform 80ms ease;
+  }
+  .mute:active { transform: scale(0.92); }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; }
 
   /* Urgency bar — fills toward the next auto-spawn. Only visible once spawn pressure kicks in. */
   .urgency-bar {
-    margin: 10px auto 0;
+    position: fixed;
+    top: calc(max(8px, env(safe-area-inset-top)) + 46px);
+    left: 50%;
+    transform: translateX(-50%);
     height: 6px;
     width: min(360px, 70vw);
     background: rgba(2, 13, 38, 0.7);
     border: 1.5px solid rgba(255, 214, 51, 0.4);
     border-radius: 999px;
     overflow: hidden;
+    z-index: 9;
   }
   .urgency-fill {
     height: 100%;
@@ -83,25 +120,6 @@
     background: linear-gradient(90deg, #FFD633 0%, #ff7b00 60%, #AF1726 100%);
     transition: width 0.08s linear;
   }
-
-  /* Audio toggle — DESIGN.md §5.11 */
-  .mute {
-    position: fixed;
-    top: max(12px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
-    width: 44px; height: 44px;
-    border-radius: 22px;
-    border: 2px solid #FFB603;
-    background: #9E131F;
-    color: #FFD633;
-    display: flex; align-items: center; justify-content: center;
-    padding: 0;
-    cursor: pointer;
-    z-index: 30;
-    transition: transform 80ms ease;
-  }
-  .mute:active { transform: scale(0.92); }
-  .mute svg { width: 22px; height: 22px; fill: currentColor; }
 
   /* Overlays */
   .overlay {
@@ -185,29 +203,29 @@
     font-size: 14px;
     letter-spacing: 1px;
     margin: 0 0 12px;
-    animation: pulse 0.5s ease-in-out infinite alternate;
+    animation: pulse-card 0.5s ease-in-out infinite alternate;
   }
   @media (max-width: 420px) {
     .card h1 { font-size: 36px; }
-    .pill { font-size: 14px; padding: 6px 12px; min-width: 80px; }
+    .jdp-pill .pill-value { font-size: 14px; }
+    .jdp-pill .pill-label { font-size: 9px; padding: 0 8px; }
   }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 
-<button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
-  <svg viewBox="0 0 24 24"></svg>
-</button>
-
-<div id="hud" class="hidden">
+<div id="hud" class="hud-bar hidden">
   <div class="hud-row">
-    <div id="scorePill" class="pill score">0</div>
-    <div id="timerPill" class="pill timer">3:00</div>
+    <div class="jdp-pill"><span class="pill-label">Score</span><span class="pill-value" id="scoreVal">0</span></div>
+    <div class="jdp-pill"><span class="pill-label">Time</span><span class="pill-value font-mono" id="timerVal">03:00</span></div>
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+      <svg viewBox="0 0 24 24"></svg>
+    </button>
   </div>
-  <div id="urgencyBar" class="urgency-bar hidden">
-    <div id="urgencyFill" class="urgency-fill"></div>
-  </div>
+</div>
+<div id="urgencyBar" class="urgency-bar hidden">
+  <div id="urgencyFill" class="urgency-fill"></div>
 </div>
 
 <div id="menu" class="overlay">
@@ -225,7 +243,7 @@
     <h2 id="goTitle"></h2>
     <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
     <div id="finalStats" class="stats"></div>
-    <button id="playAgainBtn" class="cta"></button>
+    <button id="claimBtn" class="cta"></button>
   </div>
 </div>
 
@@ -240,12 +258,12 @@ const COPY = {
   en: {
     start: 'START GAME',
     timeUp: "TIME'S UP!",
-    gameOver: 'GAME OVER',
+    gameOver: 'MISSED!',
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
+    claim: 'CLAIM SCORE',
     menuSub: 'Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.',
     menuHint: 'Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
-    playAgain: 'PLAY AGAIN',
     newBest: 'NEW BEST!',
     bestPrefix: 'Best',
     statScore: 'Score',
@@ -257,12 +275,12 @@ const COPY = {
   ms: {
     start: 'MULA MAIN',
     timeUp: 'MASA TAMAT!',
-    gameOver: 'PERMAINAN TAMAT',
+    gameOver: 'TERLEPAS!',
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
+    claim: 'TUNTUT SKOR',
     menuSub: 'Leret untuk gerakkan jubin — dua jubin dengan nombor sama akan bergabung menjadi satu. Pastikan sekurang-kurangnya satu petak kosong atau permainan tamat. Dapatkan skor setinggi mungkin dalam 3 minit.',
     menuHint: 'Leret pada skrin sentuh, atau gunakan <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
-    playAgain: 'MAIN SEMULA',
     newBest: 'REKOD BAHARU!',
     bestPrefix: 'Terbaik',
     statScore: 'Skor',
@@ -277,6 +295,8 @@ const COPY = {
 // CONFIG — all tunables live here
 // =============================================================================
 const CONFIG = {
+  GAME_NAME: '2048',
+  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
   GRID_SIZE: 4,
   GAME_DURATION_SEC: 180,
   // Each merge scores log2(result-tile) + 1 points:
@@ -329,8 +349,8 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const dom = {
   hud: document.getElementById('hud'),
-  scorePill: document.getElementById('scorePill'),
-  timerPill: document.getElementById('timerPill'),
+  scoreVal: document.getElementById('scoreVal'),
+  timerVal: document.getElementById('timerVal'),
   urgencyBar: document.getElementById('urgencyBar'),
   urgencyFill: document.getElementById('urgencyFill'),
   muteBtn: document.getElementById('muteBtn'),
@@ -344,14 +364,14 @@ const dom = {
   goNewBest: document.getElementById('goNewBest'),
   newBestLabel: document.getElementById('newBestLabel'),
   finalStats: document.getElementById('finalStats'),
-  playAgainBtn: document.getElementById('playAgainBtn'),
+  claimBtn: document.getElementById('claimBtn'),
 };
 
 // Apply localized copy into the DOM up front.
 dom.menuSub.textContent = COPY.menuSub;
 dom.menuHint.innerHTML = COPY.menuHint;
 dom.startBtn.textContent = COPY.start;
-dom.playAgainBtn.textContent = COPY.playAgain;
+dom.claimBtn.textContent = COPY.claim;
 dom.newBestLabel.textContent = COPY.newBest;
 
 // =============================================================================
@@ -730,7 +750,6 @@ function update(dt) {
       playTick();
       state.lastTickPlayed = secondsLeft;
     }
-    dom.timerPill.classList.toggle('urgent', state.timer <= 10);
     if (state.timer <= 0) { state.timer = 0; endGame('time'); return; }
   }
 
@@ -773,12 +792,15 @@ function formatTime(t) {
 }
 
 function updateHud() {
-  dom.scorePill.textContent = String(state.score);
-  dom.timerPill.textContent = formatTime(state.timer);
+  dom.scoreVal.textContent = String(state.score);
+  dom.timerVal.textContent = formatTime(state.timer);
 
-  // Score pill warning tiers — visual cue for taper pressure
-  dom.scorePill.classList.toggle('warn', state.score >= CONFIG.TAPER_START_SCORE && state.score < CONFIG.TAPER_FULL_SCORE);
-  dom.scorePill.classList.toggle('danger', state.score >= CONFIG.TAPER_FULL_SCORE);
+  // Score pill — taper pressure tiers (recolor the value, leave chrome calm)
+  dom.scoreVal.classList.toggle('warn',   state.score >= CONFIG.TAPER_START_SCORE && state.score < CONFIG.TAPER_FULL_SCORE);
+  dom.scoreVal.classList.toggle('danger', state.score >= CONFIG.TAPER_FULL_SCORE);
+
+  // Time pill — pulse the value only in the final 10s (DESIGN.md §5.12)
+  dom.timerVal.classList.toggle('pulse-urgent', state.phase === 'PLAYING' && state.timer <= 10);
 
   // Urgency bar — fills toward next auto-spawn
   const interval = autoSpawnInterval();
@@ -1014,7 +1036,8 @@ function startGame() {
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
   dom.hud.classList.remove('hidden');
-  dom.timerPill.classList.remove('urgent');
+  dom.timerVal.classList.remove('pulse-urgent');
+  dom.scoreVal.classList.remove('warn', 'danger');
 
   if (devPhase === 'gameover') {
     // Force into game-over state for dev testing
@@ -1113,9 +1136,34 @@ canvas.addEventListener('mouseup', (e) => {
   else attemptMove(dy > 0 ? 'down' : 'up');
 });
 
+// CLAIM SCORE — CLAUDE.md §6.5 — submit final score to the platform callback.
+function resolveCallbackUrl() {
+  const qs = new URLSearchParams(location.search);
+  const candidate = qs.get('callback_url');
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === 'https:') return u.toString();
+    } catch (_) {}
+  }
+  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
+  return CONFIG.CLAIM_FALLBACK_URL;
+}
+function buildClaimUrl() {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const base = resolveCallbackUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  return base
+    + sep + 'game=' + encodeURIComponent(CONFIG.GAME_NAME)
+    + '&score=' + Math.max(0, state.score | 0)
+    + '&token=' + encodeURIComponent(token);
+}
+
 // Buttons
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
-dom.playAgainBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
+dom.claimBtn.addEventListener('click', () => { location.href = buildClaimUrl(); });
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');

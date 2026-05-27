@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#031034">
+<title>Number Snap — JDP Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #031034 0%, #060718 100%);
+    color: #fff;
+    font-family: 'Poppins', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  .hidden { display: none !important; }
+
+  /* ===== Top HUD bar — DESIGN.md §5.12 ===== */
+  .hud-bar {
+    position: fixed; left: 0; right: 0; top: 0;
+    display: flex; justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) 8px 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hud-row {
+    width: 100%; max-width: 28rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    flex-shrink: 0;
+    pointer-events: auto;
+  }
+  .jdp-pill {
+    flex: 1;
+    display: flex; align-items: stretch;
+    background: #fff;
+    border: 2px solid #FFB603;
+    border-radius: 30px;
+    overflow: hidden;
+    height: 40px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+  .jdp-pill .pill-label {
+    background: #9E131F;
+    color: #FFD633;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex; align-items: center;
+    padding: 0 10px;
+  }
+  .jdp-pill .pill-value {
+    flex: 1;
+    background: #133B9F;
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 6px;
+  }
+  .jdp-pill .pill-value.font-mono { font-family: 'Roboto Mono', monospace; font-size: 15px; }
+  @keyframes pulse-urgent {
+    0%, 100% { transform: scale(1); color: #FFFFFF; }
+    50%      { transform: scale(1.15); color: #FFD633; }
+  }
+  .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
+
+  /* Audio toggle — DESIGN.md §5.11 */
+  .mute {
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    border: 2px solid #FFB603;
+    background: #9E131F;
+    color: #FFD633;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; cursor: pointer;
+    transition: transform 80ms ease;
+  }
+  .mute:active { transform: scale(0.92); }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; }
+
+  /* ===== Canvas ===== */
+  canvas#game {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  /* ===== FAB row (Reroll + End) ===== */
+  .fab-row {
+    position: fixed;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 0; right: 0;
+    display: flex; justify-content: space-between;
+    padding: 0 16px;
+    z-index: 8;
+    pointer-events: none;
+  }
+  .fab {
+    pointer-events: auto;
+    border: 2px solid #FFB603;
+    background: #133B9F;
+    color: #FFD633;
+    border-radius: 999px;
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    font-family: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #0a1f5e;
+    transition: transform 0.08s, box-shadow 0.08s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .fab:active { transform: translateY(2px); box-shadow: 0 1px 0 #0a1f5e; }
+  .fab.reroll { background: #9E131F; box-shadow: 0 3px 0 #530209; border-color: #FFB603; color: #FFD633; }
+  .fab.reroll:active { box-shadow: 0 1px 0 #530209; }
+  .fab .count {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #FFD633; color: #9E131F;
+    min-width: 22px; height: 22px;
+    border-radius: 11px;
+    font-size: 12px; font-weight: 800;
+    padding: 0 6px;
+  }
+  .fab[disabled] { opacity: 0.45; cursor: not-allowed; }
+  .fab[disabled]:active { transform: none; box-shadow: 0 3px 0 #530209; }
+
+  /* ===== Overlays / modals ===== */
+  .overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(3, 16, 52, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    padding: 16px;
+  }
+  .card {
+    background: linear-gradient(180deg, #031034 0%, #0a1f5e 100%);
+    border: 3px solid #FFD633;
+    border-radius: 24px;
+    padding: 28px 24px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 0 rgba(0,0,0,0.4);
+  }
+  .card h1 {
+    font-size: 38px; margin: 0 0 4px;
+    font-weight: 700; color: #FFD633;
+    letter-spacing: 1px;
+    text-shadow: 0 4px 0 #9E131F;
+  }
+  .card h2 {
+    font-size: 26px; margin: 0 0 14px;
+    color: #FFD633; font-weight: 700;
+    text-shadow: 0 3px 0 #9E131F;
+  }
+  .card .sub { font-size: 14px; color: #fff; opacity: 0.92; margin: 0 0 16px; line-height: 1.45; }
+  .card .best { font-size: 14px; color: #FFD633; font-weight: 600; margin: 0 0 18px; min-height: 20px; }
+  .card .score-big {
+    font-size: 56px; font-weight: 800; color: #FFD633; line-height: 1;
+    margin: 4px 0 18px; text-shadow: 0 4px 0 #9E131F;
+  }
+  .cta {
+    background: linear-gradient(180deg, #FFE258 0%, #FFBA0A 100%);
+    border: 3px solid #FFB603;
+    border-radius: 999px;
+    padding: 14px 30px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    color: #DE0909;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 0 #DE9D00;
+    transition: transform 0.08s, box-shadow 0.08s;
+    text-transform: uppercase;
+    margin: 4px;
+  }
+  .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
+  .cta.secondary {
+    background: linear-gradient(180deg, #CF1B27 0%, #821322 100%);
+    border-color: #FFFFFF;
+    color: #FFD633;
+    box-shadow: 0 4px 0 #640A19;
+  }
+  .cta.secondary:active { box-shadow: 0 2px 0 #640A19; }
+  .new-best {
+    display: inline-block;
+    background: #FFD633; color: #031034;
+    border-radius: 999px; padding: 6px 14px;
+    font-weight: 700; font-size: 14px; letter-spacing: 1px;
+    margin: 0 0 12px;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+  .btn-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  @media (max-width: 420px) {
+    .card h1 { font-size: 32px; }
+    .card .score-big { font-size: 48px; }
+  }
+</style>
+</head>
+<body>
+  <div class="hud-bar hidden" id="hudBar">
+    <div class="hud-row">
+      <div class="jdp-pill"><span class="pill-label">Score</span><span class="pill-value" id="scoreVal">0</span></div>
+      <div class="jdp-pill"><span class="pill-label">Time</span><span class="pill-value font-mono" id="timeVal">03:00</span></div>
+      <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+        <svg viewBox="0 0 24 24"></svg>
+      </button>
+    </div>
+  </div>
+
+  <canvas id="game"></canvas>
+
+  <div class="fab-row hidden" id="fabRow">
+    <button id="endBtn" class="fab"><span id="endLabel">END</span></button>
+    <button id="rerollBtn" class="fab reroll" disabled><span id="rerollLabel">REROLL</span><span class="count" id="rerollCount">0</span></button>
+  </div>
+
+  <div id="menu" class="overlay">
+    <div class="card">
+      <h1>Number Snap</h1>
+      <p class="sub" id="menuSub"></p>
+      <p class="best" id="bestText">&nbsp;</p>
+      <button id="startBtn" class="cta"></button>
+    </div>
+  </div>
+
+  <div id="continueModal" class="overlay hidden">
+    <div class="card">
+      <h2 id="contTitle"></h2>
+      <p class="sub" id="contSub"></p>
+      <div class="btn-row">
+        <button id="contBtn" class="cta"></button>
+        <button id="contEndBtn" class="cta secondary"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gameOver" class="overlay hidden">
+    <div class="card">
+      <h2 id="goTitle"></h2>
+      <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
+      <div class="score-big" id="goScore">0</div>
+      <p class="best" id="goBest">&nbsp;</p>
+      <button id="claimBtn" class="cta"></button>
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+// ===========================================================================
+// i18n — ?lang=ms switches the game's copy to Bahasa Melayu (CLAUDE.md §6.4)
+// ===========================================================================
+const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE',
+    menuSub: 'Drag tiles to the grid. Build a connected path of 3–5 consecutive numbers to clear it. Chain clears for combos.',
+    bestPrefix: 'Best',
+    gridLocked: 'GRID LOCKED!',
+    continueQ: 'Clear 4 random tiles to keep playing? You only get one Continue.',
+    continueBtn: 'CONTINUE', endRun: 'END RUN', endRunShort: 'END',
+    reroll: 'REROLL',
+    newBest: 'NEW BEST!',
+  },
+  ms: {
+    start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR',
+    menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3–5 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
+    bestPrefix: 'Terbaik',
+    gridLocked: 'GRID TERSEKAT!',
+    continueQ: 'Buang 4 jubin rawak untuk teruskan? Anda hanya dapat satu Teruskan.',
+    continueBtn: 'TERUSKAN', endRun: 'TAMATKAN', endRunShort: 'TAMAT',
+    reroll: 'GANTI',
+    newBest: 'TERBAIK BAHARU!',
+  },
+}[LANG];
+
+// ===========================================================================
+// CONFIG — all tunables here
+// ===========================================================================
+const CONFIG = {
+  GAME_NAME: 'number-snap',
+  GAME_DURATION_SEC: 180,
+  COLS: 6, ROWS: 6,
+  HAND_SIZE: 3,
+  MIN_SEQ: 3, MAX_SEQ: 5,
+  COMBO_WINDOW_MS: 1500,
+  COMBO_CAP: 4,
+  SCORE_CAP_SOFT: 500,        // soft target — display is never clamped (CLAUDE.md §1.4)
+  TAPER_START: 430,
+  REROLL_INTERVAL_SEC: 60,
+  REROLL_MAX_BANK: 3,
+  REROLL_START_BANK: 1,
+  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
+  STORAGE_KEY_BEST: 'number-snap:best',
+  STORAGE_KEY_MUTE: 'number-snap:mute',
+  URGENCY_SECONDS: 10,
+};
+
+// Number palette — low→high reads cool→warm. JDP yellow border + dark plate
+// chrome stays consistent across all tiles.
+const TILE_COLORS = {
+  1: { fill: '#102457', text: '#FFFFFF' },
+  2: { fill: '#133B9F', text: '#FFFFFF' },
+  3: { fill: '#2A6CDC', text: '#FFFFFF' },
+  4: { fill: '#1E9E96', text: '#FFFFFF' },
+  5: { fill: '#3A8B4C', text: '#FFFFFF' },
+  6: { fill: '#FFD633', text: '#9E131F' },
+  7: { fill: '#FFB603', text: '#9E131F' },
+  8: { fill: '#AF1726', text: '#FFD633' },
+  9: { fill: '#6D0E1D', text: '#FFD633' },
+};
+
+// Mute icon paths — DESIGN.md §5.11
+const SVG_ICON_ON  = 'M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z';
+const SVG_ICON_OFF = 'M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z';
+
+// ===========================================================================
+// Sandbox-safe storage
+// ===========================================================================
+function storageGet(k, fb) { try { const v = localStorage.getItem(k); return v === null ? fb : v; } catch (e) { return fb; } }
+function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+// ===========================================================================
+// State
+// ===========================================================================
+const state = {
+  phase: 'MENU',              // MENU | PLAYING | CONTINUE_OFFER | GAME_OVER
+  // Initialised to a real 6×6 grid so the renderer can run safely before the
+  // first startRound() — otherwise drawPlacedTiles reads state.board[0][0] on
+  // an empty array and the rAF loop dies before the player ever sees a hand.
+  board: Array.from({ length: 6 }, () => Array(6).fill(null)),
+  hand: [],                   // current hand (up to HAND_SIZE)
+  score: 0,
+  timer: CONFIG.GAME_DURATION_SEC,
+  best: parseInt(storageGet(CONFIG.STORAGE_KEY_BEST, '0'), 10) || 0,
+  muted: storageGet(CONFIG.STORAGE_KEY_MUTE, '0') === '1',
+  rerollBank: 0,
+  rerollAccum: 0,
+  lastClearAt: 0,
+  comboMult: 1,
+  continueUsed: false,
+  // Visual transients
+  floats: [],                 // {x,y,text,color,born,life}
+  sparkles: [],               // {x,y,vx,vy,life,born,color}
+  clearPulses: [],            // {cells,born,life}
+  // Drag
+  drag: null,                 // {handIdx,value,x,y,hover}
+  lastFrame: 0,
+};
+
+function emptyBoard() {
+  return Array.from({ length: CONFIG.ROWS }, () => Array(CONFIG.COLS).fill(null));
+}
+
+// ===========================================================================
+// DOM refs
+// ===========================================================================
+const dom = {
+  canvas: document.getElementById('game'),
+  hud: document.getElementById('hudBar'),
+  scoreVal: document.getElementById('scoreVal'),
+  timeVal: document.getElementById('timeVal'),
+  muteBtn: document.getElementById('muteBtn'),
+  fabRow: document.getElementById('fabRow'),
+  rerollBtn: document.getElementById('rerollBtn'),
+  rerollLabel: document.getElementById('rerollLabel'),
+  rerollCount: document.getElementById('rerollCount'),
+  endBtn: document.getElementById('endBtn'),
+  endLabel: document.getElementById('endLabel'),
+  menu: document.getElementById('menu'),
+  menuSub: document.getElementById('menuSub'),
+  bestText: document.getElementById('bestText'),
+  startBtn: document.getElementById('startBtn'),
+  contModal: document.getElementById('continueModal'),
+  contTitle: document.getElementById('contTitle'),
+  contSub: document.getElementById('contSub'),
+  contBtn: document.getElementById('contBtn'),
+  contEndBtn: document.getElementById('contEndBtn'),
+  gameOver: document.getElementById('gameOver'),
+  goTitle: document.getElementById('goTitle'),
+  goScore: document.getElementById('goScore'),
+  goBest: document.getElementById('goBest'),
+  goNewBest: document.getElementById('goNewBest'),
+  newBestLabel: document.getElementById('newBestLabel'),
+  claimBtn: document.getElementById('claimBtn'),
+};
+const ctx = dom.canvas.getContext('2d');
+
+// Localized DOM copy
+dom.menuSub.textContent = COPY.menuSub;
+dom.startBtn.textContent = COPY.start;
+dom.contBtn.textContent = COPY.continueBtn;
+dom.contEndBtn.textContent = COPY.endRun;
+dom.claimBtn.textContent = COPY.claim;
+dom.endLabel.textContent = COPY.endRunShort;
+dom.rerollLabel.textContent = COPY.reroll;
+dom.newBestLabel.textContent = COPY.newBest;
+
+function refreshBestText() {
+  dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : ' ';
+}
+refreshBestText();
+
+function updateMuteIcon() {
+  const svg = dom.muteBtn.querySelector('svg');
+  svg.innerHTML = `<path d="${state.muted ? SVG_ICON_OFF : SVG_ICON_ON}"/>`;
+  dom.muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+  dom.muteBtn.setAttribute('aria-label', state.muted ? COPY.audioOff : COPY.audioOn);
+  dom.muteBtn.setAttribute('title', state.muted ? COPY.audioOff : COPY.audioOn);
+}
+updateMuteIcon();
+
+// ===========================================================================
+// Audio — Web Audio synthesis (no asset files)
+// ===========================================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (state.muted) return null;
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { return null; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, dur = 0.12, type = 'sine', gain = 0.18) {
+  const a = ensureAudio();
+  if (!a) return;
+  const t = a.currentTime;
+  const osc = a.createOscillator();
+  const g = a.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(a.destination);
+  osc.start(t); osc.stop(t + dur + 0.05);
+}
+function sfxPickup() { playTone(520, 0.06, 'triangle', 0.10); }
+function sfxPlace()  { playTone(360, 0.09, 'sine',     0.12); }
+function sfxClear(n) {
+  const a = ensureAudio(); if (!a) return;
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => playTone(440 * Math.pow(1.122, i), 0.10, 'square', 0.14), i * 45);
+  }
+}
+function sfxCombo(m)  { playTone(660 + m * 80, 0.18, 'triangle', 0.16); }
+function sfxReroll()  { playTone(720, 0.05, 'sawtooth', 0.10); setTimeout(() => playTone(900, 0.05, 'sawtooth', 0.10), 60); }
+function sfxFail()    { playTone(180, 0.20, 'sawtooth', 0.10); }
+function sfxRoundEnd() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.18, 'triangle', 0.16), i * 110));
+}
+
+// Mute toggle
+dom.muteBtn.addEventListener('click', () => {
+  state.muted = !state.muted;
+  storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');
+  updateMuteIcon();
+  if (!state.muted) playTone(660, 0.08, 'sine', 0.13);
+});
+
+// ===========================================================================
+// Canvas sizing — DPR-aware, recomputes layout on every resize
+// ===========================================================================
+let viewW = 0, viewH = 0, dpr = 1;
+const grid = { x: 0, y: 0, cell: 0, size: 0, pad: 8 };
+const handArea = { x: 0, y: 0, w: 0, h: 0, tile: 0, gap: 16 };
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  viewW = dom.canvas.clientWidth;
+  viewH = dom.canvas.clientHeight;
+  dom.canvas.width = Math.round(viewW * dpr);
+  dom.canvas.height = Math.round(viewH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Layout — reserve top space for HUD (~64) and bottom for hand + FAB (~140)
+  const topReserve = 64;
+  const bottomReserve = 150;
+  const margin = 10;
+  const usableH = viewH - topReserve - bottomReserve;
+  const usableW = viewW - margin * 2;
+  const gridMax = Math.min(usableW, 460);
+  const gridSize = Math.min(gridMax, Math.max(180, usableH));
+  const cell = Math.floor((gridSize - grid.pad * 2) / CONFIG.COLS);
+  grid.cell = cell;
+  grid.size = cell * CONFIG.COLS + grid.pad * 2;
+  grid.x = Math.round((viewW - grid.size) / 2);
+  grid.y = topReserve + Math.max(0, Math.floor((usableH - grid.size) / 2));
+
+  handArea.tile = Math.min(74, Math.max(54, Math.floor(cell * 1.05)));
+  handArea.gap = 18;
+  handArea.w = handArea.tile * CONFIG.HAND_SIZE + handArea.gap * (CONFIG.HAND_SIZE - 1);
+  handArea.x = Math.round((viewW - handArea.w) / 2);
+  handArea.y = grid.y + grid.size + 18;
+  handArea.h = handArea.tile;
+}
+window.addEventListener('resize', resize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+
+// ===========================================================================
+// Tile distribution — uniform 1–9 with mild early/late bias + cap taper.
+// Soft cap (§1.4): tile mix biases away from sequence endpoints near 500 so
+// the world calms down; the score counter itself is never clamped.
+// ===========================================================================
+function tileWeights() {
+  const t = (CONFIG.GAME_DURATION_SEC - state.timer) / CONFIG.GAME_DURATION_SEC; // 0→1
+  const w = [0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+  const early = Math.max(0, 1 - t * 5);                                          // 1 at t=0, 0 at t=0.2
+  for (let n = 1; n <= 4; n++) w[n] += early * 0.6;
+  const late = Math.max(0, (t - 0.5) / 0.35);                                    // 0 at t=0.5, 1 at t=0.85
+  for (let n = 3; n <= 7; n++) w[n] += late * 0.5;
+  const cap = Math.max(0, Math.min(1, (state.score - CONFIG.TAPER_START) / (CONFIG.SCORE_CAP_SOFT - CONFIG.TAPER_START)));
+  w[1] *= (1 - cap * 0.85);
+  w[2] *= (1 - cap * 0.50);
+  w[8] *= (1 - cap * 0.50);
+  w[9] *= (1 - cap * 0.85);
+  return w;
+}
+function drawTileValue() {
+  const w = tileWeights();
+  let total = 0; for (let n = 1; n <= 9; n++) total += w[n];
+  let r = Math.random() * total;
+  for (let n = 1; n <= 9; n++) { r -= w[n]; if (r <= 0) return n; }
+  return 9;
+}
+function refillHand() {
+  while (state.hand.length < CONFIG.HAND_SIZE) state.hand.push(drawTileValue());
+}
+
+// ===========================================================================
+// Sequence detection
+// Path of orthogonally adjacent cells with consecutive values (each step ±1).
+// Length must be in [MIN_SEQ, MAX_SEQ]. Longest valid wins.
+// ===========================================================================
+const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+function inBounds(r, c) { return r >= 0 && r < CONFIG.ROWS && c >= 0 && c < CONFIG.COLS; }
+
+function extendChain(r, c, v, visited, dir) {
+  let best = [];
+  for (const [dr, dc] of DIRS) {
+    const nr = r + dr, nc = c + dc;
+    if (!inBounds(nr, nc)) continue;
+    const key = nr * CONFIG.COLS + nc;
+    if (visited.has(key)) continue;
+    const nv = state.board[nr][nc];
+    if (nv === null || nv !== v + dir) continue;
+    visited.add(key);
+    const sub = extendChain(nr, nc, nv, visited, dir);
+    visited.delete(key);
+    const cand = [[nr, nc, nv], ...sub];
+    if (cand.length > best.length) best = cand;
+  }
+  return best;
+}
+
+function findLongestSequenceAt(r, c) {
+  const v = state.board[r][c];
+  if (v === null) return null;
+  const visited = new Set([r * CONFIG.COLS + c]);
+  const down = extendChain(r, c, v, visited, -1);
+  const up   = extendChain(r, c, v, visited, +1);
+  const path = [...down.slice().reverse(), [r, c, v], ...up];
+  if (path.length < CONFIG.MIN_SEQ) return null;
+  if (path.length <= CONFIG.MAX_SEQ) return path;
+  // path > MAX_SEQ: take a MAX_SEQ-length window that contains (r,c).
+  const idx = down.length;
+  const len = CONFIG.MAX_SEQ;
+  const startOff = Math.max(0, Math.min(path.length - len, idx - Math.floor(len / 2)));
+  return path.slice(startOff, startOff + len);
+}
+
+// ===========================================================================
+// Placement + scoring
+// 3-tile = sum; 4-tile = sum × 2; 5-tile = sum × 3. Combo multiplier (×2..×4)
+// stacks on top when chains land within COMBO_WINDOW_MS.
+// ===========================================================================
+function sumOfPath(path) { let s = 0; for (const [, , v] of path) s += v; return s; }
+function scoreForClear(path) {
+  const sum = sumOfPath(path);
+  if (path.length === 3) return { base: sum,     prefix: `+${sum}`,     suffix: '' };
+  if (path.length === 4) return { base: sum * 2, prefix: `+${sum * 2}`, suffix: '×2' };
+  return                       { base: sum * 3, prefix: `+${sum * 3}`, suffix: '×3' };
+}
+function cellCenter(r, c) {
+  return {
+    x: grid.x + grid.pad + c * grid.cell + grid.cell / 2,
+    y: grid.y + grid.pad + r * grid.cell + grid.cell / 2,
+  };
+}
+
+function placeAt(r, c, v, handIdx) {
+  state.board[r][c] = v;
+  state.hand.splice(handIdx, 1);
+  sfxPlace();
+
+  const seq = findLongestSequenceAt(r, c);
+  if (seq) {
+    resolveClear(seq);
+  } else if (performance.now() - state.lastClearAt > CONFIG.COMBO_WINDOW_MS) {
+    state.comboMult = 1;
+  }
+
+  if (state.hand.length === 0) refillHand();
+
+  if (state.phase === 'PLAYING' && isGridLocked()) offerContinueOrEnd();
+}
+
+function resolveClear(seq) {
+  const now = performance.now();
+  if (now - state.lastClearAt <= CONFIG.COMBO_WINDOW_MS) {
+    state.comboMult = Math.min(CONFIG.COMBO_CAP, state.comboMult + 1);
+  } else {
+    state.comboMult = 1;
+  }
+  state.lastClearAt = now;
+
+  const { base, prefix, suffix } = scoreForClear(seq);
+  const added = base * state.comboMult;
+  state.score += added;
+
+  // Float text above sequence centroid. `+N` reads yellow, the `×2 / ×3`
+  // length multiplier reads red, and the combo tail (chained clears) stays
+  // yellow so it never gets confused with the length multiplier.
+  let cx = 0, cy = 0;
+  for (const [r, c] of seq) { const p = cellCenter(r, c); cx += p.x; cy += p.y; }
+  cx /= seq.length; cy /= seq.length;
+  const comboTail = state.comboMult > 1 ? ` ×${state.comboMult}!` : '';
+  state.floats.push({ x: cx, y: cy, prefix, suffix, comboTail, born: now, life: 1200 });
+
+  // Sparkles per cleared cell
+  for (const [r, c] of seq) {
+    const p = cellCenter(r, c);
+    for (let i = 0; i < 8; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const sp = 60 + Math.random() * 90;
+      state.sparkles.push({
+        x: p.x, y: p.y,
+        vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 40,
+        life: 600 + Math.random() * 250, born: now, color: '#FFD633',
+      });
+    }
+  }
+  state.clearPulses.push({ cells: seq.map(([r, c]) => [r, c]), born: now, life: 380 });
+
+  for (const [r, c] of seq) state.board[r][c] = null;
+
+  sfxClear(seq.length);
+  if (state.comboMult > 1) sfxCombo(state.comboMult);
+
+  // A single placement might have bridged two disjoint sequences; the
+  // longest-first rule only cleared one. Sweep once more for any sequence
+  // still hiding on the board — counts as the next combo step.
+  scanForChainedClear();
+}
+
+function scanForChainedClear() {
+  let best = null, bestKey = null;
+  for (let r = 0; r < CONFIG.ROWS; r++) {
+    for (let c = 0; c < CONFIG.COLS; c++) {
+      if (state.board[r][c] === null) continue;
+      const seq = findLongestSequenceAt(r, c);
+      if (seq && (!best || seq.length > best.length)) {
+        // dedupe paths that pass through different starting cells
+        const key = seq.map(p => p[0] * CONFIG.COLS + p[1]).sort((a, b) => a - b).join(',');
+        if (key !== bestKey) { best = seq; bestKey = key; }
+      }
+    }
+  }
+  if (best) resolveClear(best);
+}
+
+function isGridLocked() {
+  for (let r = 0; r < CONFIG.ROWS; r++)
+    for (let c = 0; c < CONFIG.COLS; c++)
+      if (state.board[r][c] === null) return false;
+  return true;
+}
+
+// ===========================================================================
+// Continue flow
+// ===========================================================================
+function offerContinueOrEnd() {
+  if (state.continueUsed) { endRound('gameOver'); return; }
+  state.phase = 'CONTINUE_OFFER';
+  dom.contTitle.textContent = COPY.gridLocked;
+  dom.contSub.textContent = COPY.continueQ;
+  dom.contModal.classList.remove('hidden');
+}
+dom.contBtn.addEventListener('click', () => {
+  if (state.phase !== 'CONTINUE_OFFER') return;
+  state.continueUsed = true;
+  const cells = [];
+  for (let r = 0; r < CONFIG.ROWS; r++)
+    for (let c = 0; c < CONFIG.COLS; c++)
+      if (state.board[r][c] !== null) cells.push([r, c]);
+  for (let i = cells.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+  const removed = cells.slice(0, 4);
+  for (const [r, c] of removed) state.board[r][c] = null;
+  state.clearPulses.push({ cells: removed, born: performance.now(), life: 380 });
+  sfxReroll();
+  dom.contModal.classList.add('hidden');
+  state.phase = 'PLAYING';
+});
+dom.contEndBtn.addEventListener('click', () => {
+  if (state.phase !== 'CONTINUE_OFFER') return;
+  dom.contModal.classList.add('hidden');
+  endRound('gameOver');
+});
+
+// ===========================================================================
+// Reroll — one aid power-up; banks one per REROLL_INTERVAL_SEC, up to MAX_BANK
+// ===========================================================================
+function updateRerollUi() {
+  dom.rerollCount.textContent = state.rerollBank;
+  dom.rerollBtn.disabled = state.rerollBank <= 0;
+}
+dom.rerollBtn.addEventListener('click', () => {
+  if (state.rerollBank <= 0 || state.phase !== 'PLAYING') return;
+  state.rerollBank--;
+  state.hand = [];
+  refillHand();
+  sfxReroll();
+  updateRerollUi();
+});
+
+// ===========================================================================
+// End run (player-triggered early end — CLAUDE.md §6.5)
+// ===========================================================================
+dom.endBtn.addEventListener('click', () => {
+  if (state.phase !== 'PLAYING') return;
+  endRound('gameOver');
+});
+
+// ===========================================================================
+// Round lifecycle
+// ===========================================================================
+function startRound() {
+  state.phase = 'PLAYING';
+  state.board = emptyBoard();
+  state.hand = [];
+  state.score = 0;
+  state.timer = CONFIG.GAME_DURATION_SEC;
+  state.rerollBank = CONFIG.REROLL_START_BANK;
+  state.rerollAccum = 0;
+  state.comboMult = 1;
+  state.lastClearAt = 0;
+  state.continueUsed = false;
+  state.floats.length = 0;
+  state.sparkles.length = 0;
+  state.clearPulses.length = 0;
+  state.drag = null;
+  refillHand();
+  updateRerollUi();
+  dom.menu.classList.add('hidden');
+  dom.gameOver.classList.add('hidden');
+  dom.contModal.classList.add('hidden');
+  dom.hud.classList.remove('hidden');
+  dom.fabRow.classList.remove('hidden');
+  dom.timeVal.classList.remove('pulse-urgent');
+}
+
+function endRound(titleKey) {
+  if (state.phase === 'GAME_OVER') return;
+  state.phase = 'GAME_OVER';
+  sfxRoundEnd();
+  const isBest = state.score > state.best;
+  if (isBest) {
+    state.best = state.score;
+    storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
+  }
+  refreshBestText();
+  dom.goTitle.textContent = titleKey === 'timeUp' ? COPY.timeUp : COPY.gameOver;
+  dom.goScore.textContent = String(state.score);
+  dom.goBest.textContent = `${COPY.bestPrefix}: ${state.best}`;
+  dom.goNewBest.classList.toggle('hidden', !isBest);
+  dom.gameOver.classList.remove('hidden');
+  dom.fabRow.classList.add('hidden');
+  dom.timeVal.classList.remove('pulse-urgent');
+}
+
+dom.startBtn.addEventListener('click', () => { startRound(); ensureAudio(); });
+
+// ===========================================================================
+// CLAIM SCORE — CLAUDE.md §6.5
+// ===========================================================================
+function resolveCallbackUrl() {
+  const qs = new URLSearchParams(location.search);
+  const candidate = qs.get('callback_url');
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === 'https:') return u.toString();
+    } catch (_) {}
+  }
+  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
+  return CONFIG.CLAIM_FALLBACK_URL;
+}
+function buildClaimUrl() {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const base = resolveCallbackUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  return base
+    + sep + 'game=' + encodeURIComponent(CONFIG.GAME_NAME)
+    + '&score=' + Math.max(0, state.score | 0)
+    + '&token=' + encodeURIComponent(token);
+}
+dom.claimBtn.addEventListener('click', () => { location.href = buildClaimUrl(); });
+
+// ===========================================================================
+// Pointer input — drag from hand to grid
+// ===========================================================================
+function pointerPos(e) {
+  const r = dom.canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function handTileRect(i) {
+  return {
+    x: handArea.x + i * (handArea.tile + handArea.gap),
+    y: handArea.y,
+    w: handArea.tile, h: handArea.tile,
+  };
+}
+function gridCellAt(x, y) {
+  const gx = x - grid.x - grid.pad;
+  const gy = y - grid.y - grid.pad;
+  if (gx < 0 || gy < 0) return null;
+  const c = Math.floor(gx / grid.cell);
+  const r = Math.floor(gy / grid.cell);
+  if (!inBounds(r, c)) return null;
+  return { r, c };
+}
+
+function onPointerDown(e) {
+  if (state.phase !== 'PLAYING') return;
+  const p = pointerPos(e);
+  for (let i = 0; i < state.hand.length; i++) {
+    const r = handTileRect(i);
+    if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+      state.drag = { handIdx: i, value: state.hand[i], x: p.x, y: p.y - r.h * 0.4, hover: null };
+      sfxPickup();
+      try { dom.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      ensureAudio();
+      return;
+    }
+  }
+}
+function onPointerMove(e) {
+  if (!state.drag) return;
+  const p = pointerPos(e);
+  state.drag.x = p.x;
+  state.drag.y = p.y - handArea.tile * 0.4;
+  const cell = gridCellAt(p.x, p.y);
+  state.drag.hover = (cell && state.board[cell.r][cell.c] === null) ? cell : null;
+}
+function onPointerUp() {
+  if (!state.drag) return;
+  const d = state.drag;
+  state.drag = null;
+  if (d.hover) {
+    placeAt(d.hover.r, d.hover.c, d.value, d.handIdx);
+  } else {
+    sfxFail();
+  }
+}
+dom.canvas.addEventListener('pointerdown', onPointerDown);
+dom.canvas.addEventListener('pointermove', onPointerMove);
+dom.canvas.addEventListener('pointerup', onPointerUp);
+dom.canvas.addEventListener('pointercancel', onPointerUp);
+
+// ===========================================================================
+// Rendering
+// ===========================================================================
+function roundRect(x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.lineTo(x + w - rr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+  ctx.lineTo(x + w, y + h - rr);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  ctx.lineTo(x + rr, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+  ctx.lineTo(x, y + rr);
+  ctx.quadraticCurveTo(x, y, x + rr, y);
+  ctx.closePath();
+}
+function shadeColor(hex, percent) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+  r = Math.max(0, Math.min(255, Math.round(r * (1 + percent))));
+  g = Math.max(0, Math.min(255, Math.round(g * (1 + percent))));
+  b = Math.max(0, Math.min(255, Math.round(b * (1 + percent))));
+  return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+}
+
+function drawGridFrame() {
+  ctx.fillStyle = 'rgba(3, 16, 52, 0.55)';
+  roundRect(grid.x, grid.y, grid.size, grid.size, 18);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#FFB603';
+  ctx.stroke();
+  for (let r = 0; r < CONFIG.ROWS; r++) {
+    for (let c = 0; c < CONFIG.COLS; c++) {
+      const x = grid.x + grid.pad + c * grid.cell;
+      const y = grid.y + grid.pad + r * grid.cell;
+      ctx.fillStyle = (r + c) % 2 === 0 ? 'rgba(255,255,255,0.045)' : 'rgba(255,255,255,0.02)';
+      roundRect(x + 2, y + 2, grid.cell - 4, grid.cell - 4, 10);
+      ctx.fill();
+    }
+  }
+}
+
+function drawNumberTile(x, y, w, h, value, opts) {
+  opts = opts || {};
+  const color = TILE_COLORS[value];
+  if (!opts.noShadow) {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    roundRect(x + 1, y + 4, w, h, 10);
+    ctx.fill();
+  }
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, color.fill);
+  grad.addColorStop(1, shadeColor(color.fill, -0.25));
+  ctx.fillStyle = grad;
+  roundRect(x, y, w, h, 10);
+  ctx.fill();
+  ctx.lineWidth = opts.thickBorder ? 3 : 2;
+  ctx.strokeStyle = opts.highlight ? '#FFFFFF' : '#FFD633';
+  ctx.stroke();
+  ctx.fillStyle = color.text;
+  ctx.font = `800 ${Math.round(h * 0.55)}px Poppins, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(value), x + w / 2, y + h / 2 + 1);
+}
+
+function drawPlacedTiles() {
+  const inset = 4;
+  for (let r = 0; r < CONFIG.ROWS; r++) {
+    for (let c = 0; c < CONFIG.COLS; c++) {
+      const v = state.board[r][c];
+      if (v === null) continue;
+      const x = grid.x + grid.pad + c * grid.cell + inset;
+      const y = grid.y + grid.pad + r * grid.cell + inset;
+      const s = grid.cell - inset * 2;
+      drawNumberTile(x, y, s, s, v);
+    }
+  }
+}
+
+function drawHoverHighlight() {
+  if (!state.drag || !state.drag.hover) return;
+  const { r, c } = state.drag.hover;
+  const x = grid.x + grid.pad + c * grid.cell;
+  const y = grid.y + grid.pad + r * grid.cell;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 214, 51, 0.28)';
+  ctx.strokeStyle = '#FFD633';
+  ctx.lineWidth = 2;
+  roundRect(x + 2, y + 2, grid.cell - 4, grid.cell - 4, 10);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawHand() {
+  for (let i = 0; i < CONFIG.HAND_SIZE; i++) {
+    const r = handTileRect(i);
+    if (i >= state.hand.length) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      roundRect(r.x, r.y, r.w, r.h, 12);
+      ctx.fill();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+      continue;
+    }
+    if (state.drag && state.drag.handIdx === i) {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      drawNumberTile(r.x, r.y, r.w, r.h, state.hand[i]);
+      ctx.restore();
+      continue;
+    }
+    drawNumberTile(r.x, r.y, r.w, r.h, state.hand[i]);
+  }
+}
+
+function drawDragGhost() {
+  if (!state.drag) return;
+  const sz = grid.cell;
+  drawNumberTile(state.drag.x - sz / 2, state.drag.y - sz / 2, sz, sz, state.drag.value, { highlight: true, thickBorder: true });
+}
+
+function drawFloats(now) {
+  for (let i = state.floats.length - 1; i >= 0; i--) {
+    const f = state.floats[i];
+    const t = (now - f.born) / f.life;
+    if (t >= 1) { state.floats.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = 1 - t;
+    ctx.font = '800 22px Poppins, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 6;
+    const segs = [
+      { text: f.prefix,    color: '#FFD633' },
+      { text: f.suffix,    color: '#FE0601' },
+      { text: f.comboTail, color: '#FFD633' },
+    ].filter(s => s.text);
+    const widths = segs.map(s => ctx.measureText(s.text).width);
+    const total  = widths.reduce((a, b) => a + b, 0);
+    let x = f.x - total / 2;
+    const y = f.y - t * 60;
+    for (let s = 0; s < segs.length; s++) {
+      ctx.fillStyle = segs[s].color;
+      ctx.fillText(segs[s].text, x, y);
+      x += widths[s];
+    }
+    ctx.restore();
+  }
+}
+
+function drawSparkles(now) {
+  for (let i = state.sparkles.length - 1; i >= 0; i--) {
+    const s = state.sparkles[i];
+    const dt = (now - s.born) / s.life;
+    if (dt >= 1) { state.sparkles.splice(i, 1); continue; }
+    s.x += s.vx * 0.016;
+    s.y += s.vy * 0.016;
+    s.vy += 240 * 0.016;
+    ctx.save();
+    ctx.globalAlpha = 1 - dt;
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawClearPulses(now) {
+  for (let i = state.clearPulses.length - 1; i >= 0; i--) {
+    const p = state.clearPulses[i];
+    const t = (now - p.born) / p.life;
+    if (t >= 1) { state.clearPulses.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = (1 - t) * 0.8;
+    ctx.strokeStyle = '#FFD633';
+    ctx.lineWidth = 3;
+    for (const [r, c] of p.cells) {
+      const x = grid.x + grid.pad + c * grid.cell;
+      const y = grid.y + grid.pad + r * grid.cell;
+      const exp = t * 8;
+      roundRect(x + 2 - exp, y + 2 - exp, grid.cell - 4 + exp * 2, grid.cell - 4 + exp * 2, 10 + exp);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+// ===========================================================================
+// Main loop
+// ===========================================================================
+function tick(now) {
+  if (!state.lastFrame) state.lastFrame = now;
+  const dt = Math.min(0.1, (now - state.lastFrame) / 1000);
+  state.lastFrame = now;
+
+  if (state.phase === 'PLAYING') {
+    state.timer = Math.max(0, state.timer - dt);
+
+    state.rerollAccum += dt;
+    while (state.rerollAccum >= CONFIG.REROLL_INTERVAL_SEC && state.rerollBank < CONFIG.REROLL_MAX_BANK) {
+      state.rerollAccum -= CONFIG.REROLL_INTERVAL_SEC;
+      state.rerollBank++;
+      updateRerollUi();
+    }
+    if (state.rerollBank >= CONFIG.REROLL_MAX_BANK) state.rerollAccum = 0;
+
+    if (state.comboMult > 1 && now - state.lastClearAt > CONFIG.COMBO_WINDOW_MS) {
+      state.comboMult = 1;
+    }
+
+    if (state.timer <= 0) endRound('timeUp');
+  }
+
+  // HUD sync
+  dom.scoreVal.textContent = String(state.score);
+  const t = Math.ceil(state.timer);
+  const mm = String(Math.floor(t / 60)).padStart(2, '0');
+  const ss = String(t % 60).padStart(2, '0');
+  dom.timeVal.textContent = `${mm}:${ss}`;
+  if (state.phase === 'PLAYING' && state.timer <= CONFIG.URGENCY_SECONDS && !dom.timeVal.classList.contains('pulse-urgent')) {
+    dom.timeVal.classList.add('pulse-urgent');
+  }
+
+  // Render
+  ctx.clearRect(0, 0, viewW, viewH);
+  drawGridFrame();
+  drawHoverHighlight();
+  drawClearPulses(now);
+  drawPlacedTiles();
+  drawHand();
+  drawSparkles(now);
+  drawFloats(now);
+  drawDragGhost();
+
+  requestAnimationFrame(tick);
+}
+
+// ===========================================================================
+// Boot + dev jumps (?phase=over | continue)
+// ===========================================================================
+resize();
+requestAnimationFrame(tick);
+
+(function devJump() {
+  const p = new URLSearchParams(location.search).get('phase');
+  if (p === 'over') {
+    startRound();
+    state.score = 327;
+    endRound('timeUp');
+  } else if (p === 'continue') {
+    startRound();
+    for (let r = 0; r < CONFIG.ROWS; r++)
+      for (let c = 0; c < CONFIG.COLS; c++) state.board[r][c] = 1 + ((r + c * 2) % 9);
+    state.score = 120;
+    offerContinueOrEnd();
+  }
+})();
+</script>
+</body>
+</html>

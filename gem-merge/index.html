@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
 <style>
   :root {
     --jdp-black:        #031034;
@@ -96,16 +97,26 @@
     flex: 1;
     white-space: nowrap;
   }
-  /* Next-gem pill variant: value half holds an icon on white */
+  /* Next-gem pill variant: value half doubles as the auto-drop timer.
+     --timer-fill is updated each frame (0 → 100%) to fill the white
+     background from left with yellow, like a loading bar. */
   .jdp-pill.next .pill-value {
-    background: #FFFFFF;
+    background: linear-gradient(
+      to right,
+      var(--jdp-light-yellow) 0%,
+      var(--jdp-light-yellow) var(--timer-fill, 0%),
+      #FFFFFF var(--timer-fill, 0%),
+      #FFFFFF 100%
+    );
     padding: 0 8px;
     justify-content: center;
+    position: relative;
   }
   .jdp-pill.next .pill-value img {
     width: 24px;
     height: 22px;
     display: block;
+    position: relative;            /* sits above the gradient backdrop */
   }
 
   /* Audio toggle — DESIGN.md §5.11 */
@@ -256,7 +267,7 @@
     </div>
     <div class="jdp-pill next">
       <span class="pill-label" id="nextLabel">Next</span>
-      <span class="pill-value"><img id="nextGemImg" alt=""></span>
+      <span class="pill-value" id="nextPillValue"><img id="nextGemImg" alt=""></span>
     </div>
     <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
       <svg viewBox="0 0 24 24"></svg>
@@ -363,36 +374,38 @@ const CONFIG = {
   WALL: 6,                       // visual wall thickness in world units
   DROPPER_Y: -50,                // dropper sits this many units above bin top
   DANGER_LINE_Y: 70,             // world Y inside bin: gems crossing above this are "overflowing"
+  DANGER_LINE_DROP_START_S: 180, // elapsed seconds after which the danger line starts lowering (3:00)
+  DANGER_LINE_DROP_RATE: 1,      // world units per second the line drops past that point
 
-  // Physics
-  GRAVITY: 980,                  // world units / s^2
-  RESTITUTION: 0.18,             // bounce factor on every collision
-  LINEAR_DAMPING: 0.6,           // velocity decay per second
-  COLLISION_PASSES: 6,           // position-correction iterations per substep
-  SUBSTEPS: 4,                   // physics substeps per frame
-  SLEEP_VEL: 6,                  // body counts as still below this speed
-  MERGE_REL_VEL_MAX: 360,        // same-tier contact only merges if approach velocity is below this
+  // Physics — feed into Matter.js via the PHYSICS wrapper
+  GRAVITY: 980,                  // world units / s² (maps to engine.gravity.y)
+  RESTITUTION: 0.15,             // per-body bounce (Matter Bodies.circle option)
+  SLEEP_VEL: 6,                  // overflow check treats slower than this as "settled"
 
-  // Stress (drives drop cooldown, auto-drop, drop-pool skew)
-  TIME_STRESS_START_S: 150,      // 2:30 — stress begins ramping
-  TIME_STRESS_FULL_S: 180,       // 3:00 — stress hits 1.0
-  TIME_STRESS_BEYOND_S: 220,     // 3:40 — stress saturates at ~2.0 (drop becomes nearly impossible)
+  // Drop cadence — hold time per gem index. Each band covers a closed range;
+  // past the last `to` we use the floor. Tap drops the gem early, otherwise it
+  // auto-drops when the held timer fills. This IS the difficulty curve.
+  DROP_CADENCE: [
+    { to: 15,  seconds: 6 },     // 0:00 → 1:30
+    { to: 30,  seconds: 5 },     // 1:30 → 2:45
+    { to: 50,  seconds: 4 },     // 2:45 → 4:05
+    { to: 75,  seconds: 3 },     // 4:05 → 5:20
+    { to: 100, seconds: 2 },     // 5:20 → 6:10
+    { to: 200, seconds: 1 },     // 6:10 → 7:50
+  ],
+  DROP_CADENCE_FLOOR_S: 0.5,     // survival floor — applied to drop 201 and beyond
+
+  // Score-driven stress — still drives drop-pool skew near the 500-score cap
+  // (BEST-PRACTICES.md §05 difficulty-escalation pattern).
   SCORE_STRESS_START: 400,
-  SCORE_STRESS_FULL: 500,
+  SCORE_STRESS_FULL:  500,
 
-  // Held-gem auto-drop (force-drop when stress climbs)
-  AUTO_DROP_STRESS_ON: 0.30,     // below this stress, no auto-drop pressure
-  AUTO_DROP_MAX_S: 8.0,          // first auto-drop kicks in at this hold time
-  AUTO_DROP_MIN_S: 0.18,         // at peak stress, near-instant
-  AUTO_DROP_WARN_AT: 0.6,        // fraction of hold time at which the held gem starts pulsing
-
-  // Spawn cooldown after a drop (held gem becomes available again)
-  DROP_COOLDOWN_MAX_S: 0.55,
-  DROP_COOLDOWN_MIN_S: 0.08,
+  // Tiny cooldown between drops — just enough to debounce a stray double-tap.
+  DROP_COOLDOWN_S: 0.08,
 
   // Game-over rules
-  OVERFLOW_GRACE_S: 2.0,         // body settled above danger line for this long → game over
-  OVERFLOW_GRACE_PARTIAL_S: 3.5, // body partially intersecting danger line tolerated longer
+  OVERFLOW_GRACE_S:         0.25, // body above danger line for this long → game over (was 2.0)
+  OVERFLOW_SPAWN_EXEMPT_S:  0.40, // fresh gems get this long to free-fall through the danger zone
 
   // Storage
   STORAGE_KEY_BEST: 'gem-merge:best',
@@ -407,23 +420,31 @@ const CONFIG = {
 //        Drop pool = first four tiers only (classic Suika rule).
 // =============================================================================
 const GEMS = [
-  { name: 'red',    radius: 16, points:  2, asset: 'red.svg'    },  // tier 0 (smallest)
-  { name: 'orange', radius: 22, points:  4, asset: 'orange.svg' },  // tier 1
-  { name: 'yellow', radius: 28, points:  6, asset: 'yellow.svg' },  // tier 2
-  { name: 'green',  radius: 34, points:  8, asset: 'green.svg'  },  // tier 3
-  { name: 'teal',   radius: 41, points: 10, asset: 'teal.svg'   },  // tier 4
-  { name: 'blue',   radius: 49, points: 14, asset: 'blue.svg'   },  // tier 5
-  { name: 'indigo', radius: 58, points: 20, asset: 'indigo.svg' },  // tier 6
-  { name: 'purple', radius: 68, points: 30, asset: 'purple.svg' },  // tier 7
-  { name: 'pink',   radius: 80, points: 60, asset: 'pink.svg'   },  // tier 8 (terminal — pair clears)
+  // ROYGBIV — the seven rainbow colours from DESIGN.md §6.2 (drop teal + pink
+  // per the doc's "stay evenly spaced along the rainbow" subset guidance).
+  // Geometric size progression 24 → 120 (~+30 % per tier) so each tier is
+  // unmistakably bigger than the one below it.
+  // `bubble` = sprite scale inside the bubble. The diamond's widest vertex is
+  // ~1.17 r from centre, so 1/1.17 ≈ 0.854 is the largest scale that keeps
+  // every vertex inside the bubble at any rotation. Tune per gem if a
+  // specific SVG visually under/over-fills.
+  { name: 'red',    radius:  20, points: 1, bubble: 0.85, asset: 'red.svg'    },  // tier 0 (smallest)
+  { name: 'orange', radius:  26, points: 2, bubble: 0.85, asset: 'orange.svg' },  // tier 1
+  { name: 'yellow', radius:  34, points: 3, bubble: 0.85, asset: 'yellow.svg' },  // tier 2
+  { name: 'green',  radius:  45, points: 4, bubble: 0.85, asset: 'green.svg'  },  // tier 3
+  { name: 'blue',   radius:  58, points: 5, bubble: 0.85, asset: 'blue.svg'   },  // tier 4
+  { name: 'indigo', radius:  76, points: 6, bubble: 0.85, asset: 'indigo.svg' },  // tier 5
+  { name: 'purple', radius: 100, points: 7, bubble: 0.85, asset: 'purple.svg' },  // tier 6 (terminal — pair clears, +7)
 ];
 const MAX_TIER = GEMS.length - 1;
 
 // Drop-pool weights: indexed by tier, blended by stress.
 // Calm play (stress 0): plenty of variety, easy chains.
 // High stress (stress 1+): mostly reds, hard to start a chain.
-const DROP_WEIGHTS_CALM   = [40, 30, 22, 8, 0, 0, 0, 0, 0];
-const DROP_WEIGHTS_STRESS = [70, 22,  6, 2, 0, 0, 0, 0, 0];
+// Drop pool: Red / Orange / Yellow are the workhorses, Green is a rare guest.
+// (Blue / Indigo / Purple only via merging — weights 0.)
+const DROP_WEIGHTS_CALM   = [45, 32, 20, 3, 0, 0, 0];
+const DROP_WEIGHTS_STRESS = [55, 28, 14, 3, 0, 0, 0];
 
 // =============================================================================
 // Asset preload — gem images load once, then reused via drawImage at any size.
@@ -461,147 +482,159 @@ function storageSet(key, value) {
 }
 
 // =============================================================================
-// PHYSICS — vanilla circle-on-circle, circle-on-walls.
-//   This is the swap point for Matter.js: a drop-in replacement only needs to
-//   provide the same surface (init, addBody, removeBody, step, bodies). The
-//   rest of the game touches PHYSICS through that surface only.
+// PHYSICS — Matter.js wrapper exposing { init, addBody, removeBody, step, bodies }.
+//   Game code reads x/y/vx/vy/radius/tier/lifetime/overflowTimer through this
+//   wrapper and never touches Matter directly. Swap is one module replacement.
 // =============================================================================
 const PHYSICS = (() => {
-  // Bounds: { left, right, top, bottom } in world units. `top` is open
-  // (no ceiling collision) so the dropper / overflow logic owns the top edge.
-  const bounds = { left: 0, right: 0, top: 0, bottom: 0 };
-  const bodies = [];
-  let idCounter = 0;
-  let gravity = CONFIG.GRAVITY;
-  let damping = CONFIG.LINEAR_DAMPING;
+  const { Engine, World, Bodies, Body, Events } = Matter;
 
-  function init(b) {
-    bounds.left = b.left; bounds.right = b.right;
-    bounds.top = b.top; bounds.bottom = b.bottom;
-    bodies.length = 0;
-    idCounter = 0;
+  // Velocity in Matter is "position units per simulation step" (step = 16.67 ms
+  // at the default 60 Hz). The rest of the game thinks in units/second, so we
+  // convert at the wrapper boundary.
+  const MATTER_HZ = 60;
+
+  let engine = null;
+  let world = null;
+  const matterToWrapper = new Map();
+  const myBodies = [];
+  let pendingMerges = [];
+
+  function init(bounds) {
+    engine = Engine.create({
+      gravity: { x: 0, y: CONFIG.GRAVITY / 1000, scale: 0.001 },
+      positionIterations: 10,    // higher = stabler stacks (Suika needs stable towers)
+      velocityIterations: 8,
+      constraintIterations: 4,
+    });
+    world = engine.world;
+    matterToWrapper.clear();
+    myBodies.length = 0;
+    pendingMerges = [];
+
+    // Walls: static rectangles set OUTSIDE the playfield with their inner edge
+    // exactly at the bin border, so bodies' circle bound rests right on it.
+    const w = bounds.right - bounds.left;
+    const h = bounds.bottom - bounds.top;
+    const wallThick = 200;       // very thick → no chance of tunneling at speed
+    const wallOpts = { isStatic: true, friction: 0.4, frictionStatic: 0.6, restitution: 0.05 };
+    World.add(world, [
+      // Floor
+      Bodies.rectangle(
+        bounds.left + w / 2,
+        bounds.bottom + wallThick / 2,
+        w + wallThick * 2, wallThick, wallOpts,
+      ),
+      // Left wall
+      Bodies.rectangle(
+        bounds.left - wallThick / 2,
+        bounds.top + h / 2,
+        wallThick, h + wallThick * 2, wallOpts,
+      ),
+      // Right wall
+      Bodies.rectangle(
+        bounds.right + wallThick / 2,
+        bounds.top + h / 2,
+        wallThick, h + wallThick * 2, wallOpts,
+      ),
+      // (no ceiling — dropper / overflow logic owns the top edge)
+    ]);
+
+    // Same-tier contact → queue a merge for the post-step phase.
+    Events.on(engine, 'collisionStart', (e) => {
+      for (const pair of e.pairs) {
+        const a = matterToWrapper.get(pair.bodyA.id);
+        const c = matterToWrapper.get(pair.bodyB.id);
+        if (a && c && a.tier === c.tier && a._alive && c._alive) {
+          pendingMerges.push([a, c]);
+        }
+      }
+    });
   }
 
   function addBody({ x, y, radius, tier, vx = 0, vy = 0 }) {
-    const body = {
-      id: ++idCounter,
-      x, y, vx, vy,
+    const matterBody = Bodies.circle(x, y, radius, {
+      restitution: CONFIG.RESTITUTION,
+      friction: 0.20,             // bumped — more rolling on contact, less sliding
+      frictionStatic: 0.5,        // bumped — harder to start sliding, easier to tumble
+      frictionAir: 0.006,         // gentle linear/angular drag → settles without feeling sluggish
+      density: 0.0015,
+      slop: 0.01,                 // tighter than default so visible gems sit flush
+    });
+    if (vx !== 0 || vy !== 0) {
+      Body.setVelocity(matterBody, { x: vx / MATTER_HZ, y: vy / MATTER_HZ });
+    }
+    // Small initial spin so the gem visibly tumbles inside its bubble in flight
+    // (a circular body has no contact torque while free-falling).
+    Body.setAngularVelocity(matterBody, (Math.random() - 0.5) * 0.08);
+    World.add(world, matterBody);
+
+    // Wrapper exposes the surface the rest of the game depends on. Position +
+    // velocity + angle are getters so the read always reflects the latest Matter state.
+    const wrapper = {
+      _matter: matterBody,
+      id: matterBody.id,
       radius, tier,
-      mass: radius * radius,    // proportional to area — bigger gems shove smaller ones
       overflowTimer: 0,
       lifetime: 0,
-      sleeping: false,
       _alive: true,
+      get x()     { return matterBody.position.x; },
+      get y()     { return matterBody.position.y; },
+      get vx()    { return matterBody.velocity.x * MATTER_HZ; },
+      get vy()    { return matterBody.velocity.y * MATTER_HZ; },
+      get angle() { return matterBody.angle; },
     };
-    bodies.push(body);
-    return body;
+    matterToWrapper.set(matterBody.id, wrapper);
+    myBodies.push(wrapper);
+    return wrapper;
   }
 
-  function removeBody(body) {
-    body._alive = false;
-    const i = bodies.indexOf(body);
-    if (i !== -1) bodies.splice(i, 1);
-  }
-
-  // Single physics substep — integrate, then resolve walls + pairs.
-  function _substep(dt) {
-    // 1. Integrate forces
-    for (let i = 0; i < bodies.length; i++) {
-      const b = bodies[i];
-      b.vy += gravity * dt;
-      const dampingFactor = Math.max(0, 1 - damping * dt);
-      b.vx *= dampingFactor;
-      b.vy *= dampingFactor;
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.lifetime += dt;
-    }
-
-    // 2. Wall collisions (left, right, floor — top is open)
-    for (let i = 0; i < bodies.length; i++) {
-      const b = bodies[i];
-      if (b.x - b.radius < bounds.left) {
-        b.x = bounds.left + b.radius;
-        if (b.vx < 0) b.vx = -b.vx * CONFIG.RESTITUTION;
-      } else if (b.x + b.radius > bounds.right) {
-        b.x = bounds.right - b.radius;
-        if (b.vx > 0) b.vx = -b.vx * CONFIG.RESTITUTION;
-      }
-      if (b.y + b.radius > bounds.bottom) {
-        b.y = bounds.bottom - b.radius;
-        if (b.vy > 0) b.vy = -b.vy * CONFIG.RESTITUTION;
-      }
-    }
-
-    // 3. Pair collisions, multi-pass position correction with velocity exchange.
-    //    contactPairs collects same-tier touching pairs for the merge phase.
-    const contactPairs = [];
-    for (let pass = 0; pass < CONFIG.COLLISION_PASSES; pass++) {
-      const collect = (pass === CONFIG.COLLISION_PASSES - 1);
-      for (let i = 0; i < bodies.length; i++) {
-        const a = bodies[i];
-        for (let j = i + 1; j < bodies.length; j++) {
-          const c = bodies[j];
-          const dx = c.x - a.x;
-          const dy = c.y - a.y;
-          const minDist = a.radius + c.radius;
-          const distSq = dx * dx + dy * dy;
-          if (distSq >= minDist * minDist || distSq < 0.0001) continue;
-          const dist = Math.sqrt(distSq);
-          const overlap = minDist - dist;
-          const nx = dx / dist, ny = dy / dist;
-          // Mass-weighted position correction
-          const totalMass = a.mass + c.mass;
-          const aShare = c.mass / totalMass;
-          const cShare = a.mass / totalMass;
-          a.x -= nx * overlap * aShare;
-          a.y -= ny * overlap * aShare;
-          c.x += nx * overlap * cShare;
-          c.y += ny * overlap * cShare;
-          // Velocity along normal — bounce only if closing
-          const rvx = c.vx - a.vx;
-          const rvy = c.vy - a.vy;
-          const velAlongNormal = rvx * nx + rvy * ny;
-          if (velAlongNormal < 0) {
-            const e = CONFIG.RESTITUTION;
-            const jImpulse = -(1 + e) * velAlongNormal / (1 / a.mass + 1 / c.mass);
-            const ix = jImpulse * nx, iy = jImpulse * ny;
-            a.vx -= ix / a.mass; a.vy -= iy / a.mass;
-            c.vx += ix / c.mass; c.vy += iy / c.mass;
-          }
-          if (collect && a.tier === c.tier && a._alive && c._alive) {
-            // Approach speed test: avoid runaway chain-merges when two same-tier
-            // gems are still rolling fast past each other; let them settle first.
-            const approachSpeed = Math.abs(velAlongNormal);
-            if (approachSpeed < CONFIG.MERGE_REL_VEL_MAX) {
-              contactPairs.push([a, c]);
-            }
-          }
-        }
-      }
-    }
-    return contactPairs;
+  function removeBody(wrapper) {
+    if (!wrapper._alive) return;
+    wrapper._alive = false;
+    World.remove(world, wrapper._matter);
+    matterToWrapper.delete(wrapper._matter.id);
+    const i = myBodies.indexOf(wrapper);
+    if (i !== -1) myBodies.splice(i, 1);
   }
 
   function step(dt, onMergePair) {
-    const subDt = dt / CONFIG.SUBSTEPS;
-    for (let s = 0; s < CONFIG.SUBSTEPS; s++) {
-      const contactPairs = _substep(subDt);
-      // Process merges between substeps so newly-spawned gems can settle.
-      if (contactPairs.length && onMergePair) {
-        const consumed = new Set();
-        for (let p = 0; p < contactPairs.length; p++) {
-          const [a, c] = contactPairs[p];
-          if (consumed.has(a.id) || consumed.has(c.id)) continue;
-          if (!a._alive || !c._alive) continue;
-          consumed.add(a.id); consumed.add(c.id);
-          onMergePair(a, c);
-        }
+    // Track lifetime in seconds so the overflow grace logic stays unit-correct.
+    for (const b of myBodies) b.lifetime += dt;
+
+    // Substep to keep the per-step ms ≤ ~16.67 even on slow frames. Without
+    // this Matter can mis-resolve a tall stack the player sees as "jitter".
+    const totalMs = Math.min(dt * 1000, 50);
+    const stepMs = 1000 / MATTER_HZ;
+    const substeps = Math.max(1, Math.ceil(totalMs / stepMs));
+    const subDt = totalMs / substeps;
+    for (let i = 0; i < substeps; i++) Engine.update(engine, subDt);
+
+    // Drain merge queue once per frame. Consumed-set prevents a body merging
+    // twice in a single frame if it touched two same-tier neighbours at once.
+    if (pendingMerges.length && onMergePair) {
+      const consumed = new Set();
+      for (const [a, c] of pendingMerges) {
+        if (consumed.has(a.id) || consumed.has(c.id)) continue;
+        if (!a._alive || !c._alive) continue;
+        consumed.add(a.id); consumed.add(c.id);
+        onMergePair(a, c);
       }
     }
+    pendingMerges.length = 0;
   }
 
-  return { init, addBody, removeBody, step, bodies };
+  // Dial gravity at runtime so the fall can feel "heavier" as cadence tightens.
+  // multiplier is applied on top of the base CONFIG.GRAVITY set in init().
+  function setGravity(multiplier) {
+    if (!engine) return;
+    engine.gravity.y = (CONFIG.GRAVITY / 1000) * multiplier;
+  }
+
+  return {
+    init, addBody, removeBody, step, setGravity,
+    get bodies() { return myBodies; },
+  };
 })();
 
 // =============================================================================
@@ -624,6 +657,7 @@ const state = {
   dropperX: 0,                  // world X where the held gem hovers (follows pointer)
   holdTime: 0,                  // seconds the current gem has been held
   cooldown: 0,                  // seconds until the next gem is droppable
+  dropsPlaced: 0,               // total drops this run — indexes the §DROP_CADENCE table
   pointerActive: false,
   lastDropAt: 0,
 
@@ -680,7 +714,7 @@ function worldToPx(wx, wy) {
 }
 
 // =============================================================================
-// Stress + drop-pool — drives the §05 difficulty-escalation cap
+// Cadence + drop-pool — the §05 difficulty curve, driven by drops placed
 // =============================================================================
 function elapsedSeconds() {
   if (!state.startTime) return 0;
@@ -694,30 +728,24 @@ function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t);
 }
 
-function timeStress() {
-  const t = elapsedSeconds();
-  if (t < CONFIG.TIME_STRESS_START_S) return 0;
-  if (t < CONFIG.TIME_STRESS_FULL_S) {
-    return smoothstep(CONFIG.TIME_STRESS_START_S, CONFIG.TIME_STRESS_FULL_S, t);
-  }
-  // Continues climbing past 1.0 so the game becomes "almost impossible" past 3:00.
-  return 1 + smoothstep(CONFIG.TIME_STRESS_FULL_S, CONFIG.TIME_STRESS_BEYOND_S, t);
-}
+// Score-based stress is kept (drives drop-pool skew near the 500 cap per §05).
+// Time-based stress is gone — cadence handles all the time pressure now.
 function scoreStress() {
   return smoothstep(CONFIG.SCORE_STRESS_START, CONFIG.SCORE_STRESS_FULL, state.score);
 }
-function currentStress() {
-  return Math.max(timeStress(), scoreStress());
-}
 
-function pickDropTier() {
-  const s = clamp(currentStress(), 0, 1);
+// Pick a drop tier weighted by score stress. Pass `forbidden` to exclude one
+// tier from the roll — used to enforce "no back-to-back same colour".
+function pickDropTier(forbidden = -1) {
+  const s = clamp(scoreStress(), 0, 1);
   const weights = new Array(GEMS.length).fill(0);
   let total = 0;
   for (let i = 0; i < weights.length; i++) {
+    if (i === forbidden) continue;
     weights[i] = lerp(DROP_WEIGHTS_CALM[i], DROP_WEIGHTS_STRESS[i], s);
     total += weights[i];
   }
+  if (total === 0) return 0;   // safety net — only fires if the pool is empty
   let roll = Math.random() * total;
   for (let i = 0; i < weights.length; i++) {
     roll -= weights[i];
@@ -726,20 +754,40 @@ function pickDropTier() {
   return 0;
 }
 
-function autoDropAfterSeconds() {
-  const s = currentStress();
-  if (s < CONFIG.AUTO_DROP_STRESS_ON) return Infinity;        // chill phase: hold as long as you want
-  if (s < 1) {
-    return lerp(CONFIG.AUTO_DROP_MAX_S, 1.5,
-      (s - CONFIG.AUTO_DROP_STRESS_ON) / (1 - CONFIG.AUTO_DROP_STRESS_ON));
+// Hold time for the nth drop (1-indexed). `state.dropsPlaced` is the count of
+// drops already committed; the currently-held gem is drop #(dropsPlaced + 1).
+function holdTimeForDrop(n) {
+  for (const band of CONFIG.DROP_CADENCE) {
+    if (n <= band.to) return band.seconds;
   }
-  // Post-3:00 / post-cap: shrinks rapidly toward AUTO_DROP_MIN_S.
-  return lerp(1.5, CONFIG.AUTO_DROP_MIN_S, clamp((s - 1) / 1.0, 0, 1));
+  return CONFIG.DROP_CADENCE_FLOOR_S;
+}
+function autoDropAfterSeconds() {
+  return holdTimeForDrop(state.dropsPlaced + 1);
 }
 
-function dropCooldownSeconds() {
-  const s = clamp(currentStress(), 0, 1);
-  return lerp(CONFIG.DROP_COOLDOWN_MAX_S, CONFIG.DROP_COOLDOWN_MIN_S, s);
+// After DANGER_LINE_DROP_START_S elapsed, the danger line lowers by
+// DANGER_LINE_DROP_RATE world units per second — the playable area shrinks
+// until overflow becomes unavoidable. Clamped at the bin floor so it can't
+// render outside the bin if a run somehow lasts long enough.
+function currentDangerLineY() {
+  const elapsed = elapsedSeconds();
+  const base = CONFIG.DANGER_LINE_Y;
+  if (elapsed <= CONFIG.DANGER_LINE_DROP_START_S) return base;
+  const drop = (elapsed - CONFIG.DANGER_LINE_DROP_START_S) * CONFIG.DANGER_LINE_DROP_RATE;
+  return Math.min(base + drop, CONFIG.BIN_H);
+}
+
+// Gravity multiplier rises as the cadence tightens — calmer drops at the
+// start feel light, late-game drops feel heavier. Maps the current hold time
+// linearly from the slowest band (1.0×) to the survival floor (GRAVITY_MAX×).
+const GRAVITY_MAX_MULT = 2.0;
+function gravityMultiplier() {
+  const slowest = CONFIG.DROP_CADENCE[0].seconds;
+  const fastest = CONFIG.DROP_CADENCE_FLOOR_S;
+  const hold = autoDropAfterSeconds();
+  const t = clamp((slowest - hold) / (slowest - fastest), 0, 1);
+  return lerp(1.0, GRAVITY_MAX_MULT, t);
 }
 
 // =============================================================================
@@ -747,7 +795,8 @@ function dropCooldownSeconds() {
 // =============================================================================
 function rollNextTier() {
   state.heldTier = state.nextTier;
-  state.nextTier = pickDropTier();
+  // Forbid the newly-held tier so the next drop is always a different colour.
+  state.nextTier = pickDropTier(state.heldTier);
   state.holdTime = 0;
   updateNextPreview();
 }
@@ -763,7 +812,8 @@ function dropHeldGem() {
     radius: gem.radius,
     tier: state.heldTier,
   });
-  state.cooldown = dropCooldownSeconds();
+  state.dropsPlaced += 1;
+  state.cooldown = CONFIG.DROP_COOLDOWN_S;
   state.lastDropAt = performance.now();
   rollNextTier();
   playDrop(state.heldTier);
@@ -771,7 +821,7 @@ function dropHeldGem() {
 
 function onMerge(a, c) {
   if (a.tier === MAX_TIER) {
-    // Pink-pink clear — vaporize both, large bonus, screen flash.
+    // Terminal pair clear (two top-tier purples) — vaporize both, large bonus, screen flash.
     PHYSICS.removeBody(a);
     PHYSICS.removeBody(c);
     const mx = (a.x + c.x) / 2;
@@ -804,8 +854,8 @@ function onMerge(a, c) {
 }
 
 function gemColorHex(tier) {
-  // Loose hue cue for ring effects — keeps a chain of merges visually distinct.
-  return ['#9E131F','#FF8A1A','#FFD633','#37C25A','#1FB6B6','#1E63E0','#3F2BA8','#7C2DB0','#E84A8A'][tier];
+  // Loose hue cue for ring effects — ROYGBIV, matches the GEMS ladder order.
+  return ['#9E131F','#FF8A1A','#FFD633','#37C25A','#1E63E0','#3F2BA8','#7C2DB0'][tier];
 }
 
 function spawnFloater(x, y, text, color, size) {
@@ -816,24 +866,18 @@ function spawnRing(x, y, baseR, color) {
 }
 
 function updateOverflow(dt) {
+  // Game over the moment any settled gem's top edge crosses the danger line.
+  // Fresh gems get a short OVERFLOW_SPAWN_EXEMPT_S window to fall through the
+  // danger zone; after that the OVERFLOW_GRACE_S timer is just a single-frame
+  // jitter filter (≈0.25 s feels near-instant to the player).
   if (state.phase !== 'PLAYING') return;
+  const dangerY = currentDangerLineY();
   for (const b of PHYSICS.bodies) {
     const topEdge = b.y - b.radius;
-    const fullyAbove = topEdge < CONFIG.DANGER_LINE_Y && (b.y + b.radius) < CONFIG.DANGER_LINE_Y;
-    const partlyAbove = topEdge < CONFIG.DANGER_LINE_Y;
-    if (!partlyAbove) {
-      b.overflowTimer = 0;
-      continue;
-    }
-    // Don't fault gems still settling — wait for relative stillness.
-    const speed = Math.hypot(b.vx, b.vy);
-    if (speed > CONFIG.SLEEP_VEL && b.lifetime < 1.5) {
-      b.overflowTimer = 0;
-      continue;
-    }
+    if (topEdge >= dangerY) { b.overflowTimer = 0; continue; }
+    if (b.lifetime < CONFIG.OVERFLOW_SPAWN_EXEMPT_S) { b.overflowTimer = 0; continue; }
     b.overflowTimer += dt;
-    const limit = fullyAbove ? CONFIG.OVERFLOW_GRACE_S : CONFIG.OVERFLOW_GRACE_PARTIAL_S;
-    if (b.overflowTimer > limit) {
+    if (b.overflowTimer > CONFIG.OVERFLOW_GRACE_S) {
       endGame('overflow');
       return;
     }
@@ -856,7 +900,7 @@ function drawBin() {
   roundRect(binPxX, binPxY, binPxW, binPxH, 18 * view.scale);
   ctx.stroke();
   // Danger line — dashed.
-  const dangerPx = worldToPx(0, CONFIG.DANGER_LINE_Y);
+  const dangerPx = worldToPx(0, currentDangerLineY());
   ctx.setLineDash([8, 6]);
   ctx.strokeStyle = 'rgba(255, 214, 51, 0.55)';
   ctx.lineWidth = Math.max(1, 1.5 * view.scale);
@@ -885,36 +929,108 @@ function drawDropper() {
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
-  // Held gem
+  // Held gem (hidden during the brief debounce cooldown after a drop).
   if (state.cooldown <= 0) {
-    const pulse = state._autoDropFraction > CONFIG.AUTO_DROP_WARN_AT
-      ? 1 + 0.08 * Math.sin(performance.now() * 0.02)
-      : 1;
-    drawGemSprite(x, CONFIG.DROPPER_Y, state.heldTier, pulse);
+    drawGemSprite(x, CONFIG.DROPPER_Y, state.heldTier);
   }
 }
 
-function drawGemSprite(wx, wy, tier, scale = 1) {
+// Source SVGs have transparent padding inside the 1000×900 viewBox:
+//   visible diamond spans x∈[40,960], y∈[50,880]
+//   → 92.0 % wide, 92.2 % tall, with the visible centre 1.67 % below the
+//     sprite centre (more top padding than bottom).
+const SPRITE_VIS_W_FRAC        = 0.920;
+const SPRITE_VIS_H_FRAC        = 0.922;
+const SPRITE_VIS_CENTER_Y_FRAC = 0.5167;
+
+function drawGemSprite(wx, wy, tier, scale = 1, angle = 0) {
   const gem = GEMS[tier];
   const img = gemImages[tier];
   const p = worldToPx(wx, wy);
   const r = gem.radius * view.scale * scale;
-  // The source SVG viewBox is 1000×900 — preserve that aspect when drawing.
-  const drawW = 2 * r;
-  const drawH = drawW * (900 / 1000);
+  const tint = gemColorHex(tier);
+
+  // Layer order (back → front), so the gem appears to be inside the glass:
+  //   1. Bubble back-side (radial fill — depth cue)
+  //   2. Gem sprite (the object inside)
+  //   3. Bubble front-side (outer rim + inner refraction + specular shine)
+
+  // 1. Soft radial fill: bright spot at upper-left fading to a gem-tinted rim.
+  //    Suggests volumetric glass without overpowering the gem inside.
+  const fill = ctx.createRadialGradient(
+    p.x - r * 0.35, p.y - r * 0.35, r * 0.1,   // light source upper-left
+    p.x, p.y, r,
+  );
+  fill.addColorStop(0,    'rgba(255, 255, 255, 0.22)');
+  fill.addColorStop(0.65, 'rgba(255, 255, 255, 0)');
+  fill.addColorStop(1,    tint + '28');         // ~16 % alpha tint at the rim
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Gem sprite — scaled by this tier's per-gem `bubble` ratio.
+  const gr = r * (gem.bubble || 0.85);
+  const drawW = (2 * gr) / SPRITE_VIS_W_FRAC;
+  const drawH = (2 * gr) / SPRITE_VIS_H_FRAC;
   if (img && img.complete && img.naturalWidth) {
-    ctx.drawImage(img, p.x - drawW / 2, p.y - drawH / 2, drawW, drawH);
+    if (angle !== 0) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+      ctx.drawImage(
+        img,
+        -drawW / 2,
+        -drawH * SPRITE_VIS_CENTER_Y_FRAC,
+        drawW, drawH,
+      );
+      ctx.restore();
+    } else {
+      ctx.drawImage(
+        img,
+        p.x - drawW / 2,
+        p.y - drawH * SPRITE_VIS_CENTER_Y_FRAC,
+        drawW, drawH,
+      );
+    }
   } else {
-    // Fallback: solid circle so missing assets don't blank the playfield.
-    ctx.fillStyle = gemColorHex(tier);
+    // Fallback: solid disc tinted by tier so missing assets don't blank the playfield.
+    ctx.fillStyle = tint;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, gr, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // 3a. Outer rim — gem-tinted "wall" of the bubble (this is what visually
+  //     touches walls and neighbouring bubbles; matches body radius exactly).
+  ctx.strokeStyle = tint + 'B0';                // ~70 % alpha
+  ctx.lineWidth = Math.max(1.5, 1.8 * view.scale);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 3b. Inner refraction ring — subtle white inset overlaid on top of the gem
+  //     to suggest glass thickness from the viewer's side.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
+  ctx.lineWidth = Math.max(1, 1.0 * view.scale);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r * 0.88, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 3c. Specular highlight — small arc in the upper-left, drawn ON TOP of
+  //     the gem so it reads as a reflection on the glass surface.
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.70)';
+  ctx.lineWidth = Math.max(1.5, 2 * view.scale);
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r * 0.80, Math.PI * 1.15, Math.PI * 1.40);
+  ctx.stroke();
 }
 
 function drawBodies() {
-  for (const b of PHYSICS.bodies) drawGemSprite(b.x, b.y, b.tier);
+  // Body rotates from friction torque; we render the inner gem with that
+  // rotation but the bubble stays upright. The bubble (body-radius circle)
+  // is what touches walls / neighbours, so visuals match the physics exactly.
+  for (const b of PHYSICS.bodies) drawGemSprite(b.x, b.y, b.tier, 1, b.angle);
 }
 
 function drawEffects() {
@@ -979,10 +1095,10 @@ function drawDebug() {
   ctx.font = '11px Poppins, monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText(`stress: ${currentStress().toFixed(2)} (t=${timeStress().toFixed(2)} s=${scoreStress().toFixed(2)})`, 12, view.h - 80);
-  ctx.fillText(`auto-drop in: ${autoDropAfterSeconds().toFixed(2)}s`, 12, view.h - 66);
-  ctx.fillText(`cooldown: ${state.cooldown.toFixed(2)}s`, 12, view.h - 52);
-  ctx.fillText(`bodies: ${PHYSICS.bodies.length}`, 12, view.h - 38);
+  ctx.fillText(`drop #${state.dropsPlaced + 1}  hold ${autoDropAfterSeconds().toFixed(2)}s`, 12, view.h - 80);
+  ctx.fillText(`held ${state.holdTime.toFixed(2)}s  cooldown ${state.cooldown.toFixed(2)}s`, 12, view.h - 66);
+  ctx.fillText(`gravity ×${gravityMultiplier().toFixed(2)}  stress ${scoreStress().toFixed(2)}`, 12, view.h - 52);
+  ctx.fillText(`bodies: ${PHYSICS.bodies.length}  danger y=${currentDangerLineY().toFixed(0)}`, 12, view.h - 38);
   ctx.fillText(`elapsed: ${elapsedSeconds().toFixed(1)}s`, 12, view.h - 24);
   ctx.restore();
 }
@@ -1046,6 +1162,7 @@ const dom = {
   scoreEl: document.getElementById('scoreEl'),
   nextLabel: document.getElementById('nextLabel'),
   nextGemImg: document.getElementById('nextGemImg'),
+  nextPillValue: document.getElementById('nextPillValue'),
   muteBtn: document.getElementById('muteBtn'),
   menu: document.getElementById('menu'),
   menuSub: document.getElementById('menuSub'),
@@ -1139,9 +1256,13 @@ function startGame() {
   state.paused = false;
   state.cooldown = 0;
   state.holdTime = 0;
+  state.dropsPlaced = 0;
   state.effects = [];
   state.shake = { t: 0, mag: 0 };
   state.dropperX = CONFIG.BIN_W / 2;
+  if (dom.nextPillValue) {
+    dom.nextPillValue.style.setProperty('--timer-fill', '0%');
+  }
 
   PHYSICS.init({ left: 0, right: CONFIG.BIN_W, top: CONFIG.DROPPER_Y - 100, bottom: CONFIG.BIN_H });
 
@@ -1330,19 +1451,24 @@ function loop(t) {
   lastT = t;
 
   if (state.phase === 'PLAYING' && !state.paused) {
-    // Stress-driven cadence: cooldown ticks down, then the held gem appears;
-    // once held, auto-drop pressure climbs with stress.
+    // Drop cadence (CONFIG.DROP_CADENCE): cooldown debounces a fresh drop,
+    // then the held gem appears and its hold timer ticks. When the timer
+    // fills, the gem auto-drops. The Next pill background is the visual.
+    let fillPct = 0;
     if (state.cooldown > 0) {
       state.cooldown = Math.max(0, state.cooldown - dt);
     } else {
       state.holdTime += dt;
       const limit = autoDropAfterSeconds();
-      state._autoDropFraction = limit === Infinity ? 0 : state.holdTime / limit;
-      if (state._autoDropFraction >= 1) {
-        dropHeldGem();
-      }
+      fillPct = clamp(state.holdTime / limit, 0, 1) * 100;
+      if (state.holdTime >= limit) dropHeldGem();
+    }
+    if (dom.nextPillValue) {
+      dom.nextPillValue.style.setProperty('--timer-fill', `${fillPct}%`);
     }
 
+    // Heavier feel as cadence tightens — tied to the same hold-time curve.
+    PHYSICS.setGravity(gravityMultiplier());
     PHYSICS.step(dt, onMerge);
     updateOverflow(dt);
     if (state.shake.t > 0) state.shake.t -= dt;

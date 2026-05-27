@@ -599,9 +599,12 @@ function findLongestSequenceAt(r, c) {
 function sumOfPath(path) { let s = 0; for (const [, , v] of path) s += v; return s; }
 function scoreForClear(path) {
   const sum = sumOfPath(path);
-  if (path.length === 3) return { base: sum,     prefix: `+${sum}`,     suffix: '' };
-  if (path.length === 4) return { base: sum * 2, prefix: `+${sum * 2}`, suffix: '×2' };
-  return                       { base: sum * 3, prefix: `+${sum * 3}`, suffix: '×3' };
+  // prefix shows the raw tile sum (`+30`) so players see the arithmetic at a
+  // glance; suffix shows the length multiplier (`×2`/`×3`) — the renderer
+  // colors prefix yellow and suffix red so they read as two facts, not one.
+  if (path.length === 3) return { base: sum,     prefix: `+${sum}`, suffix: '' };
+  if (path.length === 4) return { base: sum * 2, prefix: `+${sum}`, suffix: ' ×2' };
+  return                       { base: sum * 3, prefix: `+${sum}`, suffix: ' ×3' };
 }
 function cellCenter(r, c) {
   return {
@@ -762,7 +765,6 @@ dom.endBtn.addEventListener('click', () => {
 function startRound() {
   state.phase = 'PLAYING';
   state.board = emptyBoard();
-  state.hand = [];
   state.score = 0;
   state.timer = CONFIG.GAME_DURATION_SEC;
   state.rerollBank = CONFIG.REROLL_START_BANK;
@@ -774,7 +776,18 @@ function startRound() {
   state.sparkles.length = 0;
   state.clearPulses.length = 0;
   state.drag = null;
-  refillHand();
+  // Onboarding seed: drop 2-3 mid-board and put 1, 4, and one random tile in
+  // hand. The player's first move lands an obvious 1-2-3 or 2-3-4 clear, which
+  // teaches the core loop without needing a tutorial overlay. Hand is shuffled
+  // so the "1 then 4" order doesn't read as scripted.
+  state.board[2][2] = 2;
+  state.board[2][3] = 3;
+  const seedHand = [1, 4, drawTileValue()];
+  for (let i = seedHand.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [seedHand[i], seedHand[j]] = [seedHand[j], seedHand[i]];
+  }
+  state.hand = seedHand;
   updateRerollUi();
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');

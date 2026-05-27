@@ -451,23 +451,77 @@ keeps the mute control at the §5.11 thumb-zone position.
 
 ## 6. Mascot & illustrations
 
-The **pbot** mascot is used across most JDP games. Existing sprite assets
-in this repo:
+Shared, design-approved art lives in [`design/assets/`](design/assets/) and
+is the **canonical source** for any new game. Copy from here into the
+game's own folder rather than reaching across into a sibling game's
+`assets/` directory — those per-game copies are kept for legacy reasons
+and may drift.
 
-- `flying-ruby/assets/sprites/pbot.webp`
-- `ruby-breaker-v2/pbot.png`
-- `ruby-breaker-v2/pbot-shield.png`
+### 6.1 pbot mascot
+
+The **pbot** mascot is used across most JDP games.
+
+| Asset | Source | Notes |
+|-------|--------|-------|
+| pbot — neutral (canonical) | [`design/assets/pbot.webp`](design/assets/pbot.webp) | 420×420 pixel-art portrait, transparent background. Use this as the default mascot reference for any new game. |
+| pbot — neutral (legacy) | `flying-ruby/assets/sprites/pbot.webp` | Pre-existing copy used by Flying Ruby. Equivalent for that game's purposes; new games should pull from `design/assets/` instead. |
+| pbot — flying | `flying-ruby/assets/sprites/pbot-flying.webp` (if present) | Flying Ruby variant |
+| pbot — shield | `ruby-breaker-v2/pbot-shield.png` | Ruby Breaker v2 variant |
 
 The current Figma frame `326:302` does **not** ship pbot variants directly
 — mascot illustrations live elsewhere in the file (`Game Randomizer/Large`
-symbol `737:1951` references them at 5674×540). Pull from the existing
-sprite files until a dedicated mascot frame is added.
+symbol `737:1951` references them at 5674×540). Use the `design/assets/`
+copy until a dedicated mascot frame is published.
 
-| Asset | Source | Used by |
-|-------|--------|---------|
-| pbot — neutral | `flying-ruby/assets/sprites/pbot.webp` | All games |
-| pbot — flying | `flying-ruby/assets/sprites/pbot-flying.webp` (if present) | Flying Ruby |
-| pbot — shield | `ruby-breaker-v2/pbot-shield.png` | Ruby Breaker v2 |
+### 6.2 Gems
+
+Nine-color gem set used for currency, tile-matching, and reward art across
+games. All gems are SVG (vector — scales cleanly at any size) and share a
+common silhouette so palette swaps read as the same family.
+
+**Canonical order: rainbow (warm → cool → magenta).** When laying gems
+out in a row, palette legend, or any kind of swatch grid, follow the
+order below. The sequence reads as a continuous rainbow gradient — each
+neighbor sits one hue step away from the next — which keeps multi-color
+layouts looking intentional rather than randomly sorted. Alphabetical
+order is acceptable in code where deterministic iteration matters more
+than visual layout (config keys, asset manifests).
+
+| # | Asset | Source | Hex hint |
+|---|-------|--------|----------|
+| 1 | Red gem | [`design/assets/gems/red.svg`](design/assets/gems/red.svg) | Brand red — pair with `#9E131F` chrome |
+| 2 | Orange gem | [`design/assets/gems/orange.svg`](design/assets/gems/orange.svg) | Warm orange |
+| 3 | Yellow gem | [`design/assets/gems/yellow.svg`](design/assets/gems/yellow.svg) | Brand yellow — pair with `#FFD633` accents |
+| 4 | Green gem | [`design/assets/gems/green.svg`](design/assets/gems/green.svg) | Mid green |
+| 5 | Teal gem | [`design/assets/gems/teal.svg`](design/assets/gems/teal.svg) | Teal / cyan |
+| 6 | Blue gem | [`design/assets/gems/blue.svg`](design/assets/gems/blue.svg) | Cool blue |
+| 7 | Indigo gem | [`design/assets/gems/indigo.svg`](design/assets/gems/indigo.svg) | Deep indigo |
+| 8 | Purple gem | [`design/assets/gems/purple.svg`](design/assets/gems/purple.svg) | Mid purple |
+| 9 | Pink gem | [`design/assets/gems/pink.svg`](design/assets/gems/pink.svg) | Bright pink — closes the loop back toward red |
+
+Reference order array (copy into game code):
+
+```js
+const GEM_COLORS = [
+  'red', 'orange', 'yellow', 'green', 'teal',
+  'blue', 'indigo', 'purple', 'pink',
+];
+```
+
+Usage notes:
+
+- Treat the gem set as a single "family" — if you only need one currency
+  (§1.3 "one HUD number"), pick **one** color and stick with it. Reach for
+  the full set only when your mechanic actually requires distinguishable
+  colors (matching, sorting, sequence puzzles).
+- When a game uses a **subset** (e.g. 5 of 9), pick colors that stay
+  evenly spaced along the rainbow so the legend still reads as a
+  gradient — e.g. `red, yellow, green, blue, purple` rather than
+  `red, orange, yellow, green, teal`, which clusters in the warm half.
+- Inline the SVGs directly into the DOM (or via `<img>`) — they're ~775 B
+  each, smaller than a single PNG sprite header. No spritesheet needed.
+- Don't recolor gems via CSS `filter: hue-rotate()` — the SVG already
+  ships the right palette per color, and filters degrade the highlights.
 
 ## 7. Layouts / screens
 

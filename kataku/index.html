@@ -43,58 +43,69 @@
     display: flex; flex-direction: column;
     padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
   }
-  /* Audio toggle — DESIGN.md §5.11 */
+  /* Top HUD bar — DESIGN.md §5.12 (Score · Time · Audio) */
+  #hud {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 4px 0 8px;
+    flex-shrink: 0;
+  }
+  .jdp-pill {
+    flex: 1;
+    display: flex; align-items: stretch;
+    background: #fff;
+    border: 2px solid #FFB603;
+    border-radius: 30px;
+    overflow: hidden;
+    height: 40px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+  .jdp-pill .pill-label {
+    background: #9E131F;
+    color: #FFD633;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex; align-items: center;
+    padding: 0 10px;
+  }
+  .jdp-pill .pill-value {
+    flex: 1;
+    background: #133B9F;
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .jdp-pill .pill-value.font-mono { font-family: 'Roboto Mono', monospace; font-size: 15px; }
+  @keyframes pulse-urgent {
+    0%, 100% { transform: scale(1); color: #FFFFFF; }
+    50%      { transform: scale(1.15); color: #FFD633; }
+  }
+  .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
+
+  /* Audio toggle — DESIGN.md §5.11 (in-row variant per §5.12) */
   .mute {
-    position: fixed;
-    top: max(12px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
+    flex-shrink: 0;
     width: 44px; height: 44px;
     border-radius: 22px;
     border: 2px solid #FFB603;
     background: #9E131F;
     color: #FFD633;
     display: flex; align-items: center; justify-content: center;
-    padding: 0; cursor: pointer; z-index: 30;
+    padding: 0; cursor: pointer;
     transition: transform 80ms ease;
   }
   .mute:active { transform: scale(0.92); }
   .mute svg { width: 22px; height: 22px; fill: currentColor; }
 
-  /* HUD */
-  #hud {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    padding: 8px 4px 12px;
-    gap: 8px;
-    /* Right column reserves space for the fixed 44×44 audio toggle */
-    padding-right: 60px;
+  /* Multiplier badge — secondary state, sits below the HUD row */
+  #multRow {
+    display: flex; justify-content: center;
+    padding: 0 0 6px;
   }
-  #hud .left  { display: flex; align-items: center; gap: 8px; justify-self: start; }
-  #hud .mid   { justify-self: center; }
-  #hud .right { justify-self: end; }
-  .pill {
-    background: #1a2548;
-    border: 2px solid var(--tile-border);
-    border-radius: 22px;
-    padding: 8px 14px;
-    font-weight: 700;
-    font-size: 16px;
-    min-width: 70px;
-    text-align: center;
-    box-shadow: 0 3px 0 rgba(0,0,0,0.3);
-  }
-  .pill.timer {
-    color: var(--yellow);
-    font-variant-numeric: tabular-nums;
-  }
-  .pill.timer.urgent {
-    background: var(--ruby); color: #fff; border-color: var(--darkRed);
-    animation: pulse 0.6s ease-in-out infinite alternate;
-  }
-  .pill.timer.zone-x12 { color: #ffcc66; }
-  .pill.timer.zone-x15 { color: var(--orange); }
-  .pill.timer.zone-x20 { color: #ff7a59; }
   .mult-badge {
     background: var(--yellow); color: var(--navy);
     border-radius: 12px; padding: 4px 10px;
@@ -104,7 +115,6 @@
   .mult-badge.x12 { background: #ffcc66; }
   .mult-badge.x15 { background: var(--orange); }
   .mult-badge.x20 { background: #ff7a59; color: #fff; }
-  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
 
   /* Board */
   #board-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
@@ -313,21 +323,23 @@
 </head>
 <body>
 
-<button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
-  <svg viewBox="0 0 24 24"></svg>
-</button>
-
 <div id="app">
   <header id="hud" class="hidden">
-    <div class="left">
-      <div id="scorePill" class="pill">0</div>
-      <div class="mult-badge" id="multBadge">×1.0</div>
+    <div class="jdp-pill">
+      <span class="pill-label">Score</span>
+      <span class="pill-value" id="scorePill">0</span>
     </div>
-    <div class="mid">
-      <div id="timerPill" class="pill timer">3:00</div>
+    <div class="jdp-pill">
+      <span class="pill-label">Time</span>
+      <span class="pill-value font-mono" id="timerPill">03:00</span>
     </div>
-    <div class="right"></div>
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+      <svg viewBox="0 0 24 24"></svg>
+    </button>
   </header>
+  <div id="multRow" class="hidden">
+    <div class="mult-badge" id="multBadge">×1.0</div>
+  </div>
 
   <div id="board-wrap" class="hidden">
     <div id="board"></div>
@@ -423,8 +435,8 @@ const CONFIG = {
 const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en: {
-    start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE',
+    start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'MISSED',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'SUBMIT SCORE',
     skip: 'SKIP (−15)',
     menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
     menuHint: 'Tip: green = right letter & spot, yellow = wrong spot, gray = not in the word.',
@@ -444,8 +456,8 @@ const COPY = {
     wordWas: 'The word was',
   },
   ms: {
-    start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR',
+    start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'TERLEPAS',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'HANTAR SKOR',
     skip: 'LANGKAU (−15)',
     menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
     menuHint: 'Tip: hijau = huruf & tempat betul, kuning = tempat salah, kelabu = tiada dalam perkataan.',
@@ -576,6 +588,7 @@ const state = {
 const dom = {
   app: document.getElementById('app'),
   hud: document.getElementById('hud'),
+  multRow: document.getElementById('multRow'),
   scorePill: document.getElementById('scorePill'),
   timerPill: document.getElementById('timerPill'),
   multBadge: document.getElementById('multBadge'),
@@ -731,16 +744,18 @@ function updateMultBadge(z) {
 
 function updateTimerCls(remMs, z) {
   const p = dom.timerPill;
-  p.classList.remove('urgent', 'zone-x12', 'zone-x15', 'zone-x20');
-  if (z.cls) p.classList.add('zone-' + z.cls);
-  if (remMs <= CONFIG.URGENT_THRESHOLD_MS) p.classList.add('urgent');
+  if (remMs <= CONFIG.URGENT_THRESHOLD_MS) {
+    if (!p.classList.contains('pulse-urgent')) p.classList.add('pulse-urgent');
+  } else {
+    p.classList.remove('pulse-urgent');
+  }
 }
 
 function fmtTime(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   const m = Math.floor(s / 60);
   const ss = s % 60;
-  return m + ':' + (ss < 10 ? '0' + ss : ss);
+  return (m < 10 ? '0' + m : m) + ':' + (ss < 10 ? '0' + ss : ss);
 }
 
 // =============================================================================
@@ -750,6 +765,7 @@ function startRun() {
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
   dom.hud.classList.remove('hidden');
+  dom.multRow.classList.remove('hidden');
   dom.boardWrap.classList.remove('hidden');
   dom.message.classList.remove('hidden');
   dom.skipWrap.classList.remove('hidden');

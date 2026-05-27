@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020d26">
+<title>Gem Merge — JDP Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --jdp-black:        #031034;
+    --jdp-blue:         #133B9F;
+    --jdp-brick:        #9E131F;
+    --jdp-light-red:    #AF1726;
+    --jdp-dark-yellow:  #FFB603;
+    --jdp-light-yellow: #FFD633;
+    --jdp-white:        #FFFFFF;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: linear-gradient(180deg, #020d26 0%, #051335 60%, #0a1a45 100%);
+    color: #fff;
+    font-family: 'Poppins', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  canvas#game {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  .hidden { display: none !important; }
+
+  /* HUD — DESIGN.md §5.12 — Score · Next · Audio */
+  #hud {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .hud-row {
+    width: 100%;
+    max-width: 28rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+    flex-shrink: 0;
+  }
+  /* JDP two-tone pill — DESIGN.md §5.2 */
+  .jdp-pill {
+    background: #FFFFFF;
+    border: 2px solid var(--jdp-dark-yellow);
+    border-radius: 30px;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+    flex: 1;
+    height: 32px;
+  }
+  .jdp-pill .pill-label {
+    background: var(--jdp-brick);
+    color: var(--jdp-light-yellow);
+    padding: 0 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .jdp-pill .pill-value {
+    background: var(--jdp-blue);
+    color: #FFFFFF;
+    padding: 0 12px;
+    font-size: 16px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+    white-space: nowrap;
+  }
+  /* Next-gem pill variant: value half holds an icon on white */
+  .jdp-pill.next .pill-value {
+    background: #FFFFFF;
+    padding: 0 8px;
+    justify-content: center;
+  }
+  .jdp-pill.next .pill-value img {
+    width: 24px;
+    height: 22px;
+    display: block;
+  }
+
+  /* Audio toggle — DESIGN.md §5.11 */
+  .mute {
+    width: 44px; height: 44px;
+    flex-shrink: 0;
+    border-radius: 22px;
+    border: 2px solid var(--jdp-dark-yellow);
+    background: var(--jdp-brick);
+    color: var(--jdp-light-yellow);
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 80ms ease;
+  }
+  .mute:active { transform: scale(0.92); }
+  .mute svg { width: 22px; height: 22px; fill: currentColor; }
+
+  /* End-run pill — small, low-weight, only visible during PLAYING */
+  .end-run {
+    position: fixed;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(2, 13, 38, 0.7);
+    color: rgba(255, 214, 51, 0.85);
+    border: 1px solid rgba(255, 182, 3, 0.5);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font: 700 11px/1 'Poppins', sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    z-index: 10;
+  }
+  .end-run:active { transform: translateX(-50%) scale(0.94); }
+
+  /* Overlays (menu / game over / confirm) */
+  .overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(2, 13, 38, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    padding: 16px;
+  }
+  .card {
+    background: linear-gradient(180deg, #020d26 0%, #051335 100%);
+    border: 3px solid var(--jdp-light-yellow);
+    border-radius: 24px;
+    padding: 28px 24px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 0 rgba(0,0,0,0.4);
+  }
+  .card h1 {
+    font-size: 40px;
+    margin: 0 0 6px;
+    font-weight: 700;
+    color: var(--jdp-light-yellow);
+    letter-spacing: 1px;
+    text-shadow: 0 4px 0 var(--jdp-light-red);
+  }
+  .card h2 {
+    font-size: 26px;
+    margin: 0 0 16px;
+    color: var(--jdp-light-yellow);
+    font-weight: 700;
+  }
+  .card .sub { font-size: 14px; color: #FFFFFF; margin: 0 0 18px; opacity: 0.9; }
+  .card .best { font-size: 14px; color: var(--jdp-light-yellow); margin: 0 0 18px; font-weight: 600; min-height: 20px; }
+  .card .hint { font-size: 12px; color: rgba(255,255,255,0.6); margin: 12px 0 0; }
+  .ladder {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin: 0 0 18px;
+    flex-wrap: wrap;
+  }
+  .ladder img { width: 26px; height: 24px; opacity: 0.95; }
+  .ladder .arrow { color: rgba(255,214,51,0.7); font-size: 14px; align-self: center; }
+  .cta {
+    background: linear-gradient(180deg, #FFE258 0%, #FFBA0A 100%);
+    border: 1px solid var(--jdp-light-yellow);
+    border-radius: 50px;
+    padding: 14px 28px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    color: #DE0909;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    box-shadow: 0 8px 0 #DE9D00;
+    transition: transform 80ms ease, box-shadow 80ms ease;
+    text-transform: uppercase;
+    margin: 4px 0;
+  }
+  .cta:active { transform: translateY(6px); box-shadow: 0 2px 0 #DE9D00; }
+  .cta.secondary {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.4);
+    font-size: 14px;
+    padding: 10px 22px;
+  }
+  .cta.secondary:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.4); }
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 16px;
+    margin: 0 0 18px;
+    font-size: 14px;
+  }
+  .stats .label { color: rgba(255,255,255,0.7); text-align: left; }
+  .stats .value { color: var(--jdp-light-yellow); font-weight: 700; text-align: right; }
+  .new-best {
+    display: inline-block;
+    background: var(--jdp-light-yellow);
+    color: #031034;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+    margin: 0 0 12px;
+    animation: pulse-new 0.5s ease-in-out infinite alternate;
+  }
+  @keyframes pulse-new { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+  @media (max-width: 420px) {
+    .card h1 { font-size: 32px; }
+    .jdp-pill .pill-value { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div class="hud-row">
+    <div class="jdp-pill">
+      <span class="pill-label">Score</span>
+      <span id="scoreEl" class="pill-value">0</span>
+    </div>
+    <div class="jdp-pill next">
+      <span class="pill-label" id="nextLabel">Next</span>
+      <span class="pill-value"><img id="nextGemImg" alt=""></span>
+    </div>
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+      <svg viewBox="0 0 24 24"></svg>
+    </button>
+  </div>
+</div>
+
+<button id="endRunBtn" class="end-run hidden">END RUN</button>
+
+<div id="menu" class="overlay">
+  <div class="card">
+    <h1>Gem Merge</h1>
+    <p class="sub" id="menuSub"></p>
+    <div class="ladder" id="ladderPreview"></div>
+    <p class="best" id="bestText">&nbsp;</p>
+    <button id="startBtn" class="cta">START GAME</button>
+    <p class="hint" id="menuHint"></p>
+  </div>
+</div>
+
+<div id="gameOver" class="overlay hidden">
+  <div class="card">
+    <h2 id="goTitle">GAME OVER</h2>
+    <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
+    <div id="finalStats" class="stats"></div>
+    <button id="claimBtn" class="cta">CLAIM SCORE</button>
+  </div>
+</div>
+
+<div id="endConfirm" class="overlay hidden">
+  <div class="card">
+    <h2 id="endConfirmTitle">END RUN?</h2>
+    <p class="sub" id="endConfirmSub"></p>
+    <button id="confirmEndBtn" class="cta">END &amp; CLAIM</button>
+    <button id="cancelEndBtn" class="cta secondary">KEEP PLAYING</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// =============================================================================
+// i18n — ?lang=ms switches the game's copy to Bahasa Melayu, English otherwise.
+//        CLAUDE.md §6.4 — five canonical strings + game-specific copy.
+// =============================================================================
+const QS = new URLSearchParams(location.search);
+const LANG = QS.get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    start: 'START GAME',
+    timeUp: "TIME'S UP!",
+    gameOver: 'GAME OVER',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    claim: 'CLAIM SCORE',
+    next: 'Next',
+    score: 'Score',
+    endRun: 'END RUN',
+    endConfirmTitle: 'END RUN?',
+    endConfirmSub: 'Your current score will be submitted.',
+    endAndClaim: 'END & CLAIM',
+    keepPlaying: 'KEEP PLAYING',
+    menuSub: 'Drop gems. Match colors. Climb the rainbow.',
+    menuHint: 'Tap or click to drop · move your finger to aim',
+    bestPrefix: 'Best',
+    statScore: 'Score',
+    statMerges: 'Merges',
+    statTopGem: 'Highest gem',
+    statBest: 'Best',
+    newBest: 'NEW BEST!',
+  },
+  ms: {
+    start: 'MULA MAIN',
+    timeUp: 'MASA TAMAT!',
+    gameOver: 'PERMAINAN TAMAT',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    claim: 'TUNTUT SKOR',
+    next: 'Seterusnya',
+    score: 'Skor',
+    endRun: 'TAMAT',
+    endConfirmTitle: 'TAMATKAN PERMAINAN?',
+    endConfirmSub: 'Skor semasa anda akan dihantar.',
+    endAndClaim: 'TAMAT & TUNTUT',
+    keepPlaying: 'TERUS MAIN',
+    menuSub: 'Jatuhkan permata. Padankan warna. Naik tangga pelangi.',
+    menuHint: 'Ketuk untuk jatuh · gerakkan jari untuk membidik',
+    bestPrefix: 'Terbaik',
+    statScore: 'Skor',
+    statMerges: 'Gabungan',
+    statTopGem: 'Permata tertinggi',
+    statBest: 'Terbaik',
+    newBest: 'REKOD BAHARU!',
+  },
+}[LANG];
+
+// =============================================================================
+// CONFIG — all tunables in one place (CLAUDE.md §2 pattern 1)
+// =============================================================================
+const CONFIG = {
+  // World units — bin is a portrait-oriented box. Canvas scales to fit viewport.
+  BIN_W: 360,
+  BIN_H: 600,
+  WALL: 6,                       // visual wall thickness in world units
+  DROPPER_Y: -50,                // dropper sits this many units above bin top
+  DANGER_LINE_Y: 70,             // world Y inside bin: gems crossing above this are "overflowing"
+
+  // Physics
+  GRAVITY: 980,                  // world units / s^2
+  RESTITUTION: 0.18,             // bounce factor on every collision
+  LINEAR_DAMPING: 0.6,           // velocity decay per second
+  COLLISION_PASSES: 6,           // position-correction iterations per substep
+  SUBSTEPS: 4,                   // physics substeps per frame
+  SLEEP_VEL: 6,                  // body counts as still below this speed
+  MERGE_REL_VEL_MAX: 360,        // same-tier contact only merges if approach velocity is below this
+
+  // Stress (drives drop cooldown, auto-drop, drop-pool skew)
+  TIME_STRESS_START_S: 150,      // 2:30 — stress begins ramping
+  TIME_STRESS_FULL_S: 180,       // 3:00 — stress hits 1.0
+  TIME_STRESS_BEYOND_S: 220,     // 3:40 — stress saturates at ~2.0 (drop becomes nearly impossible)
+  SCORE_STRESS_START: 400,
+  SCORE_STRESS_FULL: 500,
+
+  // Held-gem auto-drop (force-drop when stress climbs)
+  AUTO_DROP_STRESS_ON: 0.30,     // below this stress, no auto-drop pressure
+  AUTO_DROP_MAX_S: 8.0,          // first auto-drop kicks in at this hold time
+  AUTO_DROP_MIN_S: 0.18,         // at peak stress, near-instant
+  AUTO_DROP_WARN_AT: 0.6,        // fraction of hold time at which the held gem starts pulsing
+
+  // Spawn cooldown after a drop (held gem becomes available again)
+  DROP_COOLDOWN_MAX_S: 0.55,
+  DROP_COOLDOWN_MIN_S: 0.08,
+
+  // Game-over rules
+  OVERFLOW_GRACE_S: 2.0,         // body settled above danger line for this long → game over
+  OVERFLOW_GRACE_PARTIAL_S: 3.5, // body partially intersecting danger line tolerated longer
+
+  // Storage
+  STORAGE_KEY_BEST: 'gem-merge:best',
+  STORAGE_KEY_MUTE: 'gem-merge:mute',
+
+  // Dev flags (via query string)
+  DEBUG: QS.get('debug') === '1',
+};
+
+// =============================================================================
+// GEMS — tier ladder follows DESIGN.md §6.2 rainbow order.
+//        Drop pool = first four tiers only (classic Suika rule).
+// =============================================================================
+const GEMS = [
+  { name: 'red',    radius: 16, points:  2, asset: 'red.svg'    },  // tier 0 (smallest)
+  { name: 'orange', radius: 22, points:  4, asset: 'orange.svg' },  // tier 1
+  { name: 'yellow', radius: 28, points:  6, asset: 'yellow.svg' },  // tier 2
+  { name: 'green',  radius: 34, points:  8, asset: 'green.svg'  },  // tier 3
+  { name: 'teal',   radius: 41, points: 10, asset: 'teal.svg'   },  // tier 4
+  { name: 'blue',   radius: 49, points: 14, asset: 'blue.svg'   },  // tier 5
+  { name: 'indigo', radius: 58, points: 20, asset: 'indigo.svg' },  // tier 6
+  { name: 'purple', radius: 68, points: 30, asset: 'purple.svg' },  // tier 7
+  { name: 'pink',   radius: 80, points: 60, asset: 'pink.svg'   },  // tier 8 (terminal — pair clears)
+];
+const MAX_TIER = GEMS.length - 1;
+
+// Drop-pool weights: indexed by tier, blended by stress.
+// Calm play (stress 0): plenty of variety, easy chains.
+// High stress (stress 1+): mostly reds, hard to start a chain.
+const DROP_WEIGHTS_CALM   = [40, 30, 22, 8, 0, 0, 0, 0, 0];
+const DROP_WEIGHTS_STRESS = [70, 22,  6, 2, 0, 0, 0, 0, 0];
+
+// =============================================================================
+// Asset preload — gem images load once, then reused via drawImage at any size.
+// =============================================================================
+const gemImages = new Array(GEMS.length).fill(null);
+let gemsLoaded = 0;
+let allGemsReady = false;
+
+function preloadGems(onReady) {
+  for (let i = 0; i < GEMS.length; i++) {
+    const img = new Image();
+    img.onload = () => {
+      gemsLoaded += 1;
+      if (gemsLoaded === GEMS.length) { allGemsReady = true; onReady(); }
+    };
+    img.onerror = () => {
+      console.warn('Failed to load gem', GEMS[i].name);
+      gemsLoaded += 1;
+      if (gemsLoaded === GEMS.length) { allGemsReady = true; onReady(); }
+    };
+    img.src = `./assets/gems/${GEMS[i].asset}`;
+    gemImages[i] = img;
+  }
+}
+
+// =============================================================================
+// Sandbox-safe storage (wrapped per CLAUDE.md §0.4 / §6.3)
+// =============================================================================
+function storageGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v === null ? fallback : v; }
+  catch (e) { return fallback; }
+}
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+
+// =============================================================================
+// PHYSICS — vanilla circle-on-circle, circle-on-walls.
+//   This is the swap point for Matter.js: a drop-in replacement only needs to
+//   provide the same surface (init, addBody, removeBody, step, bodies). The
+//   rest of the game touches PHYSICS through that surface only.
+// =============================================================================
+const PHYSICS = (() => {
+  // Bounds: { left, right, top, bottom } in world units. `top` is open
+  // (no ceiling collision) so the dropper / overflow logic owns the top edge.
+  const bounds = { left: 0, right: 0, top: 0, bottom: 0 };
+  const bodies = [];
+  let idCounter = 0;
+  let gravity = CONFIG.GRAVITY;
+  let damping = CONFIG.LINEAR_DAMPING;
+
+  function init(b) {
+    bounds.left = b.left; bounds.right = b.right;
+    bounds.top = b.top; bounds.bottom = b.bottom;
+    bodies.length = 0;
+    idCounter = 0;
+  }
+
+  function addBody({ x, y, radius, tier, vx = 0, vy = 0 }) {
+    const body = {
+      id: ++idCounter,
+      x, y, vx, vy,
+      radius, tier,
+      mass: radius * radius,    // proportional to area — bigger gems shove smaller ones
+      overflowTimer: 0,
+      lifetime: 0,
+      sleeping: false,
+      _alive: true,
+    };
+    bodies.push(body);
+    return body;
+  }
+
+  function removeBody(body) {
+    body._alive = false;
+    const i = bodies.indexOf(body);
+    if (i !== -1) bodies.splice(i, 1);
+  }
+
+  // Single physics substep — integrate, then resolve walls + pairs.
+  function _substep(dt) {
+    // 1. Integrate forces
+    for (let i = 0; i < bodies.length; i++) {
+      const b = bodies[i];
+      b.vy += gravity * dt;
+      const dampingFactor = Math.max(0, 1 - damping * dt);
+      b.vx *= dampingFactor;
+      b.vy *= dampingFactor;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.lifetime += dt;
+    }
+
+    // 2. Wall collisions (left, right, floor — top is open)
+    for (let i = 0; i < bodies.length; i++) {
+      const b = bodies[i];
+      if (b.x - b.radius < bounds.left) {
+        b.x = bounds.left + b.radius;
+        if (b.vx < 0) b.vx = -b.vx * CONFIG.RESTITUTION;
+      } else if (b.x + b.radius > bounds.right) {
+        b.x = bounds.right - b.radius;
+        if (b.vx > 0) b.vx = -b.vx * CONFIG.RESTITUTION;
+      }
+      if (b.y + b.radius > bounds.bottom) {
+        b.y = bounds.bottom - b.radius;
+        if (b.vy > 0) b.vy = -b.vy * CONFIG.RESTITUTION;
+      }
+    }
+
+    // 3. Pair collisions, multi-pass position correction with velocity exchange.
+    //    contactPairs collects same-tier touching pairs for the merge phase.
+    const contactPairs = [];
+    for (let pass = 0; pass < CONFIG.COLLISION_PASSES; pass++) {
+      const collect = (pass === CONFIG.COLLISION_PASSES - 1);
+      for (let i = 0; i < bodies.length; i++) {
+        const a = bodies[i];
+        for (let j = i + 1; j < bodies.length; j++) {
+          const c = bodies[j];
+          const dx = c.x - a.x;
+          const dy = c.y - a.y;
+          const minDist = a.radius + c.radius;
+          const distSq = dx * dx + dy * dy;
+          if (distSq >= minDist * minDist || distSq < 0.0001) continue;
+          const dist = Math.sqrt(distSq);
+          const overlap = minDist - dist;
+          const nx = dx / dist, ny = dy / dist;
+          // Mass-weighted position correction
+          const totalMass = a.mass + c.mass;
+          const aShare = c.mass / totalMass;
+          const cShare = a.mass / totalMass;
+          a.x -= nx * overlap * aShare;
+          a.y -= ny * overlap * aShare;
+          c.x += nx * overlap * cShare;
+          c.y += ny * overlap * cShare;
+          // Velocity along normal — bounce only if closing
+          const rvx = c.vx - a.vx;
+          const rvy = c.vy - a.vy;
+          const velAlongNormal = rvx * nx + rvy * ny;
+          if (velAlongNormal < 0) {
+            const e = CONFIG.RESTITUTION;
+            const jImpulse = -(1 + e) * velAlongNormal / (1 / a.mass + 1 / c.mass);
+            const ix = jImpulse * nx, iy = jImpulse * ny;
+            a.vx -= ix / a.mass; a.vy -= iy / a.mass;
+            c.vx += ix / c.mass; c.vy += iy / c.mass;
+          }
+          if (collect && a.tier === c.tier && a._alive && c._alive) {
+            // Approach speed test: avoid runaway chain-merges when two same-tier
+            // gems are still rolling fast past each other; let them settle first.
+            const approachSpeed = Math.abs(velAlongNormal);
+            if (approachSpeed < CONFIG.MERGE_REL_VEL_MAX) {
+              contactPairs.push([a, c]);
+            }
+          }
+        }
+      }
+    }
+    return contactPairs;
+  }
+
+  function step(dt, onMergePair) {
+    const subDt = dt / CONFIG.SUBSTEPS;
+    for (let s = 0; s < CONFIG.SUBSTEPS; s++) {
+      const contactPairs = _substep(subDt);
+      // Process merges between substeps so newly-spawned gems can settle.
+      if (contactPairs.length && onMergePair) {
+        const consumed = new Set();
+        for (let p = 0; p < contactPairs.length; p++) {
+          const [a, c] = contactPairs[p];
+          if (consumed.has(a.id) || consumed.has(c.id)) continue;
+          if (!a._alive || !c._alive) continue;
+          consumed.add(a.id); consumed.add(c.id);
+          onMergePair(a, c);
+        }
+      }
+    }
+  }
+
+  return { init, addBody, removeBody, step, bodies };
+})();
+
+// =============================================================================
+// State
+// =============================================================================
+const state = {
+  phase: 'MENU',                // MENU | PLAYING | GAME_OVER
+  score: 0,
+  merges: 0,
+  topTier: 0,
+  best: parseInt(storageGet(CONFIG.STORAGE_KEY_BEST, '0'), 10) || 0,
+  muted: storageGet(CONFIG.STORAGE_KEY_MUTE, '0') === '1',
+  startTime: 0,
+  elapsedAtPause: 0,
+  paused: false,
+  pausedAt: 0,
+
+  heldTier: 0,                  // tier index of the gem in the dropper
+  nextTier: 0,                  // tier index queued to follow
+  dropperX: 0,                  // world X where the held gem hovers (follows pointer)
+  holdTime: 0,                  // seconds the current gem has been held
+  cooldown: 0,                  // seconds until the next gem is droppable
+  pointerActive: false,
+  lastDropAt: 0,
+
+  effects: [],                  // sparkle rings, +N floaters, screen flashes
+  shake: { t: 0, mag: 0 },
+};
+
+// =============================================================================
+// Sizing / viewport — canvas in CSS pixels, world coords scaled into a fitted box
+// =============================================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const view = {
+  w: 0, h: 0, dpr: 1,
+  scale: 1,                     // world units → CSS pixels
+  binPxX: 0, binPxY: 0,         // CSS-pixel top-left of bin
+  binPxW: 0, binPxH: 0,
+};
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.w = window.innerWidth;
+  view.h = window.innerHeight;
+  view.dpr = dpr;
+  canvas.width = Math.floor(view.w * dpr);
+  canvas.height = Math.floor(view.h * dpr);
+  canvas.style.width = view.w + 'px';
+  canvas.style.height = view.h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Reserve top space for HUD (~52 px) and bottom space for end-run pill (~46 px).
+  const reserveTop = 60;
+  const reserveBottom = 56;
+  const availW = view.w - 24;
+  const availH = view.h - reserveTop - reserveBottom;
+  // Bin world dimensions plus a dropper headroom band above (CONFIG.DROPPER_Y).
+  const worldW = CONFIG.BIN_W;
+  const worldH = CONFIG.BIN_H + (-CONFIG.DROPPER_Y) + 40;  // include dropper band + margin
+  const scale = Math.min(availW / worldW, availH / worldH);
+  view.scale = scale;
+
+  // Centre the world box horizontally.
+  view.binPxW = CONFIG.BIN_W * scale;
+  view.binPxH = CONFIG.BIN_H * scale;
+  view.binPxX = (view.w - view.binPxW) / 2;
+  view.binPxY = reserveTop + (-CONFIG.DROPPER_Y) * scale;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// World → CSS pixels. Bin world origin (0,0) is bin top-left interior.
+function worldToPx(wx, wy) {
+  return { x: view.binPxX + wx * view.scale, y: view.binPxY + wy * view.scale };
+}
+
+// =============================================================================
+// Stress + drop-pool — drives the §05 difficulty-escalation cap
+// =============================================================================
+function elapsedSeconds() {
+  if (!state.startTime) return 0;
+  if (state.paused) return state.elapsedAtPause;
+  return (performance.now() - state.startTime) / 1000;
+}
+function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function smoothstep(edge0, edge1, x) {
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function timeStress() {
+  const t = elapsedSeconds();
+  if (t < CONFIG.TIME_STRESS_START_S) return 0;
+  if (t < CONFIG.TIME_STRESS_FULL_S) {
+    return smoothstep(CONFIG.TIME_STRESS_START_S, CONFIG.TIME_STRESS_FULL_S, t);
+  }
+  // Continues climbing past 1.0 so the game becomes "almost impossible" past 3:00.
+  return 1 + smoothstep(CONFIG.TIME_STRESS_FULL_S, CONFIG.TIME_STRESS_BEYOND_S, t);
+}
+function scoreStress() {
+  return smoothstep(CONFIG.SCORE_STRESS_START, CONFIG.SCORE_STRESS_FULL, state.score);
+}
+function currentStress() {
+  return Math.max(timeStress(), scoreStress());
+}
+
+function pickDropTier() {
+  const s = clamp(currentStress(), 0, 1);
+  const weights = new Array(GEMS.length).fill(0);
+  let total = 0;
+  for (let i = 0; i < weights.length; i++) {
+    weights[i] = lerp(DROP_WEIGHTS_CALM[i], DROP_WEIGHTS_STRESS[i], s);
+    total += weights[i];
+  }
+  let roll = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return i;
+  }
+  return 0;
+}
+
+function autoDropAfterSeconds() {
+  const s = currentStress();
+  if (s < CONFIG.AUTO_DROP_STRESS_ON) return Infinity;        // chill phase: hold as long as you want
+  if (s < 1) {
+    return lerp(CONFIG.AUTO_DROP_MAX_S, 1.5,
+      (s - CONFIG.AUTO_DROP_STRESS_ON) / (1 - CONFIG.AUTO_DROP_STRESS_ON));
+  }
+  // Post-3:00 / post-cap: shrinks rapidly toward AUTO_DROP_MIN_S.
+  return lerp(1.5, CONFIG.AUTO_DROP_MIN_S, clamp((s - 1) / 1.0, 0, 1));
+}
+
+function dropCooldownSeconds() {
+  const s = clamp(currentStress(), 0, 1);
+  return lerp(CONFIG.DROP_COOLDOWN_MAX_S, CONFIG.DROP_COOLDOWN_MIN_S, s);
+}
+
+// =============================================================================
+// Gameplay actions — drop, merge, game-over
+// =============================================================================
+function rollNextTier() {
+  state.heldTier = state.nextTier;
+  state.nextTier = pickDropTier();
+  state.holdTime = 0;
+  updateNextPreview();
+}
+
+function dropHeldGem() {
+  if (state.phase !== 'PLAYING') return;
+  if (state.cooldown > 0) return;
+  const gem = GEMS[state.heldTier];
+  const x = clamp(state.dropperX, gem.radius, CONFIG.BIN_W - gem.radius);
+  PHYSICS.addBody({
+    x,
+    y: 0 + gem.radius + 2,        // just inside the bin from the top
+    radius: gem.radius,
+    tier: state.heldTier,
+  });
+  state.cooldown = dropCooldownSeconds();
+  state.lastDropAt = performance.now();
+  rollNextTier();
+  playDrop(state.heldTier);
+}
+
+function onMerge(a, c) {
+  if (a.tier === MAX_TIER) {
+    // Pink-pink clear — vaporize both, large bonus, screen flash.
+    PHYSICS.removeBody(a);
+    PHYSICS.removeBody(c);
+    const mx = (a.x + c.x) / 2;
+    const my = (a.y + c.y) / 2;
+    state.score += GEMS[MAX_TIER].points;
+    state.merges += 1;
+    spawnFloater(mx, my, `+${GEMS[MAX_TIER].points}`, '#FFE258', 22);
+    spawnRing(mx, my, GEMS[MAX_TIER].radius * 1.6, '#FFD633');
+    state.effects.push({ kind: 'flash', t: 0, dur: 0.35 });
+    state.shake = { t: 0.4, mag: 6 };
+    playPinkClear();
+    return;
+  }
+  const newTier = a.tier + 1;
+  const newGem = GEMS[newTier];
+  const mx = (a.x + c.x) / 2;
+  const my = (a.y + c.y) / 2;
+  const mvx = (a.vx + c.vx) / 2;
+  const mvy = (a.vy + c.vy) / 2;
+  PHYSICS.removeBody(a);
+  PHYSICS.removeBody(c);
+  PHYSICS.addBody({ x: mx, y: my, radius: newGem.radius, tier: newTier, vx: mvx, vy: mvy });
+  const points = newGem.points;
+  state.score += points;
+  state.merges += 1;
+  if (newTier > state.topTier) state.topTier = newTier;
+  spawnFloater(mx, my, `+${points}`, '#FFFFFF', 16);
+  spawnRing(mx, my, newGem.radius * 1.4, gemColorHex(newTier));
+  playMerge(newTier);
+}
+
+function gemColorHex(tier) {
+  // Loose hue cue for ring effects — keeps a chain of merges visually distinct.
+  return ['#9E131F','#FF8A1A','#FFD633','#37C25A','#1FB6B6','#1E63E0','#3F2BA8','#7C2DB0','#E84A8A'][tier];
+}
+
+function spawnFloater(x, y, text, color, size) {
+  state.effects.push({ kind: 'floater', x, y, text, color, size, t: 0, dur: 0.85 });
+}
+function spawnRing(x, y, baseR, color) {
+  state.effects.push({ kind: 'ring', x, y, baseR, color, t: 0, dur: 0.45 });
+}
+
+function updateOverflow(dt) {
+  if (state.phase !== 'PLAYING') return;
+  for (const b of PHYSICS.bodies) {
+    const topEdge = b.y - b.radius;
+    const fullyAbove = topEdge < CONFIG.DANGER_LINE_Y && (b.y + b.radius) < CONFIG.DANGER_LINE_Y;
+    const partlyAbove = topEdge < CONFIG.DANGER_LINE_Y;
+    if (!partlyAbove) {
+      b.overflowTimer = 0;
+      continue;
+    }
+    // Don't fault gems still settling — wait for relative stillness.
+    const speed = Math.hypot(b.vx, b.vy);
+    if (speed > CONFIG.SLEEP_VEL && b.lifetime < 1.5) {
+      b.overflowTimer = 0;
+      continue;
+    }
+    b.overflowTimer += dt;
+    const limit = fullyAbove ? CONFIG.OVERFLOW_GRACE_S : CONFIG.OVERFLOW_GRACE_PARTIAL_S;
+    if (b.overflowTimer > limit) {
+      endGame('overflow');
+      return;
+    }
+  }
+}
+
+// =============================================================================
+// Drawing
+// =============================================================================
+function drawBin() {
+  const { binPxX, binPxY, binPxW, binPxH } = view;
+  // Wall plate behind the interior — brick-red translucent inside.
+  ctx.save();
+  ctx.fillStyle = 'rgba(155, 19, 31, 0.18)';
+  roundRect(binPxX, binPxY, binPxW, binPxH, 18 * view.scale);
+  ctx.fill();
+  // Border — DESIGN.md §5.12 style: 2 px Dark Yellow.
+  ctx.strokeStyle = '#FFB603';
+  ctx.lineWidth = Math.max(2, 2 * view.scale);
+  roundRect(binPxX, binPxY, binPxW, binPxH, 18 * view.scale);
+  ctx.stroke();
+  // Danger line — dashed.
+  const dangerPx = worldToPx(0, CONFIG.DANGER_LINE_Y);
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = 'rgba(255, 214, 51, 0.55)';
+  ctx.lineWidth = Math.max(1, 1.5 * view.scale);
+  ctx.beginPath();
+  ctx.moveTo(binPxX + 4, dangerPx.y);
+  ctx.lineTo(binPxX + binPxW - 4, dangerPx.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawDropper() {
+  if (state.phase !== 'PLAYING') return;
+  const gem = GEMS[state.heldTier];
+  const x = clamp(state.dropperX, gem.radius, CONFIG.BIN_W - gem.radius);
+  // Vertical guide line down to bin floor
+  const top = worldToPx(x, CONFIG.DROPPER_Y);
+  const bot = worldToPx(x, CONFIG.BIN_H);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 214, 51, 0.22)';
+  ctx.lineWidth = Math.max(1, 1 * view.scale);
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y);
+  ctx.lineTo(bot.x, bot.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+  // Held gem
+  if (state.cooldown <= 0) {
+    const pulse = state._autoDropFraction > CONFIG.AUTO_DROP_WARN_AT
+      ? 1 + 0.08 * Math.sin(performance.now() * 0.02)
+      : 1;
+    drawGemSprite(x, CONFIG.DROPPER_Y, state.heldTier, pulse);
+  }
+}
+
+function drawGemSprite(wx, wy, tier, scale = 1) {
+  const gem = GEMS[tier];
+  const img = gemImages[tier];
+  const p = worldToPx(wx, wy);
+  const r = gem.radius * view.scale * scale;
+  // The source SVG viewBox is 1000×900 — preserve that aspect when drawing.
+  const drawW = 2 * r;
+  const drawH = drawW * (900 / 1000);
+  if (img && img.complete && img.naturalWidth) {
+    ctx.drawImage(img, p.x - drawW / 2, p.y - drawH / 2, drawW, drawH);
+  } else {
+    // Fallback: solid circle so missing assets don't blank the playfield.
+    ctx.fillStyle = gemColorHex(tier);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawBodies() {
+  for (const b of PHYSICS.bodies) drawGemSprite(b.x, b.y, b.tier);
+}
+
+function drawEffects() {
+  for (const e of state.effects) {
+    if (e.kind === 'flash') {
+      const alpha = (1 - e.t / e.dur) * 0.55;
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 230, 120, ${alpha})`;
+      ctx.fillRect(0, 0, view.w, view.h);
+      ctx.restore();
+    } else if (e.kind === 'ring') {
+      const k = e.t / e.dur;
+      const alpha = 1 - k;
+      const r = e.baseR * (0.6 + k * 1.4) * view.scale;
+      const p = worldToPx(e.x, e.y);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha) * 0.85;
+      ctx.strokeStyle = e.color;
+      ctx.lineWidth = Math.max(2, 2.5 * view.scale * (1 - k));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    } else if (e.kind === 'floater') {
+      const k = e.t / e.dur;
+      const alpha = 1 - k;
+      const p = worldToPx(e.x, e.y - k * 28);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.fillStyle = e.color;
+      ctx.font = `800 ${Math.round(e.size * view.scale)}px Poppins, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetY = 2;
+      ctx.fillText(e.text, p.x, p.y);
+      ctx.restore();
+    }
+  }
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+}
+
+function drawDebug() {
+  if (!CONFIG.DEBUG) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(8, view.h - 84, 200, 76);
+  ctx.fillStyle = '#FFD633';
+  ctx.font = '11px Poppins, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`stress: ${currentStress().toFixed(2)} (t=${timeStress().toFixed(2)} s=${scoreStress().toFixed(2)})`, 12, view.h - 80);
+  ctx.fillText(`auto-drop in: ${autoDropAfterSeconds().toFixed(2)}s`, 12, view.h - 66);
+  ctx.fillText(`cooldown: ${state.cooldown.toFixed(2)}s`, 12, view.h - 52);
+  ctx.fillText(`bodies: ${PHYSICS.bodies.length}`, 12, view.h - 38);
+  ctx.fillText(`elapsed: ${elapsedSeconds().toFixed(1)}s`, 12, view.h - 24);
+  ctx.restore();
+}
+
+// =============================================================================
+// Audio — Web Audio synthesis (CLAUDE.md §0.4)
+// =============================================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(opts) {
+  if (state.muted) return;
+  ensureAudio();
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime + (opts.delay || 0);
+  const dur = opts.dur || 0.15;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = opts.type || 'sine';
+  osc.frequency.setValueAtTime(opts.freq, t);
+  if (opts.freqEnd !== undefined) {
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, opts.freqEnd), t + dur);
+  }
+  g.gain.setValueAtTime(opts.gain || 0.12, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + dur + 0.05);
+}
+function playDrop(tier) {
+  // Lower-pitched thud for bigger gems
+  const base = 320 - tier * 18;
+  playTone({ freq: base, freqEnd: base * 0.55, type: 'triangle', dur: 0.14, gain: 0.16 });
+}
+function playMerge(newTier) {
+  // Each merge climbs the scale — feels like an arpeggio chain
+  const base = 380 + newTier * 70;
+  playTone({ freq: base, type: 'triangle', dur: 0.12, gain: 0.16 });
+  playTone({ freq: base * 1.5, type: 'sine', dur: 0.18, gain: 0.10, delay: 0.04 });
+}
+function playPinkClear() {
+  const base = 660;
+  for (let i = 0; i < 4; i++) {
+    playTone({ freq: base * Math.pow(1.25, i), type: 'triangle', dur: 0.18, gain: 0.16, delay: i * 0.06 });
+  }
+}
+function playGameOver() {
+  playTone({ freq: 280, freqEnd: 80, type: 'sawtooth', dur: 0.6, gain: 0.22 });
+}
+
+// =============================================================================
+// HUD wiring
+// =============================================================================
+const dom = {
+  hud: document.getElementById('hud'),
+  scoreEl: document.getElementById('scoreEl'),
+  nextLabel: document.getElementById('nextLabel'),
+  nextGemImg: document.getElementById('nextGemImg'),
+  muteBtn: document.getElementById('muteBtn'),
+  menu: document.getElementById('menu'),
+  menuSub: document.getElementById('menuSub'),
+  menuHint: document.getElementById('menuHint'),
+  bestText: document.getElementById('bestText'),
+  startBtn: document.getElementById('startBtn'),
+  gameOver: document.getElementById('gameOver'),
+  goTitle: document.getElementById('goTitle'),
+  goNewBest: document.getElementById('goNewBest'),
+  newBestLabel: document.getElementById('newBestLabel'),
+  finalStats: document.getElementById('finalStats'),
+  claimBtn: document.getElementById('claimBtn'),
+  endRunBtn: document.getElementById('endRunBtn'),
+  endConfirm: document.getElementById('endConfirm'),
+  endConfirmTitle: document.getElementById('endConfirmTitle'),
+  endConfirmSub: document.getElementById('endConfirmSub'),
+  confirmEndBtn: document.getElementById('confirmEndBtn'),
+  cancelEndBtn: document.getElementById('cancelEndBtn'),
+  ladderPreview: document.getElementById('ladderPreview'),
+};
+
+// Apply localized copy up front
+dom.menuSub.textContent = COPY.menuSub;
+dom.menuHint.textContent = COPY.menuHint;
+dom.startBtn.textContent = COPY.start;
+dom.claimBtn.textContent = COPY.claim;
+dom.endRunBtn.textContent = COPY.endRun;
+dom.endConfirmTitle.textContent = COPY.endConfirmTitle;
+dom.endConfirmSub.textContent = COPY.endConfirmSub;
+dom.confirmEndBtn.textContent = COPY.endAndClaim;
+dom.cancelEndBtn.textContent = COPY.keepPlaying;
+dom.newBestLabel.textContent = COPY.newBest;
+dom.nextLabel.textContent = COPY.next;
+document.querySelector('.jdp-pill .pill-label').textContent = COPY.score;
+
+function updateNextPreview() {
+  const img = gemImages[state.nextTier];
+  if (img) dom.nextGemImg.src = img.src;
+}
+
+function updateHud() {
+  dom.scoreEl.textContent = String(state.score);
+}
+
+function showBest() {
+  if (state.best > 0) dom.bestText.innerHTML = `${COPY.bestPrefix}: <b>${state.best}</b>`;
+  else dom.bestText.innerHTML = '&nbsp;';
+}
+
+function renderLadderPreview() {
+  // Tiny gem-ladder strip on the menu — visual brief for "match colours, climb the rainbow"
+  dom.ladderPreview.innerHTML = '';
+  for (let i = 0; i < GEMS.length; i++) {
+    const img = document.createElement('img');
+    img.src = gemImages[i].src;
+    img.alt = GEMS[i].name;
+    dom.ladderPreview.appendChild(img);
+    if (i < GEMS.length - 1) {
+      const arrow = document.createElement('span');
+      arrow.className = 'arrow';
+      arrow.textContent = '›';
+      dom.ladderPreview.appendChild(arrow);
+    }
+  }
+}
+
+// =============================================================================
+// Mute toggle — DESIGN.md §5.11
+// =============================================================================
+const MUTE_ICON_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
+const MUTE_ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
+function updateMuteUI() {
+  const svg = dom.muteBtn.querySelector('svg');
+  svg.innerHTML = state.muted ? MUTE_ICON_OFF : MUTE_ICON_ON;
+  const label = state.muted ? COPY.audioOff : COPY.audioOn;
+  dom.muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+  dom.muteBtn.setAttribute('aria-label', label);
+  dom.muteBtn.setAttribute('title', label);
+}
+
+// =============================================================================
+// Lifecycle
+// =============================================================================
+function startGame() {
+  state.phase = 'PLAYING';
+  state.score = 0;
+  state.merges = 0;
+  state.topTier = 0;
+  state.startTime = performance.now();
+  state.elapsedAtPause = 0;
+  state.paused = false;
+  state.cooldown = 0;
+  state.holdTime = 0;
+  state.effects = [];
+  state.shake = { t: 0, mag: 0 };
+  state.dropperX = CONFIG.BIN_W / 2;
+
+  PHYSICS.init({ left: 0, right: CONFIG.BIN_W, top: CONFIG.DROPPER_Y - 100, bottom: CONFIG.BIN_H });
+
+  state.nextTier = pickDropTier();
+  rollNextTier();
+
+  dom.menu.classList.add('hidden');
+  dom.gameOver.classList.add('hidden');
+  dom.endConfirm.classList.add('hidden');
+  dom.hud.classList.remove('hidden');
+  dom.endRunBtn.classList.remove('hidden');
+  updateHud();
+}
+
+function endGame(reason) {
+  if (state.phase === 'GAME_OVER') return;
+  state.phase = 'GAME_OVER';
+  state.elapsedAtPause = elapsedSeconds();
+
+  const isNewBest = state.score > state.best;
+  if (isNewBest) {
+    state.best = state.score;
+    storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best));
+  }
+
+  // Only one end-of-game string per CLAUDE.md §6.4 — this game has no countdown,
+  // so every termination is GAME OVER. TIME'S UP! is reserved for round-timer games.
+  dom.goTitle.textContent = COPY.gameOver;
+  dom.goNewBest.classList.toggle('hidden', !isNewBest);
+
+  const topGemName = GEMS[state.topTier].name.charAt(0).toUpperCase() + GEMS[state.topTier].name.slice(1);
+  dom.finalStats.innerHTML =
+    `<div class="label">${COPY.statScore}</div><div class="value">${state.score}</div>` +
+    `<div class="label">${COPY.statMerges}</div><div class="value">${state.merges}</div>` +
+    `<div class="label">${COPY.statTopGem}</div><div class="value">${topGemName}</div>` +
+    `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
+
+  dom.endRunBtn.classList.add('hidden');
+  // Brief delay so the overflow / final merge reads before the modal swoops in.
+  setTimeout(() => {
+    dom.hud.classList.add('hidden');
+    dom.gameOver.classList.remove('hidden');
+  }, reason === 'overflow' ? 600 : 250);
+  if (reason === 'overflow') playGameOver();
+}
+
+// =============================================================================
+// CLAIM SCORE callback flow — CLAUDE.md §6.5
+// =============================================================================
+function resolveCallbackUrl() {
+  const candidate = QS.get('callback_url');
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === 'https:') return u.toString();
+    } catch (_) {}
+  }
+  return (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__)
+    ? window.__JDP_CALLBACK_URL__
+    : null;
+}
+function buildClaimPayload(finalScore, extra = {}) {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  return { game: 'gem-merge', score: Math.max(0, finalScore | 0), token, ...extra };
+}
+function submitClaim() {
+  const payload = buildClaimPayload(state.score, {
+    merges: state.merges,
+    top_tier: state.topTier,
+    duration_ms: Math.round(elapsedSeconds() * 1000),
+  });
+  const url = resolveCallbackUrl();
+  if (url) {
+    const target = new URL(url);
+    for (const [k, v] of Object.entries(payload)) {
+      target.searchParams.set(k, String(v));
+    }
+    window.location.href = target.toString();
+  } else {
+    // No callback wired — log and stay on the screen so dev playthroughs aren't stuck.
+    console.log('[gem-merge] CLAIM SCORE (no callback configured)', payload);
+    dom.claimBtn.textContent = `${COPY.score}: ${state.score}`;
+    dom.claimBtn.disabled = true;
+  }
+}
+
+// =============================================================================
+// Input — pointer position drives dropper, click drops, keyboard fallback
+// =============================================================================
+function pointerToWorldX(clientX) {
+  return (clientX - view.binPxX) / view.scale;
+}
+
+function handlePointerMove(clientX) {
+  if (state.phase !== 'PLAYING') return;
+  state.dropperX = clamp(pointerToWorldX(clientX), 0, CONFIG.BIN_W);
+  state.pointerActive = true;
+}
+
+canvas.addEventListener('mousemove', (e) => handlePointerMove(e.clientX));
+canvas.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  if (state.phase !== 'PLAYING') return;
+  handlePointerMove(e.clientX);
+  dropHeldGem();
+});
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (e.touches.length) handlePointerMove(e.touches[0].clientX);
+  if (state.phase === 'PLAYING') dropHeldGem();
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (e.touches.length) handlePointerMove(e.touches[0].clientX);
+}, { passive: false });
+
+window.addEventListener('keydown', (e) => {
+  if (state.phase !== 'PLAYING') return;
+  const step = 18;
+  if (e.code === 'ArrowLeft')  { state.dropperX = clamp(state.dropperX - step, 0, CONFIG.BIN_W); e.preventDefault(); }
+  if (e.code === 'ArrowRight') { state.dropperX = clamp(state.dropperX + step, 0, CONFIG.BIN_W); e.preventDefault(); }
+  if (e.code === 'Space' && !e.repeat) { dropHeldGem(); e.preventDefault(); }
+});
+
+dom.startBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
+dom.claimBtn.addEventListener('click', submitClaim);
+dom.muteBtn.addEventListener('click', () => {
+  state.muted = !state.muted;
+  storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');
+  updateMuteUI();
+  if (!state.muted) { ensureAudio(); playTone({ freq: 660, type: 'sine', dur: 0.08, gain: 0.1 }); }
+});
+
+dom.endRunBtn.addEventListener('click', () => {
+  if (state.phase !== 'PLAYING') return;
+  state.paused = true;
+  state.pausedAt = performance.now();
+  state.elapsedAtPause = (state.pausedAt - state.startTime) / 1000;
+  dom.endConfirm.classList.remove('hidden');
+});
+dom.cancelEndBtn.addEventListener('click', () => {
+  if (state.paused) {
+    const pausedFor = performance.now() - state.pausedAt;
+    state.startTime += pausedFor;
+    state.paused = false;
+  }
+  dom.endConfirm.classList.add('hidden');
+});
+dom.confirmEndBtn.addEventListener('click', () => {
+  dom.endConfirm.classList.add('hidden');
+  endGame('early');
+  // Show the game-over card sooner on a deliberate end.
+  setTimeout(() => {
+    dom.hud.classList.add('hidden');
+    dom.gameOver.classList.remove('hidden');
+  }, 100);
+});
+
+// Pause clock on tab hide so the wall-clock timer can't run away invisibly.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (state.phase === 'PLAYING' && !state.paused) {
+      state.paused = true;
+      state.pausedAt = performance.now();
+      state.elapsedAtPause = (state.pausedAt - state.startTime) / 1000;
+    }
+  } else {
+    if (state.paused && state.phase === 'PLAYING') {
+      const pausedFor = performance.now() - state.pausedAt;
+      state.startTime += pausedFor;
+      state.paused = false;
+      lastT = 0;
+    }
+  }
+});
+
+// =============================================================================
+// Main loop
+// =============================================================================
+let lastT = 0;
+function loop(t) {
+  if (!lastT) lastT = t;
+  const dt = Math.min((t - lastT) / 1000, 1 / 30);
+  lastT = t;
+
+  if (state.phase === 'PLAYING' && !state.paused) {
+    // Stress-driven cadence: cooldown ticks down, then the held gem appears;
+    // once held, auto-drop pressure climbs with stress.
+    if (state.cooldown > 0) {
+      state.cooldown = Math.max(0, state.cooldown - dt);
+    } else {
+      state.holdTime += dt;
+      const limit = autoDropAfterSeconds();
+      state._autoDropFraction = limit === Infinity ? 0 : state.holdTime / limit;
+      if (state._autoDropFraction >= 1) {
+        dropHeldGem();
+      }
+    }
+
+    PHYSICS.step(dt, onMerge);
+    updateOverflow(dt);
+    if (state.shake.t > 0) state.shake.t -= dt;
+
+    // Effects
+    for (let i = state.effects.length - 1; i >= 0; i--) {
+      const e = state.effects[i];
+      e.t += dt;
+      if (e.t > e.dur) state.effects.splice(i, 1);
+    }
+
+    updateHud();
+  }
+
+  // Render
+  ctx.clearRect(0, 0, view.w, view.h);
+  if (state.shake.t > 0) {
+    const m = state.shake.mag * (state.shake.t / 0.4);
+    ctx.save();
+    ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
+  }
+  drawBin();
+  drawBodies();
+  drawDropper();
+  drawEffects();
+  if (state.shake.t > 0) ctx.restore();
+  drawDebug();
+
+  requestAnimationFrame(loop);
+}
+
+// =============================================================================
+// Boot
+// =============================================================================
+showBest();
+updateMuteUI();
+preloadGems(() => {
+  renderLadderPreview();
+  state.nextTier = pickDropTier();
+  state.heldTier = pickDropTier();
+  updateNextPreview();
+  // Dev jump — ?scene=gameover&score=487 lands straight on the end card.
+  const scene = QS.get('scene');
+  if (scene === 'gameover') {
+    state.score = parseInt(QS.get('score') || '0', 10) || 0;
+    state.merges = parseInt(QS.get('merges') || '0', 10) || 0;
+    state.topTier = parseInt(QS.get('top') || '0', 10) || 0;
+    if (state.score > state.best) state.best = state.score;
+    dom.menu.classList.add('hidden');
+    endGame('early');
+  }
+});
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

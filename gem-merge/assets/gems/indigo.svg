@@ -1,0 +1,18 @@
+<svg viewBox="0 0 1000 900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Triangle 1 (up) -->
+  <polygon points="220,50 40,320 310,320" fill="#A9ABF7"/>
+  <!-- Triangle 2 (down) -->
+  <polygon points="220,50 500,50 310,320" fill="#4648A8"/>
+  <!-- Triangle 3 (up) -->
+  <polygon points="500,50 310,320 690,320" fill="#8285F4"/>
+  <!-- Triangle 4 (down) -->
+  <polygon points="500,50 780,50 690,320" fill="#303171"/>
+  <!-- Triangle 5 (up) -->
+  <polygon points="780,50 690,320 960,320" fill="#585BD6"/>
+  <!-- Triangle 6 (down) -->
+  <polygon points="40,320 310,320 500,880" fill="#3E4096"/>
+  <!-- Triangle 7 (down) -->
+  <polygon points="310,320 690,320 500,880" fill="#6366F1"/>
+  <!-- Triangle 8 (down) -->
+  <polygon points="690,320 960,320 500,880" fill="#4D4FBA"/>
+</svg>

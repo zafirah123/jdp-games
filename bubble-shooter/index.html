@@ -176,20 +176,32 @@
             <!-- Start Game / Instructions Overlay -->
             <div id="start-overlay" class="absolute inset-0 bg-[#031034]/95 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300">
                 <h1 class="text-4xl title-font mb-3 animate-bounce text-[#FFD633]" style="text-shadow: 0 2px 0 #DE9D00, 0 4px 8px rgba(0,0,0,0.5);">
-                    3-MIN BLITZ
+                    Bubble Shooter
                 </h1>
                 <p class="text-white text-sm mb-6 max-w-xs">
                     Clear the board before the time runs out! Bubbles descend faster as the clock ticks down.
                 </p>
-                <div class="space-y-3 w-full max-w-xs mb-8 text-left text-xs jdp-card p-4 text-white">
-                    <div class="flex items-start gap-2">
-                        <span class="text-[#FFD633] font-bold">🎯 Aim &amp; Shoot:</span> Tap/Drag to aim, release to shoot.
+                <div class="space-y-4 w-full max-w-xs mb-8 jdp-card p-5 text-white">
+                    <div class="flex items-center gap-3 text-left">
+                        <span class="text-2xl shrink-0">💥</span>
+                        <div>
+                            <div class="text-[#FFD633] font-bold text-sm leading-tight">Match 3+</div>
+                            <div class="text-xs text-white/80">Pop same-color bubbles</div>
+                        </div>
                     </div>
-                    <div class="flex items-start gap-2">
-                        <span class="text-[#FFD633] font-bold">💥 Match 3:</span> Connect 3+ bubbles of same color to pop them.
+                    <div class="flex items-center gap-3 text-left">
+                        <span class="text-2xl shrink-0">🎯</span>
+                        <div>
+                            <div class="text-[#FFD633] font-bold text-sm leading-tight">Aim &amp; Shoot</div>
+                            <div class="text-xs text-white/80">Drag to aim, release to fire</div>
+                        </div>
                     </div>
-                    <div class="flex items-start gap-2">
-                        <span class="text-[#FFD633] font-bold">⏱️ Clock is Ticking:</span> Clear as much as you can in 3 minutes!
+                    <div class="flex items-center gap-3 text-left">
+                        <span class="text-2xl shrink-0">⏱️</span>
+                        <div>
+                            <div class="text-[#FFD633] font-bold text-sm leading-tight">3 Minutes</div>
+                            <div class="text-xs text-white/80">Clear as much as you can</div>
+                        </div>
                     </div>
                 </div>
                 <button id="start-btn" class="cta-primary w-full max-w-xs">
@@ -261,7 +273,7 @@
                 audioOn: 'AUDIO ON',
                 audioOff: 'AUDIO OFF',
                 // Game-specific
-                title: '3-MIN BLITZ',
+                title: 'Bubble Shooter',
                 hudScore: 'Score',
                 hudTime: 'Time',
                 hudHigh: 'High Score',
@@ -269,12 +281,12 @@
                 dangerLine: 'Danger Line',
                 warningBreach: 'WARNING! BREACH IMMINENT',
                 introBlurb: 'Clear the board before the time runs out! Bubbles descend faster as the clock ticks down.',
-                howAim: 'Aim & Shoot:',
-                howAimDesc: 'Tap/Drag to aim, release to shoot.',
-                howMatch: 'Match 3:',
-                howMatchDesc: 'Connect 3+ bubbles of same color to pop them.',
-                howClock: 'Clock is Ticking:',
-                howClockDesc: 'Clear as much as you can in 3 minutes!',
+                howAim: 'Aim & Shoot',
+                howAimDesc: 'Drag to aim, release to fire',
+                howMatch: 'Match 3+',
+                howMatchDesc: 'Pop same-color bubbles',
+                howClock: '3 Minutes',
+                howClockDesc: 'Clear as much as you can',
                 resultsBlurb: 'Awesome effort! Here is how you did:',
                 statFinal: 'Final Score',
                 statPopped: 'Bubbles Popped',
@@ -296,7 +308,7 @@
                 audioOn: 'AUDIO ON',
                 audioOff: 'AUDIO OFF',
                 // Game-specific
-                title: 'BLITZ 3-MINIT',
+                title: 'Bubble Shooter',
                 hudScore: 'Markah',
                 hudTime: 'Masa',
                 hudHigh: 'Markah Tertinggi',
@@ -304,12 +316,12 @@
                 dangerLine: 'Garisan Bahaya',
                 warningBreach: 'AMARAN! GARISAN HAMPIR DILANGGAR',
                 introBlurb: 'Bersihkan papan sebelum masa tamat! Buih akan turun lebih laju apabila masa berkurang.',
-                howAim: 'Bidik & Tembak:',
-                howAimDesc: 'Tekan/seret untuk bidik, lepas untuk tembak.',
-                howMatch: 'Padan 3:',
-                howMatchDesc: 'Sambung 3+ buih warna sama untuk meletupkannya.',
-                howClock: 'Masa Berdetik:',
-                howClockDesc: 'Bersihkan sebanyak mungkin dalam 3 minit!',
+                howAim: 'Bidik & Tembak',
+                howAimDesc: 'Tarik untuk bidik, lepas untuk tembak',
+                howMatch: 'Padan 3+',
+                howMatchDesc: 'Letupkan buih warna sama',
+                howClock: '3 Minit',
+                howClockDesc: 'Bersihkan sebanyak mungkin',
                 resultsBlurb: 'Usaha yang hebat! Inilah pencapaian anda:',
                 statFinal: 'Markah Akhir',
                 statPopped: 'Buih Diletupkan',
@@ -355,10 +367,12 @@
             const introP = document.querySelector('#start-overlay p');
             if (introP) introP.textContent = COPY.introBlurb;
             // How-to-play rows
-            const howRows = document.querySelectorAll('#start-overlay .space-y-3 > div');
-            if (howRows[0]) howRows[0].innerHTML = `<span class="text-[#FFD633] font-bold">🎯 ${COPY.howAim}</span> ${COPY.howAimDesc}`;
-            if (howRows[1]) howRows[1].innerHTML = `<span class="text-[#FFD633] font-bold">💥 ${COPY.howMatch}</span> ${COPY.howMatchDesc}`;
-            if (howRows[2]) howRows[2].innerHTML = `<span class="text-[#FFD633] font-bold">⏱️ ${COPY.howClock}</span> ${COPY.howClockDesc}`;
+            const howRows = document.querySelectorAll('#start-overlay .space-y-4 > div');
+            const renderRow = (icon, title, desc) =>
+                `<span class="text-2xl shrink-0">${icon}</span><div><div class="text-[#FFD633] font-bold text-sm leading-tight">${title}</div><div class="text-xs text-white/80">${desc}</div></div>`;
+            if (howRows[0]) howRows[0].innerHTML = renderRow('💥', COPY.howMatch, COPY.howMatchDesc);
+            if (howRows[1]) howRows[1].innerHTML = renderRow('🎯', COPY.howAim, COPY.howAimDesc);
+            if (howRows[2]) howRows[2].innerHTML = renderRow('⏱️', COPY.howClock, COPY.howClockDesc);
             // Start button
             const startBtn = document.getElementById('start-btn');
             if (startBtn) startBtn.textContent = COPY.start;
@@ -643,6 +657,9 @@
             cols: 8,
             rows: 14,
             grid: [], // 2D array of grid cells (contains color string or null)
+            // Flips on each dropGrid() so existing bubbles keep their visual
+            // x-offset after the row index of every bubble increments by 1.
+            rowParityOffset: 0,
             
             // Aiming and Shooter
             shooterX: 0,
@@ -851,6 +868,7 @@
                 this.timeSinceLastDrop = 0;
                 this.totalElapsed = 0;
                 this.dropInterval = 25; // start with 25s drops
+                this.rowParityOffset = 0;
                 this.flyingBubble = null;
                 this.popParticles = [];
                 this.fallingBubbles = [];
@@ -1020,7 +1038,7 @@
 
             // Hexagonal coordinate math
             getBubbleCoord(row, col) {
-                const isOddRow = (row % 2 !== 0);
+                const isOddRow = ((row + this.rowParityOffset) % 2 !== 0);
                 // Shift odd rows half a bubble to the right
                 const x = col * (this.bubbleRadius * 2) + this.bubbleRadius + (isOddRow ? this.bubbleRadius : 0);
                 const y = row * (this.bubbleRadius * Math.sqrt(3)) + this.bubbleRadius;
@@ -1058,6 +1076,12 @@
                 // Push grid array
                 this.grid.pop();
                 this.grid.unshift(newRow);
+
+                // Every existing bubble's row index just incremented by 1, which
+                // would flip its hex-grid x-offset. Flip the parity offset to
+                // cancel that — bubbles keep their visual positions; only the
+                // newly-inserted top row gets the opposite parity of the old top.
+                this.rowParityOffset = 1 - this.rowParityOffset;
 
                 SoundSystem.playDrop();
                 
@@ -1105,7 +1129,7 @@
 
             getNeighbors(row, col) {
                 const neighbors = [];
-                const isOddRow = (row % 2 !== 0);
+                const isOddRow = ((row + this.rowParityOffset) % 2 !== 0);
 
                 // Shared left-right horizontal neighbors
                 const dirs = [

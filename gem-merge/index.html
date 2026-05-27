@@ -331,7 +331,7 @@ const COPY = {
     endAndClaim: 'END & CLAIM',
     keepPlaying: 'KEEP PLAYING',
     menuSub: 'Drop gems. Match colors. Climb the rainbow.',
-    menuHint: 'Tap or click to drop · move your finger to aim',
+    menuHint: 'Drag to aim · release to drop',
     bestPrefix: 'Best',
     statScore: 'Score',
     statMerges: 'Merges',
@@ -354,7 +354,7 @@ const COPY = {
     endAndClaim: 'TAMAT & TUNTUT',
     keepPlaying: 'TERUS MAIN',
     menuSub: 'Jatuhkan permata. Padankan warna. Naik tangga pelangi.',
-    menuHint: 'Ketuk untuk jatuh · gerakkan jari untuk membidik',
+    menuHint: 'Seret untuk membidik · lepaskan untuk jatuh',
     bestPrefix: 'Terbaik',
     statScore: 'Skor',
     statMerges: 'Gabungan',
@@ -1374,11 +1374,14 @@ canvas.addEventListener('mousedown', (e) => {
 canvas.addEventListener('touchstart', (e) => {
   e.preventDefault();
   if (e.touches.length) handlePointerMove(e.touches[0].clientX);
-  if (state.phase === 'PLAYING') dropHeldGem();
 }, { passive: false });
 canvas.addEventListener('touchmove', (e) => {
   e.preventDefault();
   if (e.touches.length) handlePointerMove(e.touches[0].clientX);
+}, { passive: false });
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  if (state.phase === 'PLAYING') dropHeldGem();
 }, { passive: false });
 
 window.addEventListener('keydown', (e) => {

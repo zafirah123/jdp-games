@@ -538,9 +538,40 @@ function tileWeights() {
   w[9] *= (1 - cap * 0.85);
   return w;
 }
+// Saturation guard: never draw a digit when its combined board+hand count
+// already exceeds 3. Counting the hand prevents the hand from carrying extra
+// copies of a digit that's already saturated on the grid — those copies would
+// otherwise tip the board past 3 the moment they're placed. Late-game the
+// combined count can be dense enough that every digit is over the threshold;
+// in that case fall back to the digit with the lowest grid count so the hand
+// still helps the player clear, not deepen, the saturation.
+function boardCounts() {
+  const counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (let r = 0; r < CONFIG.ROWS; r++) {
+    for (let c = 0; c < CONFIG.COLS; c++) {
+      const v = state.board[r][c];
+      if (v !== null) counts[v]++;
+    }
+  }
+  return counts;
+}
 function drawTileValue() {
   const w = tileWeights();
-  let total = 0; for (let n = 1; n <= 9; n++) total += w[n];
+  const boardC = boardCounts();
+  const combined = boardC.slice();
+  for (const v of state.hand) combined[v]++;
+  let total = 0;
+  for (let n = 1; n <= 9; n++) {
+    if (combined[n] > 3) w[n] = 0;
+    total += w[n];
+  }
+  if (total <= 0) {
+    let leastN = 1, leastC = boardC[1];
+    for (let n = 2; n <= 9; n++) {
+      if (boardC[n] < leastC) { leastC = boardC[n]; leastN = n; }
+    }
+    return leastN;
+  }
   let r = Math.random() * total;
   for (let n = 1; n <= 9; n++) { r -= w[n]; if (r <= 0) return n; }
   return 9;

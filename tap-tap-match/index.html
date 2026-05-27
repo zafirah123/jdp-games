@@ -7,7 +7,7 @@
 <title>Tap Tap Match — JDP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   html, body {
@@ -31,10 +31,61 @@
     background: #031034;
     image-rendering: -webkit-optimize-contrast;
   }
+  .hidden { display: none !important; }
+
+  /* ===== Top HUD bar — DESIGN.md §5.12 ===== */
+  .hud-bar {
+    position: fixed; left: 0; right: 0; top: 0;
+    display: flex; justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) 8px 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hud-row {
+    width: 100%; max-width: 28rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    flex-shrink: 0;
+    pointer-events: auto;
+  }
+  .jdp-pill {
+    flex: 1;
+    display: flex; align-items: stretch;
+    background: #fff;
+    border: 2px solid #FFB603;
+    border-radius: 30px;
+    overflow: hidden;
+    height: 40px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+  .jdp-pill .pill-label {
+    background: #9E131F;
+    color: #FFD633;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex; align-items: center;
+    padding: 0 10px;
+  }
+  .jdp-pill .pill-value {
+    flex: 1;
+    background: #133B9F;
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 6px;
+  }
+  .jdp-pill .pill-value.font-mono { font-family: 'Roboto Mono', monospace; font-size: 15px; }
+  @keyframes pulse-urgent {
+    0%, 100% { transform: scale(1); color: #FFFFFF; }
+    50%      { transform: scale(1.15); color: #FFD633; }
+  }
+  .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
+
+  /* Audio toggle — DESIGN.md §5.11 */
   .mute {
-    position: fixed;
-    top: max(12px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
+    flex-shrink: 0;
     width: 44px; height: 44px;
     border-radius: 22px;
     border: 2px solid #FFB603;
@@ -43,7 +94,6 @@
     display: flex; align-items: center; justify-content: center;
     padding: 0;
     cursor: pointer;
-    z-index: 10;
     transition: transform 80ms ease;
   }
   .mute:active { transform: scale(0.92); }
@@ -52,9 +102,15 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<button id="muteBtn" class="mute" aria-label="Toggle sound" aria-pressed="false">
-  <svg viewBox="0 0 24 24"></svg>
-</button>
+<div class="hud-bar hidden" id="hudBar">
+  <div class="hud-row">
+    <div class="jdp-pill"><span class="pill-label" id="scoreLabel">Score</span><span class="pill-value" id="scoreVal">0</span></div>
+    <div class="jdp-pill"><span class="pill-label" id="timeLabel">Time</span><span class="pill-value font-mono" id="timeVal">03:00</span></div>
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+      <svg viewBox="0 0 24 24"></svg>
+    </button>
+  </div>
+</div>
 <script>
 'use strict';
 
@@ -155,6 +211,10 @@ const CONFIG = {
     best: 'tap-tap-match:best',
     mute: 'tap-tap-match:mute',
   },
+
+  // CLAIM SCORE — CLAUDE.md §6.5
+  gameName: 'tap-tap-match',
+  claimFallbackUrl: 'https://app.pandai.org/app/game',
 };
 
 // ============================================================
@@ -166,43 +226,45 @@ const COPY = {
     // canonical
     start:    'START GAME',
     timeUp:   "TIME'S UP!",
-    gameOver: 'GAME OVER',
+    gameOver: 'MISSED!',
     audioOn:  'AUDIO ON',
     audioOff: 'AUDIO OFF',
+    claim:    'CLAIM SCORE',
     // game-specific
     title:           'TAP TAP MATCH',
     tagline1:        'Watch the sequence. Tap it back.',
     tagline2:        '3 minutes. One number to beat.',
     bestPrefix:      'Best',
-    scoreLabel:      'SCORE',
-    timeLabel:       'TIME',
+    scoreLabel:      'Score',
+    timeLabel:       'Time',
     roundFormat:     (round, len) => `Round ${round}  ·  Length ${len}`,
     watchSequence:   'Watch the sequence',
     tapMoreFormat:   (n) => `Tap ${n} more`,
     nice:            'NICE!',
+    missed:          'MISSED!',
     finalScore:      'Final Score',
     newBest:         'NEW BEST!',
-    playAgain:       'PLAY AGAIN',
   },
   ms: {
     start:    'MULA MAIN',
     timeUp:   'MASA TAMAT!',
-    gameOver: 'PERMAINAN TAMAT',
+    gameOver: 'TERLEPAS!',
     audioOn:  'AUDIO ON',
     audioOff: 'AUDIO OFF',
+    claim:    'TUNTUT SKOR',
     title:           'TAP TAP MATCH',
     tagline1:        'Perhati urutan. Ketuk semula.',
     tagline2:        '3 minit. Satu nombor untuk dikalahkan.',
     bestPrefix:      'Terbaik',
-    scoreLabel:      'SKOR',
-    timeLabel:       'MASA',
+    scoreLabel:      'Skor',
+    timeLabel:       'Masa',
     roundFormat:     (round, len) => `Pusingan ${round}  ·  Panjang ${len}`,
     watchSequence:   'Perhati urutan',
     tapMoreFormat:   (n) => `Ketuk ${n} lagi`,
     nice:            'BAGUS!',
+    missed:          'TERLEPAS!',
     finalScore:      'Skor Akhir',
     newBest:         'REKOD BAHARU!',
-    playAgain:       'MAIN LAGI',
   },
 }[LANG];
 
@@ -344,9 +406,60 @@ function playButton() {
 // ============================================================
 // CANVAS & DRAW
 // ============================================================
-const canvas  = document.getElementById('game');
-const ctx     = canvas.getContext('2d');
-const muteBtn = document.getElementById('muteBtn');
+const canvas    = document.getElementById('game');
+const ctx       = canvas.getContext('2d');
+const muteBtn   = document.getElementById('muteBtn');
+const hudBar    = document.getElementById('hudBar');
+const scoreVal  = document.getElementById('scoreVal');
+const timeVal   = document.getElementById('timeVal');
+const scoreLbl  = document.getElementById('scoreLabel');
+const timeLbl   = document.getElementById('timeLabel');
+
+scoreLbl.textContent = COPY.scoreLabel;
+timeLbl.textContent  = COPY.timeLabel;
+
+// ============================================================
+// CLAIM SCORE — CLAUDE.md §6.5
+// ============================================================
+function resolveCallbackUrl() {
+  const qs = new URLSearchParams(location.search);
+  const candidate = qs.get('callback_url');
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === 'https:') return u.toString();
+    } catch (_) {}
+  }
+  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
+  return CONFIG.claimFallbackUrl;
+}
+function buildClaimUrl() {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const base = resolveCallbackUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  return base
+    + sep + 'game=' + encodeURIComponent(CONFIG.gameName)
+    + '&score=' + Math.max(0, state.score | 0)
+    + '&token=' + encodeURIComponent(token);
+}
+
+function syncHud() {
+  const live = state.scene !== 'start' && state.scene !== 'gameover';
+  hudBar.classList.toggle('hidden', !live);
+  if (!live) {
+    timeVal.classList.remove('pulse-urgent');
+    return;
+  }
+  scoreVal.textContent = String(state.score);
+  const secsLeft = Math.max(0, Math.ceil(state.timerMs / 1000));
+  const mm = Math.floor(secsLeft / 60);
+  const ss = String(secsLeft % 60).padStart(2, '0');
+  timeVal.textContent = `${mm}:${ss}`;
+  const urgent = secsLeft <= CONFIG.urgentSecs && secsLeft > 0;
+  timeVal.classList.toggle('pulse-urgent', urgent);
+}
 
 function resize() {
   const dpr   = Math.min(window.devicePixelRatio || 1, 2);
@@ -502,63 +615,29 @@ function drawGrid(time) {
   }
 }
 
-function drawPill(x, y, w, h, fill, label, value, valueColor) {
-  ctx.fillStyle = fill;
-  roundRect(x, y, w, h, h / 2);
-  ctx.fill();
-  ctx.strokeStyle = CONFIG.palette.accent;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.font = '600 11px Poppins, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, x + 18, y + h / 2 - 11);
-
-  ctx.fillStyle = valueColor;
-  ctx.font = '700 22px Poppins, sans-serif';
-  ctx.fillText(value, x + 18, y + h / 2 + 10);
-}
-
 function drawHUD(time) {
-  const secsLeft = Math.max(0, Math.ceil(state.timerMs / 1000));
   const live = state.scene !== 'start' && state.scene !== 'gameover';
-  const urgent = live && secsLeft <= CONFIG.urgentSecs && secsLeft > 0;
 
-  // Score pill (left)
-  drawPill(36, 70, 168, 56, CONFIG.palette.chrome, COPY.scoreLabel, String(state.score), CONFIG.palette.chromeHi);
-
-  // Timer pill (right)
-  const mm = Math.floor(secsLeft / 60);
-  const ss = String(secsLeft % 60).padStart(2, '0');
-  const fill = urgent ? CONFIG.palette.danger : CONFIG.palette.blue;
-  const alpha = urgent ? (0.78 + 0.22 * Math.sin(time * 0.012)) : 1;
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  drawPill(CONFIG.width - 36 - 168, 70, 168, 56, fill, COPY.timeLabel, `${mm}:${ss}`, '#FFFFFF');
-  ctx.restore();
-
-  // Round indicator
+  // Round indicator — sits above the grid (DOM HUD owns Score/Time per DESIGN.md §5.12)
   if (live) {
     const len = timingForRound(state.round).len;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
     ctx.font = '600 13px Poppins, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(COPY.roundFormat(state.round, len), CONFIG.width / 2, 150);
+    ctx.fillText(COPY.roundFormat(state.round, len), CONFIG.width / 2, 180);
   }
 
-  // Floating "+N" award
+  // Floating "+N" award — centered above the grid
   if (time < state.lastAwardUntil && state.lastAward > 0) {
     const t = (state.lastAwardUntil - time) / 900;
-    const y = 110 - (1 - t) * 20;
+    const y = 140 - (1 - t) * 20;
     ctx.save();
     ctx.globalAlpha = clamp(t, 0, 1);
     ctx.fillStyle = CONFIG.palette.chromeHi;
-    ctx.font = '700 26px Poppins, sans-serif';
+    ctx.font = '700 32px Poppins, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`+${state.lastAward}`, 120, y);
+    ctx.fillText(`+${state.lastAward}`, CONFIG.width / 2, y);
     ctx.restore();
   }
 }
@@ -569,6 +648,21 @@ function drawStatusText(time) {
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+
+  // Wrong-tap feedback overrides the normal status text while the red flash is up.
+  if (time < state.wrongUntil) {
+    const t = clamp((state.wrongUntil - time) / CONFIG.wrongFlashMs, 0, 1);
+    const pulse = 1 + 0.08 * Math.sin(time * 0.02);
+    ctx.save();
+    ctx.translate(CONFIG.width / 2, y);
+    ctx.scale(pulse, pulse);
+    ctx.globalAlpha = 0.4 + 0.6 * t;
+    ctx.fillStyle = CONFIG.palette.danger;
+    ctx.font = '700 28px Poppins, sans-serif';
+    ctx.fillText(COPY.missed, 0, 0);
+    ctx.restore();
+    return;
+  }
 
   if (state.scene === 'flashing') {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
@@ -616,8 +710,8 @@ function drawButton(x, y, w, h, label) {
 }
 
 // Button hit-boxes (logical coords) — keep in sync with draw calls.
-const BTN_START    = { x: CONFIG.width / 2 - 120, y: 560, w: 240, h: 70 };
-const BTN_REPLAY   = { x: CONFIG.width / 2 - 120, y: 600, w: 240, h: 70 };
+const BTN_START = { x: CONFIG.width / 2 - 120, y: 560, w: 240, h: 70 };
+const BTN_CLAIM = { x: CONFIG.width / 2 - 140, y: 600, w: 280, h: 70 };
 
 function pointInRect(p, r) {
   return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
@@ -728,7 +822,7 @@ function drawGameOverScreen(time) {
     ctx.fillText(`${COPY.bestPrefix}: ${state.best}`, CONFIG.width / 2, 495);
   }
 
-  drawButton(BTN_REPLAY.x, BTN_REPLAY.y, BTN_REPLAY.w, BTN_REPLAY.h, COPY.playAgain);
+  drawButton(BTN_CLAIM.x, BTN_CLAIM.y, BTN_CLAIM.w, BTN_CLAIM.h, COPY.claim);
 
   ctx.textAlign = 'start';
   ctx.textBaseline = 'alphabetic';
@@ -893,7 +987,10 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
   if (state.scene === 'gameover') {
-    if (pointInRect(p, BTN_REPLAY)) { playButton(); startGame(); }
+    if (pointInRect(p, BTN_CLAIM)) {
+      playButton();
+      location.href = buildClaimUrl();
+    }
     return;
   }
   if (state.scene === 'input') {
@@ -952,6 +1049,7 @@ function loop(t) {
   lastFrame = t;
   update(dt);
   draw();
+  syncHud();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

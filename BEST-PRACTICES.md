@@ -629,8 +629,11 @@ or each scene's `create()`.
    has no on-screen player.)*
 5. **Currency & power-ups** — single sprite per type, presented in singles
    or formations / variants.
-6. **HUD strip** — translucent bar, brand colors, the one HUD number on one
-   side, the timer on the other. No chrome.
+6. **Top HUD bar** — one horizontal row of [Score pill] · [Time pill] ·
+   [Audio toggle]. Two solid §5.2 JDP pills share width via `flex: 1`;
+   the §5.11 audio button is fixed 44×44 on the right. No translucent
+   wrapper, no second row, no fourth element. See the *"Top HUD bar"*
+   subsection below and [DESIGN.md §5.12](./DESIGN.md#512-top-hud-bar-score--time--audio) for full anatomy.
 7. **Effects layer** — sparkles, "+1" floats, auras, vignettes. All
    generated at runtime.
 8. **Modal / overlay** — Continue prompt, mute button, NEW BEST! pop.
@@ -644,6 +647,61 @@ or each scene's `create()`.
 > 80 KB), `ruby` (currency, 512×512, 68 KB), `bg` (720 KB). Pipes, dim
 > overlay, HUD strip, floor band, sparkles, "+1" floats, magnet rings, rush
 > vignette — all drawn from code.
+
+### Top HUD bar — Score · Time · Audio in one row
+
+The in-game HUD is **one horizontal row at the top of the viewport** with
+exactly three elements, in this order: [Score pill] · [Time pill] ·
+[Audio toggle]. No second row, no fourth element, no hamburger menu.
+Full visual anatomy lives in
+[DESIGN.md §5.12](./DESIGN.md#512-top-hud-bar-score--time--audio); this
+section is the *why*.
+
+| Why this shape | What it gives the player |
+|---|---|
+| **Self-contained at the top** | Fits 360 px portrait phones up to desktop; the rest of the screen is gameplay, not chrome. |
+| **One number, not two** | Score is the §04 brag number on the left. The Time pill is the round *budget* (§03), not a secondary score. |
+| **Mute is always one tap away** | Audio toggle stays on-screen at all times — never buried in a menu — satisfying the [CLAUDE.md §0.4](./CLAUDE.md) and [§6.3](./CLAUDE.md) mute requirements. |
+| **Consistent across the catalogue** | Every JDP game's HUD reads the same. Players don't relearn where Score and Mute live when they switch titles. |
+
+**Composition (left → right):**
+
+1. **Score pill** — DESIGN.md §5.2 two-tone JDP pill (`Score` label / numeric value). The one HUD number.
+2. **Time pill** — same chrome, `Time` label, `mm:ss` countdown in a monospaced font so the digits don't jitter as seconds tick.
+3. **Audio toggle** — circular 44×44 icon button (DESIGN.md §5.11).
+
+**Sizing**: the two pills share the remaining width via `flex: 1`; the
+audio button is fixed 44×44 with `flex-shrink: 0`. The pills stretch
+with the viewport; the audio button never compresses.
+
+**Urgency**: in the final stretch of the round (default ≤10 s per §07
+below; longer "panic tails" of ~30 s are fine for some genres), pulse
+the **value element of the Time pill** — not the whole pill — scale
+1 → 1.15 with a white → light-yellow color shift, ~0.8 s loop. The
+chrome stays still while the number breathes; the urgency reads as the
+*timer* alarming, not the layout breaking.
+
+**Order matters.** Score-left puts the brag number where eyes land
+first. Time-center keeps the countdown in peripheral vision while the
+player focuses on the playfield. Audio-right places the mute control in
+the thumb zone (right-handed default; left-handed players reach across
+the same way they would for any §5.11 button).
+
+**Anti-patterns** — each of these is a regression we keep seeing in
+first drafts:
+
+| Don't | Why |
+|---|---|
+| Stack Score above Time on two rows | Wastes vertical space on phones; reads as a chrome bar, not a HUD |
+| Add a `Best: 1234` chip beside Score | Best score belongs on title and game-over screens — not the in-game HUD (§04) |
+| Show `Score: 0046 / 0500` | Visible denominator defeats the brag-number — see §05 |
+| Drop the audio toggle into a settings menu | Mute is non-negotiable — must be one tap from anywhere |
+| Wrap all three elements in a translucent panel | The §5.2 pill is already the chrome; a wrapper double-counts the visual weight |
+| Pulse the entire Time pill (chrome included) in urgency state | Reads as "the layout broke" rather than "the number is alarmed" |
+
+> **Reference: Bubble Shooter.** [`bubble-shooter/index.html`](./bubble-shooter/index.html#L145-L163) lines 145–163 are the canonical markup — two `jdp-pill` elements with `flex-1`, one `.mute` button with `flex-shrink: 0`, wrapped in `flex justify-between items-center gap-2 z-10 shrink-0`. Pulse-urgent triggers at `timer <= 30`. Copy this shape into new games.
+
+> **Reference: Susun.** [`susun/index.html`](./susun/index.html) ships a legacy single-tone variant (navy pill with yellow border, score-left / timer-right, mute button positioned separately top-right) that predates this guidance. It still works as a vanilla minimum, but new games should use the two-tone bubble-shooter shape so the catalogue converges.
 
 ---
 

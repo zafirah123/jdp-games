@@ -325,6 +325,130 @@ possible because it stays accessible to screen readers.
 > default — choose the pill only when the canonical 44×44 icon would
 > visually clash with an already-crowded HUD.
 
+### 5.12 Top HUD bar (Score · Time · Audio)
+
+The canonical in-game HUD is a single horizontal row at the top of the
+viewport that combines exactly three elements, in this order:
+
+1. **Score pill** — §5.2 two-tone pill, `Score` label, numeric value.
+2. **Time pill** — same chrome as the Score pill, `Time` label, `mm:ss`
+   countdown.
+3. **Audio toggle** — §5.11 circular 44×44 icon button.
+
+Reference implementation:
+[`bubble-shooter/index.html`](bubble-shooter/index.html) — the markup
+between the `Top HUD Bar` and `Main Game Container` sections is the
+canonical shape. Copy it into new games.
+
+**Container anatomy**:
+
+| Token | Value |
+|-------|-------|
+| Width | viewport-wide, clamped to `max-width: 28rem` (Tailwind `max-w-md`) |
+| Outer padding | matches the game's page padding (8 px mobile, 16 px desktop) |
+| Layout | `display: flex; justify-content: space-between; align-items: center; gap: 8px` |
+| Stack order | `z-index: 10` (above canvas, below modal overlays) |
+| Top offset | use `padding-top: max(8px, env(safe-area-inset-top))` so the row clears notched devices |
+| Shrink | `flex-shrink: 0` on the container so it never compresses when canvas grows |
+
+**Element sizing**:
+
+| Element | Width rule | Why |
+|---------|------------|-----|
+| Score pill | `flex: 1` | Shares remaining width equally with the Time pill |
+| Time pill | `flex: 1` | Same as Score — keeps the two pills visually balanced |
+| Audio toggle | fixed 44×44, `flex-shrink: 0` | Touch target stays at the §5.11 spec regardless of viewport |
+
+On a 360 px portrait phone this resolves to ≈140 px per pill — enough for
+`Score: 9999` and `Time: 03:00` without truncating.
+
+**Score pill internals**:
+
+| Field | Value |
+|-------|-------|
+| Label (left half) | `Score` — Brick Red `#9E131F` background, Light Yellow `#FFD633` text, 10 px Poppins Bold uppercase, `letter-spacing: 0.04em` |
+| Value (right half) | zero-padded number — Blue `#133B9F` background, white 18 px Poppins Black (`font-weight: 800–900`) |
+| Outer border | 2 px solid Dark Yellow `#FFB603`, `border-radius: 30px` |
+| Inner clip | `overflow: hidden` on the outer pill so the two halves meet cleanly at the rounded edge |
+
+**Time pill internals** — same chrome as the Score pill, with two
+adjustments:
+
+| Field | Value |
+|-------|-------|
+| Label | `Time` |
+| Value font | monospaced (`font-mono` / `font-family: 'Roboto Mono', monospace`) so the digits do not shift width as seconds tick |
+| Format | `mm:ss`, zero-padded both sides |
+
+**Urgency state** — when the round timer enters the final stretch
+(`≤10 s` is the CLAUDE.md §6.2 default; some games extend to `≤30 s`
+for a longer "panic" tail), pulse the **value element** of the Time pill
+only, not the entire pill:
+
+```css
+@keyframes pulse-urgent {
+  0%, 100% { transform: scale(1);    color: #FFFFFF; }
+  50%      { transform: scale(1.15); color: #FFD633; }
+}
+.pulse-urgent { animation: pulse-urgent 0.8s infinite; }
+```
+
+```js
+// when entering the urgency window
+document.getElementById('timer').classList.add('pulse-urgent');
+```
+
+Pulsing the value (not the chrome) keeps the pill's outline calm while
+the number breathes — the urgency reads as "the number is alarmed,"
+not "the layout is shaking."
+
+**Reference markup** (Tailwind + the `.jdp-pill` / `.mute` rules above):
+
+```html
+<div class="w-full max-w-md flex justify-between items-center gap-2 z-10 shrink-0">
+  <div class="jdp-pill flex-1">
+    <span class="pill-label">Score</span>
+    <span id="score" class="pill-value">0000</span>
+  </div>
+  <div class="jdp-pill flex-1">
+    <span class="pill-label">Time</span>
+    <span id="timer" class="pill-value font-mono">03:00</span>
+  </div>
+  <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+    <svg viewBox="0 0 24 24"><!-- §5.11 ICON_ON path --></svg>
+  </button>
+</div>
+```
+
+**Why three elements, in this order?** The HUD owes the player exactly
+three ambient pieces of information: how they're doing (Score), how
+long they have left (Time), and whether sound is on (Audio). One row
+makes the layout self-contained at the top of the viewport, leaves the
+entire remaining canvas free for gameplay, and reads identically on
+phone, tablet, and desktop. Score-first (left) is the §1.3 "brag
+number" — eyes land there first. Time-center keeps the countdown in
+peripheral vision while the player focuses on the playfield. Audio-right
+keeps the mute control at the §5.11 thumb-zone position.
+
+**Anti-patterns**:
+
+| Don't | Why |
+|---|---|
+| Stack Score and Time on two rows | Wastes vertical space on phones and reads as a chrome bar, not a HUD |
+| Add a fourth element (`Best`, `Combo`, `Level`, lives) | Breaks the §1.3 "one number on the HUD" rule — surface secondary state inside the canvas with floating "+1" pops, aura tints, or screen-edge effects |
+| Drop the Audio toggle into a hamburger / settings menu | Mute is non-negotiable per CLAUDE.md §0.4 — must be one tap from anywhere |
+| Show `0046 / 0500` in the Score pill | The visible denominator defeats the brag-number — see BEST-PRACTICES.md §05 |
+| Translucent / blurred HUD bar wrapping all three elements | Adds chrome the JDP pill already provides; doubles the visual weight |
+| Pulse the entire Time pill (chrome included) in the urgency state | Reads as "the layout broke," not "the number is urgent" — pulse the value element only |
+
+> **Reference: Bubble Shooter.** [`bubble-shooter/index.html`](bubble-shooter/index.html)
+> ships this pattern verbatim. The container is `flex justify-between
+> items-center gap-2 z-10 shrink-0`, both pills carry `flex-1`, the
+> mute button is 44×44 with `flex-shrink: 0`. Urgency triggers at
+> `timer <= 30`. Susun (`susun/index.html`) is a legacy single-tone
+> variant that predates this guidance — it still works, but new games
+> should use the two-tone shape above.
+
 ## 6. Mascot & illustrations
 
 The **pbot** mascot is used across most JDP games. Existing sprite assets

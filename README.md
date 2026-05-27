@@ -9,25 +9,31 @@ previews through GitHub Pages.
 ## Available games
 
 The landing page ([index.html](index.html)) lists every game and separates
-them by status:
+them into three buckets:
 
-- **Approved** — ready to ship.
-- **Pending** — under review or in development.
+- **Approved — For Development** — promoted for the dev team to review or pick up (`status: 'approved-dev'`).
+- **Approved — For Design** — promoted for the design team to review or pick up (`status: 'approved-design'`).
+- **Pending** — default; still in active build or not yet ready for review (`status: 'pending'`).
 
-Game metadata lives in [games.js](games.js). To promote a game, change its
-`status` from `'pending'` to `'approved'`.
+Game metadata lives in [games.js](games.js). See [CLAUDE.md §7](CLAUDE.md)
+for the publishing flow and how to request a move between lists.
 
-| Game | Folder | Entry | Tech |
-|------|--------|-------|------|
-| Bubble Shooter | [bubble-shooter/](bubble-shooter/) | `index.html` | Vanilla JS + Tailwind (CDN), canvas |
-| Flying Ruby | [flying-ruby/](flying-ruby/) | `index.html` | Phaser 3 (CDN), ES modules — no build step |
-| Liquid Sort | [liquid-sort/](liquid-sort/) | `liquid-sort.html` | Vanilla JS + Tailwind (CDN), canvas |
-| Puzzle | [puzzle/](puzzle/) | `puzzle.html` | Vanilla JS + Tailwind (CDN), canvas |
-| Ruby Breaker | [ruby-breaker-v2/](ruby-breaker-v2/) | `index.html` | Phaser 3 + Vite (bundled — see folder CLAUDE.md) |
-| Ruby Rhythm | [ruby-rhythm/](ruby-rhythm/) | `index.html` | Vanilla JS + Tailwind (CDN), canvas |
-| Tetra Blocks | [tetra-blocks/](tetra-blocks/) | `tetra-blocks.html` | Vanilla JS + Tailwind (CDN), canvas |
-| Tic Tac Toe | [tic-tac-toe/](tic-tac-toe/) | `tic-tack-toe.html` | Vanilla JS, plain CSS, canvas (5×5 vs AI) |
-| Wordscapes | [Wordscapes/](Wordscapes/) | `wordscapes.html` | Vanilla JS + Tailwind (CDN), canvas |
+| Game | Folder | Entry | Tech | Status |
+|------|--------|-------|------|--------|
+| 2048 | [2048/](2048/) | `index.html` | Vanilla JS, plain CSS, canvas | Approved — For Development |
+| Bubble Shooter | [bubble-shooter/](bubble-shooter/) | `index.html` | Vanilla JS + Tailwind (CDN), canvas | Pending |
+| Flying Ruby | [flying-ruby/](flying-ruby/) | `index.html` | Phaser 3 (CDN), ES modules — no build step | Approved — For Development |
+| Kataku | [kataku/](kataku/) | `index.html` | Vanilla JS, plain CSS, DOM/SVG | Pending |
+| Liquid Sort | [liquid-sort/](liquid-sort/) | `liquid-sort.html` | Vanilla JS + Tailwind (CDN), canvas | Pending |
+| Number Snap | [number-snap/](number-snap/) | `index.html` | Vanilla JS, plain CSS, canvas | Approved — For Development |
+| Puzzle | [puzzle/](puzzle/) | `puzzle.html` | Vanilla JS + Tailwind (CDN), canvas | Pending |
+| Ruby Breaker | [ruby-breaker-v2/](ruby-breaker-v2/) | `index.html` | Phaser 3 + Vite (bundled — see folder CLAUDE.md) | Pending |
+| Ruby Rhythm | [ruby-rhythm/](ruby-rhythm/) | `index.html` | Vanilla JS + Tailwind (CDN), canvas | Pending |
+| Susun | [susun/](susun/) | `index.html` | Vanilla JS, plain CSS, Canvas 2D, Web Audio (canonical single-file reference) | Approved — For Development |
+| Tap Tap Match | [tap-tap-match/](tap-tap-match/) | `index.html` | Vanilla JS, plain CSS, canvas | Approved — For Development |
+| Tetra Blocks | [tetra-blocks/](tetra-blocks/) | `tetra-blocks.html` | Vanilla JS + Tailwind (CDN), canvas | Pending |
+| Tic Tac Toe | [tic-tac-toe/](tic-tac-toe/) | `tic-tack-toe.html` | Vanilla JS, plain CSS, canvas (5×5 vs AI) | Pending |
+| Wordscapes | [Wordscapes/](Wordscapes/) | `wordscapes.html` | Vanilla JS + Tailwind (CDN), canvas | Pending |
 
 Most games are **single-file**: HTML + inline `<style>` + inline `<script>`,
 pulling Tailwind from a CDN. The two exceptions are:

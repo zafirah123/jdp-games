@@ -7,7 +7,7 @@
 <title>Susun — JDP Games</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   html, body {
@@ -29,40 +29,55 @@
   }
   .hidden { display: none !important; }
 
-  /* HUD */
-  #hud {
-    position: fixed;
-    top: 16px; left: 16px; right: 72px;
+  /* Top HUD bar — DESIGN.md §5.12 (Score · Time · Audio in one row) */
+  .hud-bar {
+    position: fixed; left: 0; right: 0; top: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: max(8px, env(safe-area-inset-top)) 8px 0;
+    z-index: 10;
     pointer-events: none;
-    z-index: 5;
   }
   .hud-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-  }
-  .pill {
-    background: rgba(2, 13, 38, 0.85);
-    border: 2px solid #FFD633;
-    border-radius: 999px;
-    padding: 8px 16px;
-    font-weight: 700;
-    font-size: 16px;
-    line-height: 1;
-    color: #FFD633;
-    letter-spacing: 0.4px;
+    width: 100%; max-width: 28rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    flex-shrink: 0;
     pointer-events: auto;
-    min-width: 96px;
-    text-align: center;
-    box-shadow: 0 2px 0 rgba(0,0,0,0.4);
   }
-  .pill.timer { color: #FFFFFF; }
-  .pill.timer.urgent {
-    animation: pulse 0.4s ease-in-out infinite alternate;
-    border-color: #AF1726;
-    color: #FFE258;
+  .jdp-pill {
+    flex: 1;
+    display: flex; align-items: stretch;
+    background: #fff;
+    border: 2px solid #FFB603;
+    border-radius: 30px;
+    overflow: hidden;
+    height: 40px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
   }
+  .jdp-pill .pill-label {
+    background: #9E131F;
+    color: #FFD633;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex; align-items: center;
+    padding: 0 10px;
+  }
+  .jdp-pill .pill-value {
+    flex: 1;
+    background: #133B9F;
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 6px;
+  }
+  .jdp-pill .pill-value.font-mono { font-family: 'Roboto Mono', monospace; font-size: 15px; }
+  @keyframes pulse-urgent {
+    0%, 100% { transform: scale(1); color: #FFFFFF; }
+    50%      { transform: scale(1.15); color: #FFD633; }
+  }
+  .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
   @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
   .badge {
     margin: 8px auto 0;
@@ -80,9 +95,7 @@
   }
   /* Audio toggle — DESIGN.md §5.11 */
   .mute {
-    position: fixed;
-    top: max(12px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
+    flex-shrink: 0;
     width: 44px; height: 44px;
     border-radius: 22px;
     border: 2px solid #FFB603;
@@ -91,7 +104,6 @@
     display: flex; align-items: center; justify-content: center;
     padding: 0;
     cursor: pointer;
-    z-index: 30;
     transition: transform 80ms ease;
   }
   .mute:active { transform: scale(0.92); }
@@ -190,14 +202,13 @@
 <body>
 <canvas id="game"></canvas>
 
-<button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
-  <svg viewBox="0 0 24 24"></svg>
-</button>
-
-<div id="hud" class="hidden">
+<div id="hud" class="hud-bar hidden">
   <div class="hud-row">
-    <div id="scorePill" class="pill">0</div>
-    <div id="timerPill" class="pill timer">3:00</div>
+    <div class="jdp-pill"><span class="pill-label">Score</span><span class="pill-value" id="scoreVal">0</span></div>
+    <div class="jdp-pill"><span class="pill-label">Time</span><span class="pill-value font-mono" id="timerVal">03:00</span></div>
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+      <svg viewBox="0 0 24 24"></svg>
+    </button>
   </div>
   <div id="streakBadge" class="badge hidden"></div>
 </div>
@@ -217,7 +228,7 @@
     <h2 id="goTitle"></h2>
     <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
     <div id="finalStats" class="stats"></div>
-    <button id="playAgainBtn" class="cta"></button>
+    <button id="claimBtn" class="cta"></button>
   </div>
 </div>
 
@@ -238,7 +249,7 @@ const COPY = {
     roundMiss: 'MISSED!',
     menuSub: 'Stack as high as you can in 3 minutes.',
     menuHint: 'Tap, click, or press <kbd>Space</kbd>',
-    playAgain: 'PLAY AGAIN',
+    claim: 'SUBMIT SCORE',
     newBest: 'NEW BEST!',
     streak: 'STREAK',
     perfectSuffix: 'PERFECT!',
@@ -259,7 +270,7 @@ const COPY = {
     roundMiss: 'TERLEPAS!',
     menuSub: 'Susun setinggi mungkin dalam 3 minit.',
     menuHint: 'Ketuk, klik, atau tekan <kbd>Space</kbd>',
-    playAgain: 'MAIN SEMULA',
+    claim: 'HANTAR SKOR',
     newBest: 'REKOD BAHARU!',
     streak: 'RENTETAN',
     perfectSuffix: 'SEMPURNA!',
@@ -297,6 +308,8 @@ const CONFIG = {
   HEADROOM_WORLD: 140,       // world Y headroom above tower top in camera view
   STORAGE_KEY_BEST: 'susun:best',
   STORAGE_KEY_MUTE: 'susun:mute',
+  GAME_NAME: 'susun',
+  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
 };
 
 const COS30 = Math.cos(Math.PI / 6);
@@ -310,8 +323,8 @@ const ctx = canvas.getContext('2d');
 
 const dom = {
   hud: document.getElementById('hud'),
-  scorePill: document.getElementById('scorePill'),
-  timerPill: document.getElementById('timerPill'),
+  scoreVal: document.getElementById('scoreVal'),
+  timerVal: document.getElementById('timerVal'),
   streakBadge: document.getElementById('streakBadge'),
   muteBtn: document.getElementById('muteBtn'),
   menu: document.getElementById('menu'),
@@ -324,14 +337,14 @@ const dom = {
   goNewBest: document.getElementById('goNewBest'),
   newBestLabel: document.getElementById('newBestLabel'),
   finalStats: document.getElementById('finalStats'),
-  playAgainBtn: document.getElementById('playAgainBtn'),
+  claimBtn: document.getElementById('claimBtn'),
 };
 
 // Apply localized copy into the DOM up front.
 dom.menuSub.textContent = COPY.menuSub;
 dom.menuHint.innerHTML = COPY.menuHint;
 dom.startBtn.textContent = COPY.start;
-dom.playAgainBtn.textContent = COPY.playAgain;
+dom.claimBtn.textContent = COPY.claim;
 dom.newBestLabel.textContent = COPY.newBest;
 
 // =============================================================================
@@ -687,7 +700,7 @@ function update(dt) {
         playTick();
         state.lastTickPlayed = secondsLeft;
       }
-      dom.timerPill.classList.toggle('urgent', state.timer <= 10);
+      dom.timerVal.classList.toggle('pulse-urgent', state.timer <= 10);
 
       if (state.timer <= 0) { state.timer = 0; endGame('time'); return; }
     }
@@ -711,10 +724,10 @@ function update(dt) {
 }
 
 function updateHud() {
-  dom.scorePill.textContent = String(state.score);
+  dom.scoreVal.textContent = String(state.score);
   const mins = Math.floor(state.timer / 60);
   const secs = Math.floor(state.timer % 60);
-  dom.timerPill.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+  dom.timerVal.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   if (state.streak >= CONFIG.STREAK_TIER_1) {
     dom.streakBadge.classList.remove('hidden');
     dom.streakBadge.textContent = `${COPY.streak} x${state.streak}`;
@@ -857,7 +870,7 @@ function startGame() {
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
   dom.hud.classList.remove('hidden');
-  dom.timerPill.classList.remove('urgent');
+  dom.timerVal.classList.remove('pulse-urgent');
   updateHud();
 }
 
@@ -906,7 +919,34 @@ window.addEventListener('keydown', (e) => {
 });
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
-dom.playAgainBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
+dom.claimBtn.addEventListener('click', () => { location.href = buildClaimUrl(); });
+
+// =============================================================================
+// SUBMIT SCORE — CLAUDE.md §6.5 callback contract (game, score, token)
+// =============================================================================
+function resolveCallbackUrl() {
+  const qs = new URLSearchParams(location.search);
+  const candidate = qs.get('callback_url');
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === 'https:') return u.toString();
+    } catch (_) {}
+  }
+  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
+  return CONFIG.CLAIM_FALLBACK_URL;
+}
+function buildClaimUrl() {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const base = resolveCallbackUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  return base
+    + sep + 'game=' + encodeURIComponent(CONFIG.GAME_NAME)
+    + '&score=' + Math.max(0, state.score | 0)
+    + '&token=' + encodeURIComponent(token);
+}
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');

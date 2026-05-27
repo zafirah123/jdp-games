@@ -135,6 +135,35 @@
   .mute:active { transform: scale(0.92); }
   .mute svg { width: 22px; height: 22px; fill: currentColor; }
 
+  /* In-game gem ladder — ROYGBIV reference, sized and positioned via JS to sit just below the bin */
+  .gem-ladder {
+    position: fixed;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    background: rgba(2, 13, 38, 0.7);
+    border: 1px solid rgba(255, 182, 3, 0.5);
+    border-radius: 999px;
+    padding: 6px 10px;
+    z-index: 10;
+    pointer-events: none;
+    box-sizing: border-box;
+  }
+  .gem-ladder img {
+    width: clamp(20px, 6vw, 32px);
+    height: auto;
+    display: block;
+    flex-shrink: 0;
+  }
+  .gem-ladder .arrow {
+    color: rgba(255, 214, 51, 0.6);
+    font-size: clamp(10px, 2.4vw, 14px);
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
   /* End-run pill — small, low-weight, only visible during PLAYING */
   .end-run {
     position: fixed;
@@ -145,8 +174,8 @@
     color: rgba(255, 214, 51, 0.85);
     border: 1px solid rgba(255, 182, 3, 0.5);
     border-radius: 999px;
-    padding: 6px 14px;
-    font: 700 11px/1 'Poppins', sans-serif;
+    padding: 9px 20px;
+    font: 700 13px/1 'Poppins', sans-serif;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
@@ -274,6 +303,8 @@
     </button>
   </div>
 </div>
+
+<div id="gemLadder" class="gem-ladder hidden"></div>
 
 <button id="endRunBtn" class="end-run hidden">END RUN</button>
 
@@ -688,9 +719,9 @@ function resize() {
   canvas.style.height = view.h + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // Reserve top space for HUD (~52 px) and bottom space for end-run pill (~46 px).
+  // Reserve top space for HUD (~52 px) and bottom space for gem ladder + end-run pill.
   const reserveTop = 60;
-  const reserveBottom = 56;
+  const reserveBottom = 112;
   const availW = view.w - 24;
   const availH = view.h - reserveTop - reserveBottom;
   // Bin world dimensions plus a dropper headroom band above (CONFIG.DROPPER_Y).
@@ -704,6 +735,14 @@ function resize() {
   view.binPxH = CONFIG.BIN_H * scale;
   view.binPxX = (view.w - view.binPxW) / 2;
   view.binPxY = reserveTop + (-CONFIG.DROPPER_Y) * scale;
+
+  // Pin the in-game gem ladder to the bin width and just below the bin's bottom edge.
+  const ladderEl = document.getElementById('gemLadder');
+  if (ladderEl) {
+    ladderEl.style.left = view.binPxX + 'px';
+    ladderEl.style.width = view.binPxW + 'px';
+    ladderEl.style.top = (view.binPxY + view.binPxH + 10) + 'px';
+  }
 }
 window.addEventListener('resize', resize);
 resize();
@@ -1182,6 +1221,7 @@ const dom = {
   confirmEndBtn: document.getElementById('confirmEndBtn'),
   cancelEndBtn: document.getElementById('cancelEndBtn'),
   ladderPreview: document.getElementById('ladderPreview'),
+  gemLadder: document.getElementById('gemLadder'),
 };
 
 // Apply localized copy up front
@@ -1212,21 +1252,26 @@ function showBest() {
   else dom.bestText.innerHTML = '&nbsp;';
 }
 
-function renderLadderPreview() {
-  // Tiny gem-ladder strip on the menu — visual brief for "match colours, climb the rainbow"
-  dom.ladderPreview.innerHTML = '';
+function fillLadder(container) {
+  container.innerHTML = '';
   for (let i = 0; i < GEMS.length; i++) {
     const img = document.createElement('img');
     img.src = gemImages[i].src;
     img.alt = GEMS[i].name;
-    dom.ladderPreview.appendChild(img);
+    container.appendChild(img);
     if (i < GEMS.length - 1) {
       const arrow = document.createElement('span');
       arrow.className = 'arrow';
       arrow.textContent = '›';
-      dom.ladderPreview.appendChild(arrow);
+      container.appendChild(arrow);
     }
   }
+}
+
+function renderLadderPreview() {
+  // Tiny gem-ladder strip on the menu — visual brief for "match colours, climb the rainbow"
+  fillLadder(dom.ladderPreview);
+  fillLadder(dom.gemLadder);
 }
 
 // =============================================================================
@@ -1274,6 +1319,7 @@ function startGame() {
   dom.endConfirm.classList.add('hidden');
   dom.hud.classList.remove('hidden');
   dom.endRunBtn.classList.remove('hidden');
+  dom.gemLadder.classList.remove('hidden');
   updateHud();
 }
 
@@ -1301,6 +1347,7 @@ function endGame(reason) {
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
 
   dom.endRunBtn.classList.add('hidden');
+  dom.gemLadder.classList.add('hidden');
   // Brief delay so the overflow / final merge reads before the modal swoops in.
   setTimeout(() => {
     dom.hud.classList.add('hidden');

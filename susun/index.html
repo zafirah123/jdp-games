@@ -73,11 +73,6 @@
     padding: 0 6px;
   }
   .jdp-pill .pill-value.font-mono { font-family: 'Roboto Mono', monospace; font-size: 15px; }
-  @keyframes pulse-urgent {
-    0%, 100% { transform: scale(1); color: #FFFFFF; }
-    50%      { transform: scale(1.15); color: #FFD633; }
-  }
-  .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
   @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
   .badge {
     margin: 8px auto 0;
@@ -205,7 +200,7 @@
 <div id="hud" class="hud-bar hidden">
   <div class="hud-row">
     <div class="jdp-pill"><span class="pill-label">Score</span><span class="pill-value" id="scoreVal">0</span></div>
-    <div class="jdp-pill"><span class="pill-label">Time</span><span class="pill-value font-mono" id="timerVal">03:00</span></div>
+    <div class="jdp-pill"><span class="pill-label">Height</span><span class="pill-value" id="heightVal">0</span></div>
     <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
       <svg viewBox="0 0 24 24"></svg>
     </button>
@@ -289,12 +284,17 @@ const COPY = {
 // =============================================================================
 const CONFIG = {
   GAME_DURATION_SEC: 180,
-  HARD_MODE_SCORE: 500,      // past this score the sweep floor drops sharply — no counter clamp (CLAUDE.md §1.4)
   PERFECT_TOLERANCE: 3,      // world units of slack that still counts as perfect
+  PERFECT_BONUS: 10,         // flat bonus added on top of surface-size points for perfect placements
   BASE_SWEEP: 1.6,           // seconds for the first block to cross
   SPEED_STEP: 0.02,          // seconds shaved off per placed block
-  MIN_SWEEP: 0.55,           // floor on sweep duration (normal mode)
-  HARD_MIN_SWEEP: 0.28,      // floor past HARD_MODE_SCORE — roughly 2x speed
+  MIN_SWEEP: 0.55,           // floor on sweep duration before dynamic ramps apply
+  HARD_MIN_SWEEP: 0.28,      // absolute floor after score/time speed multipliers — roughly 2x speed
+  SCORE_RAMP_START: 450,     // score at which the speed ramp begins (no counter clamp — CLAUDE.md §1.4)
+  SCORE_RAMP_END: 500,       // score at which the speed ramp peaks
+  SCORE_RAMP_MAX_BOOST: 1.0, // +1.0 means up to 2x sweep speed at SCORE_RAMP_END
+  TIME_RAMP_START_SEC: 60,   // seconds-remaining at which the time-based speed ramp begins (2 min elapsed)
+  TIME_RAMP_MAX_BOOST: 0.6,  // +0.6 means up to 1.6x sweep speed when the clock hits 0
   BLOCK_W: 200,              // world units
   BLOCK_D: 200,
   BLOCK_H: 40,
@@ -324,7 +324,7 @@ const ctx = canvas.getContext('2d');
 const dom = {
   hud: document.getElementById('hud'),
   scoreVal: document.getElementById('scoreVal'),
-  timerVal: document.getElementById('timerVal'),
+  heightVal: document.getElementById('heightVal'),
   streakBadge: document.getElementById('streakBadge'),
   muteBtn: document.getElementById('muteBtn'),
   menu: document.getElementById('menu'),
@@ -490,9 +490,8 @@ function spawnNextBlock() {
   const axis = (idx % 2 === 1) ? 'x' : 'z';   // alternate
   const dir = (Math.floor((idx - 1) / 2) % 2 === 0) ? 1 : -1;
 
-  const floor = state.score >= CONFIG.HARD_MODE_SCORE ? CONFIG.HARD_MIN_SWEEP : CONFIG.MIN_SWEEP;
   const sweepDuration = Math.max(
-    floor,
+    CONFIG.MIN_SWEEP,
     CONFIG.BASE_SWEEP - (idx - 1) * CONFIG.SPEED_STEP
   );
   const refSize = axis === 'x' ? last.w : last.d;
@@ -520,12 +519,31 @@ function spawnNextBlock() {
 }
 
 // =============================================================================
+// Dynamic speed multiplier — accelerates the sweep as score nears the cap and
+// as the clock runs out, so good players can't ride a perfect streak past 500.
+// =============================================================================
+function getSpeedMultiplier() {
+  let mul = 1;
+  if (state.score >= CONFIG.SCORE_RAMP_START) {
+    const t = Math.min(1, (state.score - CONFIG.SCORE_RAMP_START) /
+      (CONFIG.SCORE_RAMP_END - CONFIG.SCORE_RAMP_START));
+    mul += t * CONFIG.SCORE_RAMP_MAX_BOOST;
+  }
+  if (state.timerStarted && state.timer < CONFIG.TIME_RAMP_START_SEC) {
+    const t = 1 - Math.max(0, state.timer) / CONFIG.TIME_RAMP_START_SEC;
+    mul += t * CONFIG.TIME_RAMP_MAX_BOOST;
+  }
+  return mul;
+}
+
+// =============================================================================
 // Active block sweep — bounces back and forth so the player can take their time
 // =============================================================================
 function updateCurrentBlock(dt) {
   const b = state.currentBlock;
   if (!b) return;
-  b.progress += (dt / b.sweepDuration) * b.sweepDir;
+  const effectiveDuration = Math.max(CONFIG.HARD_MIN_SWEEP, b.sweepDuration / getSpeedMultiplier());
+  b.progress += (dt / effectiveDuration) * b.sweepDir;
   if (b.progress >= 1) { b.progress = 1 - (b.progress - 1); b.sweepDir = -1; }
   else if (b.progress <= 0) { b.progress = -b.progress; b.sweepDir = 1; }
   const pos = b.startPos + (b.endPos - b.startPos) * b.progress;
@@ -620,12 +638,28 @@ function dropBlock() {
   updateHud();
 }
 
+// Surface-based scoring: smaller remaining top face = more points. Average
+// players narrow the tower and start scoring more per block but risk a miss;
+// players staying perfect keep a wide face and score the minimum +1 per block.
+function pointsForSurface(block) {
+  const ratio = (block.w * block.d) / (CONFIG.BLOCK_W * CONFIG.BLOCK_D);
+  if (ratio >= 0.9) return 1;
+  if (ratio >= 0.8) return 2;
+  if (ratio >= 0.7) return 3;
+  if (ratio >= 0.6) return 4;
+  if (ratio >= 0.5) return 5;
+  if (ratio >= 0.4) return 6;
+  if (ratio >= 0.3) return 7;
+  if (ratio >= 0.2) return 8;
+  if (ratio >= 0.1) return 9;
+  return 10;
+}
+
 function onPerfect(block) {
   state.streak += 1;
   if (state.streak > state.bestStreak) state.bestStreak = state.streak;
 
-  const n = state.blocksPlaced + 1;
-  let points = 2 * n;
+  let points = pointsForSurface(block) + CONFIG.PERFECT_BONUS;
   if (state.streak >= CONFIG.STREAK_TIER_2) points += 2;
   else if (state.streak >= CONFIG.STREAK_TIER_1) points += 1;
   state.score += points;
@@ -641,11 +675,11 @@ function onPerfect(block) {
 
 function onImperfect(block) {
   state.streak = 0;
-  const n = state.blocksPlaced + 1;
-  state.score += n;
+  const points = pointsForSurface(block);
+  state.score += points;
   state.floaters.push({
     x: block.x, y: block.y + block.h + 20, z: block.z,
-    text: `+${n}`,
+    text: `+${points}`,
     t: 0, color: '#FFFFFF', size: 16,
   });
   playTap();
@@ -700,7 +734,6 @@ function update(dt) {
         playTick();
         state.lastTickPlayed = secondsLeft;
       }
-      dom.timerVal.classList.toggle('pulse-urgent', state.timer <= 10);
 
       if (state.timer <= 0) { state.timer = 0; endGame('time'); return; }
     }
@@ -725,9 +758,7 @@ function update(dt) {
 
 function updateHud() {
   dom.scoreVal.textContent = String(state.score);
-  const mins = Math.floor(state.timer / 60);
-  const secs = Math.floor(state.timer % 60);
-  dom.timerVal.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  dom.heightVal.textContent = String(state.blocksPlaced);
   if (state.streak >= CONFIG.STREAK_TIER_1) {
     dom.streakBadge.classList.remove('hidden');
     dom.streakBadge.textContent = `${COPY.streak} x${state.streak}`;
@@ -870,7 +901,6 @@ function startGame() {
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
   dom.hud.classList.remove('hidden');
-  dom.timerVal.classList.remove('pulse-urgent');
   updateHud();
 }
 

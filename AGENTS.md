@@ -47,8 +47,11 @@ single-file games alike.
    - Desktop (keyboard / mouse, viewport ≥1024 px)
    - Mobile phones (portrait, touch, viewports as narrow as 360 px)
    - Tablets (both orientations, touch)
-   Use canvas-fit scaling, tap targets ≥44×44 px, and include
+   Use dynamic viewport-responsive sizing (canvas and non-canvas UIs),
+   tap targets ≥44×44 px, and include
    `<meta name="viewport" content="width=device-width, initial-scale=1">`.
+   Avoid fixed-size game surfaces that do not react to resize or orientation
+   changes.
    No keyboard-only controls — every input must have a touch path.
 3. **Child-safe content (audience: under 18).** No violence, blood, gore,
    weapons, or "kill" framing — use crash/miss/out/cartoon-failure framing
@@ -247,6 +250,8 @@ for the design-side checklist; the items below cover the harness/repo side.
 - [ ] Plays through the golden path (start → win/lose → restart) on
       **desktop, mobile (portrait, ≥360 px), and tablet**. Touch input
       verified, not just mouse.
+- [ ] Game surface and UI are dynamically sized for viewport changes
+      (including orientation changes). No fixed-size-only layout.
 - [ ] SFX play for primary action, pickup/score, and lose/round-end.
       Mute toggle is honoured and applied before any audio plays.
 - [ ] Content reviewed for child-safety: no violence, nudity, gambling,

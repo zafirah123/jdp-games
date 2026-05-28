@@ -59,15 +59,17 @@ const MUTE_BG     = 0x9E131F; // Brick Red
 const MUTE_BORDER = 0xFFB603; // Dark Yellow
 const MUTE_ICON   = 0xFFD633; // Light Yellow
 
-// Adds a speaker on/off toggle at (x, y). The tap target is padded well
-// beyond the icon so it is easy to hit with a mouse or finger. Returns the
-// button container with `hitRadius` attached so scenes can do their own
+// Adds a speaker on/off toggle at (x, y). The tap target is a circle
+// concentric with the visible button so every pixel inside the rendered
+// circle (and a comfortable ring beyond it) is clickable — a square hit
+// area on a round button reads as "the icon misses". Returns the button
+// container with `hitRadius` attached so scenes can do their own
 // position-based tests (currentlyOver can be empty on a fresh mobile tap).
 export function addMuteButton(scene, x, y) {
   scene.sound.mute = loadMuteState();
 
   const R = 22;       // visual background radius (44 px diameter — §5.11)
-  const HIT_R = 38;   // generous tap radius — beats finger-sized touches
+  const HIT_R = 36;   // circular tap radius — fully contains the visible R=22 circle
 
   const btn = scene.add.container(x, y).setDepth(1000).setScrollFactor(0);
   btn.hitRadius = HIT_R; // exposed so scenes can hit-test by pointer position
@@ -110,12 +112,17 @@ export function addMuteButton(scene, x, y) {
   };
   render(isMuted());
 
-  // Rectangle hit area — easier to land a tap on than a circle of the same
-  // span. The circle look stays, only the hit zone differs.
+  // Circular hit area concentric with the visible circle — guarantees the
+  // tap zone tracks the icon exactly, so players never have to aim "off"
+  // the logo to land a hit. The circle is centred at (HIT_R, HIT_R) because
+  // Phaser's InputManager.pointWithinHitArea shifts the local pointer by
+  // `displayOrigin` (= HIT_R for a Container with default origin 0.5 and
+  // size 2*HIT_R) before calling the hit-area callback — so the shape's
+  // local origin is at the bounds top-left, not the container's position.
   btn.setSize(HIT_R * 2, HIT_R * 2);
   btn.setInteractive(
-    new Phaser.Geom.Rectangle(-HIT_R, -HIT_R, HIT_R * 2, HIT_R * 2),
-    Phaser.Geom.Rectangle.Contains,
+    new Phaser.Geom.Circle(HIT_R, HIT_R, HIT_R),
+    Phaser.Geom.Circle.Contains,
   );
   btn.on('pointerover', () => scene.input.setDefaultCursor('pointer'));
   btn.on('pointerout',  () => scene.input.setDefaultCursor('default'));
@@ -139,6 +146,8 @@ export function pointerHitsMuteButton(btn, pointer) {
   if (!btn || !btn.active) return false;
   const dx = pointer.x - btn.x;
   const dy = pointer.y - btn.y;
-  const r  = btn.hitRadius || 38;
-  return Math.abs(dx) <= r && Math.abs(dy) <= r;
+  const r  = btn.hitRadius || 36;
+  // Circular distance check — matches the Phaser.Geom.Circle hit shape so
+  // the manual fallback agrees with the interactive area pixel-for-pixel.
+  return (dx * dx + dy * dy) <= (r * r);
 }

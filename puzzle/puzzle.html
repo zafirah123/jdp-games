@@ -10,7 +10,7 @@
         
         body {
             font-family: 'Nunito', sans-serif;
-            /* Crimson red and dark violet background palette */
+            /* Crimson red and dark violet background palette based on original image */
             background: radial-gradient(circle at center, #8B0000 0%, #3a0000 50%, #110022 100%);
             color: white;
             min-height: 100vh;
@@ -199,27 +199,37 @@
                     </button>
                 </div>
 
-                <!-- Pause Overlay Display -->
+                <!-- Pause Overlay Display (Updated to match Screenshot 2026-05-28 at 11.16.23 AM) -->
                 <div id="pauseOverlay" class="hidden absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-30 rounded-lg gold-border backdrop-blur-sm p-6 text-center">
-                    <h3 class="text-2xl sm:text-3xl title-font text-gold mb-6 uppercase tracking-widest animate-pulse">Game Paused</h3>
+                    <h3 class="text-3xl sm:text-4xl title-font text-gold mb-2 uppercase tracking-wider drop-shadow-[0_0_12px_rgba(255,215,0,0.6)]">Game Paused</h3>
+                    <p class="text-xs sm:text-sm max-w-xs mb-8 text-gray-200 font-semibold leading-relaxed">
+                        Take a breath! Your score and time are safe.
+                    </p>
                     
-                    <!-- RESUME BUTTON -->
-                    <button onclick="resumeGame()" class="relative flex items-center justify-between w-full max-w-[260px] px-6 py-3 bg-gradient-to-r from-[#FFEB60] to-[#FDBE15] rounded-full border-b-[5px] border-[#C28C00] shadow-[0_6px_15px_rgba(0,0,0,0.4)] hover:brightness-105 active:border-b-2 active:translate-y-[3px] transition-all group">
-                        <!-- Play Icon -->
-                        <svg class="w-6 h-6 text-[#A01616]" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                        
-                        <!-- Resume Text -->
-                        <span class="text-[#A01616] font-[800] text-lg sm:text-xl tracking-wide flex-1 text-center font-sans">Resume</span>
-                        
-                        <!-- Arrow Circle -->
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-b from-[#A01616] to-[#120038] flex items-center justify-center shadow-[inset_0_1px_3px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.3)]">
-                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="9 18 15 12 9 6"></polyline>
+                    <div class="flex flex-col gap-4 w-full max-w-[280px] sm:max-w-[300px]">
+                        <!-- RESUME BUTTON -->
+                        <button onclick="resumeGame()" class="relative flex items-center justify-between w-full px-6 py-3 bg-gradient-to-r from-[#FFEB60] to-[#FDBE15] rounded-full border-b-[5px] border-[#C28C00] shadow-[0_6px_15px_rgba(0,0,0,0.4)] hover:brightness-105 active:border-b-2 active:translate-y-[3px] transition-all group">
+                            <!-- Left Play Triangle Icon -->
+                            <svg class="w-5 h-5 text-[#A01616]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="6 3 20 12 6 21 6 3"></polygon>
                             </svg>
-                        </div>
-                    </button>
+                            
+                            <!-- Resume Text -->
+                            <span class="text-[#A01616] font-[800] text-lg sm:text-xl tracking-wide flex-1 text-center font-sans">Resume</span>
+                            
+                            <!-- Right Arrow Circle -->
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-b from-[#A01616] to-[#120038] flex items-center justify-center shadow-[inset_0_1px_3px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.3)]">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </div>
+                        </button>
+
+                        <!-- CLAIM SCORE BUTTON -->
+                        <button onclick="claimScoreAndEnd()" class="relative w-full py-3.5 bg-gradient-to-r from-[#FFEB60] to-[#FDBE15] rounded-full border-b-[5px] border-[#C28C00] shadow-[0_6px_15px_rgba(0,0,0,0.4)] hover:brightness-105 active:border-b-2 active:translate-y-[3px] transition-all text-[#A01616] font-[800] text-lg sm:text-xl uppercase tracking-wide font-sans text-center">
+                            Claim Score
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Floating Success Prompt -->
@@ -386,7 +396,7 @@
             
             if (isMuted) {
                 // Muted SVG Icon (Volume Off)
-                muteIcon.innerHTML = `<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>`;
+                muteIcon.innerHTML = `<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>`;
                 muteBtn.title = "Unmute Audio";
             } else {
                 // Unmuted SVG Icon (Volume Up)
@@ -1027,6 +1037,13 @@
             }, 1000);
         }
 
+        // Triggered when clicking 'Claim Score' button in pause menu
+        function claimScoreAndEnd() {
+            isPaused = false;
+            pauseOverlay.classList.add('hidden');
+            endGame();
+        }
+
         function endGame() {
             isPlaying = false;
             clearInterval(timerInterval);
@@ -1078,6 +1095,7 @@
             rulesModal.classList.remove('hidden');
         }
 
+        // Functions to close rules modal
         function closeRules() {
             rulesModal.classList.add('hidden');
         }

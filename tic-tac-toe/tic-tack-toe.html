@@ -473,6 +473,15 @@
             stroke-width: 3;
         }
 
+        /* Specialized Centered Claim Score Button style */
+        .btn-claim {
+            padding: 10px 30px;
+            font-size: 1.4rem;
+            text-align: center;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
         /* Responsive styling tweaks for short screens */
         @media (max-height: 650px) {
             .header h1 { font-size: 1.6rem; }
@@ -481,6 +490,7 @@
             .board { gap: 4px; }
             .game-wrapper { padding: 0.8rem; gap: 8px; }
             .status-message { margin-top: 5px; font-size: 0.85rem; height: 30px; }
+            .btn-claim { margin-top: 10px; font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -597,6 +607,8 @@
         <div class="overlay" id="pausedModal">
             <h2>GAME PAUSED</h2>
             <p class="overlay-msg">Take a breath! Your score and time are safe.</p>
+            
+            <!-- Symmetrical Resume Button -->
             <button class="btn" onclick="togglePause()">
                 <svg class="btn-icon-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -607,6 +619,11 @@
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
                 </div>
+            </button>
+
+            <!-- Customized Center-text 3D "CLAIM SCORE" Button -->
+            <button class="btn btn-claim" onclick="claimScore()">
+                <span>CLAIM SCORE</span>
             </button>
         </div>
 
@@ -900,8 +917,44 @@
         function toggleRules(show) {
             if (isPaused) return; // Ignore rule toggle when paused
             playSound('tap');
-            if(show) rulesModal.classList.add('active');
-            else rulesModal.classList.remove('active');
+            const boardContainer = document.querySelector('.board-container');
+            if(show) {
+                // Pause the game when rules are opened
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                isGameActive = false;
+                
+                // Stop active AI scheduling queues
+                if (aiTimeoutId) {
+                    clearTimeout(aiTimeoutId);
+                }
+
+                // Blur board container
+                boardContainer.classList.add('paused-blur');
+                rulesModal.classList.add('active');
+            } else {
+                // Resume the game when rules are closed
+                rulesModal.classList.remove('active');
+                boardContainer.classList.remove('paused-blur');
+                isGameActive = true;
+
+                // Resume countdown timer if game had already kicked off
+                if (timeLeft < TOTAL_TIME) {
+                    startTimer();
+                }
+
+                // Restore AI turn schedule if round state belongs to bot
+                if (!isPlayerTurn) {
+                    statusMsgEl.textContent = "AI is drafting a counterstrategy...";
+                    statusMsgEl.style.color = "#ffaa00";
+                    aiTimeoutId = setTimeout(() => {
+                        if (isGameActive && !isPaused) {
+                            aiMove();
+                            checkRoundResult('A');
+                        }
+                    }, 600);
+                }
+            }
         }
 
         // --- Symmetrical Pause / Resume System Handler ---
@@ -962,6 +1015,20 @@
                     }, 600);
                 }
             }
+        }
+
+        // --- Early Claim Score execution ---
+        function claimScore() {
+            playSound('tap');
+            isPaused = false;
+            pausedModal.classList.remove('active');
+            document.querySelector('.board-container').classList.remove('paused-blur');
+
+            // Reset pause button UI back to default
+            document.getElementById('pause-text').textContent = "Pause";
+            document.getElementById('pause-svg').innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`;
+
+            endGame("SCORE CLAIMED!");
         }
 
         // --- Initialization ---

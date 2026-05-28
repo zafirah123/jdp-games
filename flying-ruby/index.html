@@ -47,16 +47,8 @@
       display: block;
     }
 
-    /* Phones fill the whole screen (rules above). Larger screens show the
-       game as a centred 480x854 "card" with a drop shadow. */
-    @media (min-width: 600px) {
-      #game-canvas-wrap {
-        max-width: 480px;
-        max-height: 854px;
-      }
-      canvas {
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
-      }
+    canvas {
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
     }
   </style>
 </head>

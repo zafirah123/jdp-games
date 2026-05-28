@@ -589,7 +589,7 @@
                         <path d="M 68 45 C 71 35, 77 35, 80 45" stroke="#00f0f0" stroke-width="3.5" fill="none" stroke-linecap="round"/>
                     `;
                     const happyPhrases = [
-                        "Hooray! +10!",
+                        "Hooray! +20!",
                         "Spectacular!",
                         "Excellent move!",
                         "We cleared it!",
@@ -741,11 +741,13 @@
 
                 // Render Ghost Piece
                 player.matrix.forEach((row, r) => {
-                    row.forEach((value, c) => {
-                        if (value !== 0) {
-                            drawBlock(ctx, c + player.pos.x, r + ghostY, player.type, cellW, false, true);
-                        }
-                    });
+                    if (row.some(val => val !== 0)) {
+                        row.forEach((value, c) => {
+                            if (value !== 0) {
+                                drawBlock(ctx, c + player.pos.x, r + ghostY, player.type, cellW, false, true);
+                            }
+                        });
+                    }
                 });
 
                 // Render Solid block piece
@@ -952,8 +954,8 @@
                 clearedCount++;
                 triggerLineParticles(r);
                 
-                // Each line cleared contributes exactly 10 score points
-                score += 10;
+                // Each line cleared contributes exactly 20 score points
+                score += 20;
             }
 
             if (clearedCount > 0) {

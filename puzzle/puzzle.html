@@ -355,6 +355,10 @@
         const roundCompleteNotice = document.getElementById('roundCompleteNotice');
         const roundCompleteBonusText = document.getElementById('roundCompleteBonusText');
         const rulesModal = document.getElementById('rulesModal');
+        function updatePauseClaimLabel() {
+            const btn = document.querySelector('button[onclick="claimScoreAndEnd()"]');
+            if (btn) btn.textContent = score <= 0 ? 'Retry' : 'Claim Score';
+        }
 
         // Helper to format remaining time
         function formatTime(seconds) {
@@ -376,6 +380,7 @@
             // Math.round handles raw decimals cleanly for presentation
             scoreDisplay.textContent = Math.round(score);
             roundDisplay.textContent = round;
+            updatePauseClaimLabel();
         }
 
         // Lazy initialization of AudioContext
@@ -1039,6 +1044,10 @@
 
         // Triggered when clicking 'Claim Score' button in pause menu
         function claimScoreAndEnd() {
+            if (Math.round(score) <= 0) {
+                startGame();
+                return;
+            }
             isPaused = false;
             pauseOverlay.classList.add('hidden');
             endGame();

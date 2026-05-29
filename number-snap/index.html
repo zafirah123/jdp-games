@@ -272,7 +272,7 @@ const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 
 const COPY = {
   en: {
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     menuSub: 'Drag tiles to the grid. Build a connected path of 3–5 consecutive numbers to clear it. Chain clears for combos.',
     bestPrefix: 'Best',
     gridLocked: 'GRID LOCKED!',
@@ -283,7 +283,7 @@ const COPY = {
   },
   ms: {
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3–5 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
     bestPrefix: 'Terbaik',
     gridLocked: 'GRID TERSEKAT!',
@@ -415,6 +415,8 @@ dom.claimBtn.textContent = COPY.claim;
 dom.endLabel.textContent = COPY.endRunShort;
 dom.rerollLabel.textContent = COPY.reroll;
 dom.newBestLabel.textContent = COPY.newBest;
+function isZeroScore() { return (state.score | 0) <= 0; }
+function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
 
 function refreshBestText() {
   dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : ' ';
@@ -842,6 +844,7 @@ function endRound(titleKey) {
   dom.goScore.textContent = String(state.score);
   dom.goBest.textContent = `${COPY.bestPrefix}: ${state.best}`;
   dom.goNewBest.classList.toggle('hidden', !isBest);
+  updateEndCta();
   dom.gameOver.classList.remove('hidden');
   dom.fabRow.classList.add('hidden');
   dom.timeVal.classList.remove('pulse-urgent');
@@ -875,7 +878,10 @@ function buildClaimUrl() {
     + '&score=' + Math.max(0, state.score | 0)
     + '&token=' + encodeURIComponent(token);
 }
-dom.claimBtn.addEventListener('click', () => { location.href = buildClaimUrl(); });
+dom.claimBtn.addEventListener('click', () => {
+  if (isZeroScore()) startRound();
+  else location.href = buildClaimUrl();
+});
 
 // ===========================================================================
 // Pointer input — drag from hand to grid

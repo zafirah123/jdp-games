@@ -79,10 +79,14 @@ single-file games alike.
    choice — the URL is the source of truth. See
    [CLAUDE.md §6.4](CLAUDE.md) for the full string set and reference
    implementation.
-6. **CLAIM SCORE on end-of-game — no in-game retry.** The final
+6. **End-of-game CTA policy (CLAIM SCORE with zero-score retry exception).** The final
    end-of-game modal (after `TIME'S UP!` or `GAME OVER`) must have
    **exactly one** CTA: `CLAIM SCORE` (en) / `TUNTUT SKOR` (ms). Tapping
    it sends results to a callback endpoint:
+
+   - Exception: if final score is exactly `0`, show `RETRY` instead of
+     `CLAIM SCORE` / `TUNTUT SKOR`, and restart locally (no callback).
+     For any score `> 0`, keep normal claim callback behavior.
 
    - Read `callback_url` from URL query params when present.
    - If `callback_url` is missing/invalid, use the platform callback
@@ -97,8 +101,9 @@ single-file games alike.
      in the callback payload.
 
    No `Play Again` / `Try Again` / `Restart` / `Main Semula` button on
-   the end-of-game modal — players replay by relaunching the game from
-   the Pandai app. The mid-run `CONTINUE` prompt (when the player
+   the end-of-game modal for score `> 0` — players replay by relaunching
+   the game from the Pandai app. The only exception is score `= 0`,
+   where `RETRY` is allowed. The mid-run `CONTINUE` prompt (when the player
    crashes with time remaining) continues to work as before; CLAIM
    SCORE only appears on the *final* modal. See
    [CLAUDE.md §6.5](CLAUDE.md) for the callback contract and reference
@@ -258,9 +263,10 @@ for the design-side checklist; the items below cover the harness/repo side.
       ads, or third-party tracking.
 - [ ] Standardized end-of-game / audio strings used (§5 baseline);
       `?lang=ms` switches the game's copy to Bahasa Melayu.
-- [ ] End-of-game modal has a single `CLAIM SCORE` / `TUNTUT SKOR` CTA
-      (no retry/play-again button) and uses the callback flow per §6
-      baseline (`callback_url` support + product fallback).
+- [ ] End-of-game modal uses a single CTA: `CLAIM SCORE` / `TUNTUT SKOR`
+      when score `> 0`, or `RETRY` when score is exactly `0`; callback
+      flow per §6 baseline is used for all score `> 0` endings
+      (`callback_url` support + product fallback).
 - [ ] Game supports early-end callback (player can finish early and submit
       score through the same callback contract).
 - [ ] If a suspicious-score check is implemented, it runs locally before

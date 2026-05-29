@@ -18,6 +18,7 @@ export const COPY = {
     audioOn:    'AUDIO ON',
     audioOff:   'AUDIO OFF',
     claimScore: 'CLAIM SCORE',
+    retry:      'RETRY',
     // --- StartScene -----------------------------------------------------
     tagline:  'Tap to fly  •  Collect rubies  •  Beat 3:00',
     // --- GameScene ------------------------------------------------------
@@ -47,6 +48,7 @@ export const COPY = {
     audioOn:    'AUDIO ON',
     audioOff:   'AUDIO OFF',
     claimScore: 'TUNTUT SKOR',
+    retry:      'RETRY',
     // --- StartScene -----------------------------------------------------
     tagline:  'Ketuk untuk terbang  •  Kutip delima  •  Tewaskan 3:00',
     // --- GameScene ------------------------------------------------------

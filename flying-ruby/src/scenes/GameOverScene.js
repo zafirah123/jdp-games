@@ -223,12 +223,18 @@ export class GameOverScene extends Phaser.Scene {
     this.buttonLayer.destroy();
     this.buttonLayer = this.add.container(0, 0);
 
-    this._makeButton(cx, by + 32, 240, 64, COPY.claimScore,
+    this._makeButton(cx, by + 32, 240, 64, this.score <= 0 ? COPY.retry : COPY.claimScore,
       PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
-      () => claimScore(this.score, {
-        timeUsedMs: this.timeUsedMs,
-        cause:      this.cause,
-      }));
+      () => {
+        if (this.score <= 0) {
+          this.scene.start('StartScene');
+          return;
+        }
+        claimScore(this.score, {
+          timeUsedMs: this.timeUsedMs,
+          cause:      this.cause,
+        });
+      });
   }
 
   _makeButton(x, y, w, h, label, fillColor, textColor, borderColor, onClick, outlined = false) {

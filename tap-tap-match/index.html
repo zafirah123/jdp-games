@@ -230,6 +230,7 @@ const COPY = {
     audioOn:  'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim:    'CLAIM SCORE',
+    retry:    'RETRY',
     // game-specific
     title:           'TAP TAP MATCH',
     tagline1:        'Watch the sequence. Tap it back.',
@@ -252,6 +253,7 @@ const COPY = {
     audioOn:  'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim:    'TUNTUT SKOR',
+    retry:    'RETRY',
     title:           'TAP TAP MATCH',
     tagline1:        'Perhati urutan. Ketuk semula.',
     tagline2:        '3 minit. Satu nombor untuk dikalahkan.',
@@ -267,6 +269,8 @@ const COPY = {
     newBest:         'REKOD BAHARU!',
   },
 }[LANG];
+function isZeroScore() { return (state.score | 0) <= 0; }
+function endCtaLabel() { return isZeroScore() ? COPY.retry : COPY.claim; }
 
 // ============================================================
 // HELPERS
@@ -822,7 +826,7 @@ function drawGameOverScreen(time) {
     ctx.fillText(`${COPY.bestPrefix}: ${state.best}`, CONFIG.width / 2, 495);
   }
 
-  drawButton(BTN_CLAIM.x, BTN_CLAIM.y, BTN_CLAIM.w, BTN_CLAIM.h, COPY.claim);
+  drawButton(BTN_CLAIM.x, BTN_CLAIM.y, BTN_CLAIM.w, BTN_CLAIM.h, endCtaLabel());
 
   ctx.textAlign = 'start';
   ctx.textBaseline = 'alphabetic';
@@ -989,7 +993,8 @@ canvas.addEventListener('pointerdown', (e) => {
   if (state.scene === 'gameover') {
     if (pointInRect(p, BTN_CLAIM)) {
       playButton();
-      location.href = buildClaimUrl();
+      if (isZeroScore()) startGame();
+      else location.href = buildClaimUrl();
     }
     return;
   }

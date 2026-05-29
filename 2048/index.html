@@ -262,6 +262,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
+    retry: 'RETRY',
     menuSub: 'Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.',
     menuHint: 'Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
     newBest: 'NEW BEST!',
@@ -279,6 +280,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
+    retry: 'RETRY',
     menuSub: 'Leret untuk gerakkan jubin — dua jubin dengan nombor sama akan bergabung menjadi satu. Pastikan sekurang-kurangnya satu petak kosong atau permainan tamat. Dapatkan skor setinggi mungkin dalam 3 minit.',
     menuHint: 'Leret pada skrin sentuh, atau gunakan <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
     newBest: 'REKOD BAHARU!',
@@ -373,6 +375,8 @@ dom.menuHint.innerHTML = COPY.menuHint;
 dom.startBtn.textContent = COPY.start;
 dom.claimBtn.textContent = COPY.claim;
 dom.newBestLabel.textContent = COPY.newBest;
+function isZeroScore() { return (state.score | 0) <= 0; }
+function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
 
 // =============================================================================
 // Sandbox-safe storage
@@ -1069,6 +1073,7 @@ function endGame(reason) {
     '<div class="label">' + COPY.statMoves + '</div><div class="value">' + state.moves + '</div>' +
     '<div class="label">' + COPY.statMerges + '</div><div class="value">' + state.merges + '</div>' +
     '<div class="label">' + COPY.statBest + '</div><div class="value">' + state.best + '</div>';
+  updateEndCta();
 
   playGameOver();
   setTimeout(() => {
@@ -1163,7 +1168,10 @@ function buildClaimUrl() {
 
 // Buttons
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
-dom.claimBtn.addEventListener('click', () => { location.href = buildClaimUrl(); });
+dom.claimBtn.addEventListener('click', () => {
+  if (isZeroScore()) startGame();
+  else location.href = buildClaimUrl();
+});
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');

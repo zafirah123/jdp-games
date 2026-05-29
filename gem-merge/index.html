@@ -354,6 +354,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
+    retry: 'RETRY',
     next: 'Next',
     score: 'Score',
     endRun: 'END RUN',
@@ -377,6 +378,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
+    retry: 'RETRY',
     next: 'Seterusnya',
     score: 'Skor',
     endRun: 'TAMAT',
@@ -1261,6 +1263,8 @@ dom.cancelEndBtn.textContent = COPY.keepPlaying;
 dom.newBestLabel.textContent = COPY.newBest;
 dom.nextLabel.textContent = COPY.next;
 document.querySelector('.jdp-pill .pill-label').textContent = COPY.score;
+function isZeroScore() { return (state.score | 0) <= 0; }
+function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
 
 function updateNextPreview() {
   const img = gemImages[state.nextTier];
@@ -1369,6 +1373,7 @@ function endGame(reason) {
     `<div class="label">${COPY.statMerges}</div><div class="value">${state.merges}</div>` +
     `<div class="label">${COPY.statTopGem}</div><div class="value">${topGemName}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
+  updateEndCta();
 
   dom.endRunBtn.classList.add('hidden');
   dom.gemLadder.classList.add('hidden');
@@ -1402,6 +1407,10 @@ function buildClaimPayload(finalScore, extra = {}) {
   return { game: 'gem-merge', score: Math.max(0, finalScore | 0), token, ...extra };
 }
 function submitClaim() {
+  if (isZeroScore()) {
+    startGame();
+    return;
+  }
   const payload = buildClaimPayload(state.score, {
     merges: state.merges,
     top_tier: state.topTier,

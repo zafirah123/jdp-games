@@ -292,6 +292,7 @@
                 statPopped: 'Bubbles Popped',
                 statCombos: 'Combos Achieved',
                 claimScore: 'CLAIM SCORE',
+                retry: 'RETRY',
                 lineBreached: 'LINE BREACHED!',
                 lineBreachedDesc: 'The bubbles descended past the danger line. Clear them faster next time!',
                 gameOverDesc: 'Great effort! Can you beat your best score in the next try?',
@@ -327,6 +328,7 @@
                 statPopped: 'Buih Diletupkan',
                 statCombos: 'Kombo Dicapai',
                 claimScore: 'TUNTUT SKOR',
+                retry: 'RETRY',
                 lineBreached: 'GARISAN DILANGGAR!',
                 lineBreachedDesc: 'Buih telah melepasi garisan bahaya. Bersihkan lebih pantas pada cubaan seterusnya!',
                 gameOverDesc: 'Usaha yang baik! Boleh anda atasi markah terbaik anda kali nanti?',
@@ -337,6 +339,8 @@
                 paused: 'DIJEDA',
             },
         }[LANG];
+        function isZeroScore() { return (Game.score | 0) <= 0; }
+        function endCtaLabel() { return isZeroScore() ? COPY.retry : COPY.claimScore; }
 
         // Apply COPY to static DOM strings before game boot
         function applyCopyToDOM() {
@@ -384,7 +388,7 @@
             if (resultDesc) resultDesc.textContent = COPY.resultsBlurb;
             // Restart button — §6.5 CLAIM SCORE CTA
             const restartBtn = document.getElementById('restart-btn');
-            if (restartBtn) restartBtn.textContent = COPY.claimScore;
+            if (restartBtn) restartBtn.textContent = endCtaLabel();
             // Audio toggle label/title — see DESIGN.md §5.11
             updateMuteUI();
         }
@@ -783,6 +787,11 @@
                 document.getElementById('restart-btn').addEventListener('click', () => {
                     SoundSystem.init();
                     SoundSystem.playClick();
+                    if (isZeroScore()) {
+                        this.reset();
+                        this.start();
+                        return;
+                    }
                     // CLAUDE.md §6.5: CLAIM SCORE redirect — no in-game retry
                     const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
                         ? crypto.randomUUID()

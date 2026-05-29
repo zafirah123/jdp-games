@@ -211,7 +211,7 @@ See also the more detailed pre-implementation checklist in
 - [ ] Added a `?scene=` / `?phase=` dev jump at boot from day one.
 - [ ] Persisted best score and mute preference in `localStorage` with try/catch for sandboxed webviews.
 - [ ] Used the standardized strings from §6.4 — `START GAME`, `TIME'S UP!`, `GAME OVER`, `AUDIO ON`, `AUDIO OFF` — and wired `?lang=ms` to switch the game's copy to Bahasa Melayu.
-- [ ] End-of-game modal has a single `CLAIM SCORE` CTA (no in-game retry button) that uses the callback flow in §6.5 (`callback_url` support + product fallback).
+- [ ] End-of-game modal CTA follows §6.5: `CLAIM SCORE` for score `> 0`, `RETRY` for score `= 0`; callback flow still applies for all score `> 0` endings (`callback_url` support + product fallback).
 
 ---
 
@@ -414,7 +414,7 @@ one). Casing is **uppercase** for all five.
 | Run ended for any reason other than the timer (crash with no Continue, board fail, etc.) | `GAME OVER` | `PERMAINAN TAMAT` |
 | Audio is currently playing (tap to mute) | `AUDIO ON` | `AUDIO ON` |
 | Audio is currently muted (tap to enable) | `AUDIO OFF` | `AUDIO OFF` |
-| End-of-game CTA (only CTA on the final modal — see §6.5) | `CLAIM SCORE` | `TUNTUT SKOR` |
+| End-of-game CTA (see §6.5 score rule) | `CLAIM SCORE` / `RETRY` | `TUNTUT SKOR` / `RETRY` |
 
 **`TIME'S UP!` and `GAME OVER` are different states.** Use `TIME'S UP!`
 only when the round timer hits zero — the natural end-of-round. Use
@@ -458,19 +458,19 @@ Any unrecognized `lang` value falls back to English. Don't persist the
 language choice across visits — the URL is the source of truth so links
 shared between players carry the intended language.
 
-### 6.5 End-of-game flow: CLAIM SCORE, not retry
+### 6.5 End-of-game flow: CLAIM SCORE (score > 0), RETRY (score = 0)
 
 When a run truly ends — whether the modal headline is `TIME'S UP!` (timer
 expired) or `GAME OVER` (run ended for any other reason) — the final
-modal **must not** offer an in-game "Play Again" / "Try Again" /
-"Restart" / "Main Semula" / "Repeat" button. There is **one CTA** on the
-end-of-game modal, and it sends the player back to the Pandai app:
+modal has **one CTA** on the end-of-game modal, with score-dependent behavior:
 
 | Moment | English (default) | Bahasa Melayu (`?lang=ms`) |
 |---|---|---|
-| End-of-game CTA | `CLAIM SCORE` | `TUNTUT SKOR` |
+| End-of-game CTA (`score > 0`) | `CLAIM SCORE` | `TUNTUT SKOR` |
+| End-of-game CTA (`score = 0`) | `RETRY` | `RETRY` |
 
-Tapping the CTA sends results to a callback endpoint.
+For score `> 0`, tapping the CTA sends results to a callback endpoint.
+For score `= 0`, tapping `RETRY` restarts locally and does not submit callback.
 
 Callback target resolution order:
 
@@ -542,10 +542,9 @@ player crashes with time remaining still show that prompt as before
 appears on the **final** end-of-game modal — after `TIME'S UP!`, or
 after the player declines `CONTINUE` on a crash with no time left.
 
-**No in-page restart.** The player replays by relaunching the game from
-the Pandai app, not by tapping a button inside the game. Don't ship a
-hidden "?retry=1" or keyboard shortcut for restart either — the rule is
-the same for every input path.
+**Restart exception for zero-score endings.** A local `RETRY` is allowed
+only when final score is exactly `0`. For any score `> 0`, keep the
+single-CTA claim flow and do not offer in-page restart.
 
 ---
 
@@ -643,7 +642,7 @@ A game is shippable when it satisfies **all** of:
 - [ ] Visuals reconciled against [`DESIGN.md`](./DESIGN.md) (palette, typography, button/pill/progress-bar anatomy)
 - [ ] Mute toggle + best score persistence working
 - [ ] Standardized end-of-game / audio copy used (§6.4); `?lang=ms` switches the game to Bahasa Melayu
-- [ ] End-of-game modal follows §6.5 — single `CLAIM SCORE` CTA (no retry button), callback payload includes `game`, `score`, and a freshly-generated random `token`
+- [ ] End-of-game modal follows §6.5 — score `> 0` uses `CLAIM SCORE` callback CTA (payload includes `game`, `score`, random `token`); score `= 0` uses local `RETRY`
 - [ ] Game supports `callback_url` query param and platform fallback callback target
 - [ ] Game supports player-triggered early-end callback (same payload contract)
 - [ ] Optional suspicious-score check (if present) runs locally pre-submit and flags payload

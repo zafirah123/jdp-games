@@ -436,7 +436,7 @@ const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 
 const COPY = {
   en: {
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'MISSED',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'SUBMIT SCORE',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'SUBMIT SCORE', retry: 'RETRY',
     skip: 'SKIP (−15)',
     menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
     menuHint: 'Tip: green = right letter & spot, yellow = wrong spot, gray = not in the word.',
@@ -457,7 +457,7 @@ const COPY = {
   },
   ms: {
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'TERLEPAS',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'HANTAR SKOR',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'HANTAR SKOR', retry: 'RETRY',
     skip: 'LANGKAU (−15)',
     menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
     menuHint: 'Tip: hijau = huruf & tempat betul, kuning = tempat salah, kelabu = tiada dalam perkataan.',
@@ -624,6 +624,8 @@ dom.startBtn.textContent = COPY.start;
 dom.claimBtn.textContent = COPY.claim;
 dom.skipBtn.textContent = COPY.skip;
 dom.newBestLabel.textContent = COPY.newBest;
+function isZeroScore() { return (state.score | 0) <= 0; }
+function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
 
 // =============================================================================
 // Mute toggle (DESIGN.md §5.11)
@@ -1174,6 +1176,7 @@ function showGameOver(reason) {
     zoneRow('×2.0', zs.x20),
   ].join('');
 
+  updateEndCta();
   dom.gameOver.classList.remove('hidden');
 }
 
@@ -1181,6 +1184,10 @@ function showGameOver(reason) {
 // CLAIM SCORE — single end-of-game CTA (CLAUDE.md §6.5)
 // =============================================================================
 dom.claimBtn.addEventListener('click', () => {
+  if (isZeroScore()) {
+    startRun();
+    return;
+  }
   const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2) + Date.now().toString(36);

@@ -718,6 +718,10 @@
         let isPaused = false;
         let nextRoundStarter = 'P'; // 'P' for Player, 'A' for AI
         let aiTimeoutId = null; // AI delay trigger tracker
+        function updateClaimButtonLabel() {
+            const label = document.querySelector('.btn-claim span');
+            if (label) label.textContent = score <= 0 ? 'RETRY' : 'CLAIM SCORE';
+        }
 
         // --- 28 Winning Combinations (4 in-a-row on 5x5 board) ---
         const winConditions = [
@@ -1020,6 +1024,10 @@
         // --- Early Claim Score execution ---
         function claimScore() {
             playSound('tap');
+            if (score <= 0) {
+                initGame();
+                return;
+            }
             isPaused = false;
             pausedModal.classList.remove('active');
             document.querySelector('.board-container').classList.remove('paused-blur');
@@ -1038,6 +1046,7 @@
             round = 1;
             timeLeft = TOTAL_TIME;
             scoreEl.textContent = "0";
+            updateClaimButtonLabel();
             roundValEl.textContent = "1";
             timerEl.textContent = "03:00";
             timerEl.style.color = "white";
@@ -1266,6 +1275,7 @@
         function addScore(points) {
             score = score + points;
             scoreEl.textContent = score;
+            updateClaimButtonLabel();
 
             scoreEl.style.transform = "scale(1.4)";
             setTimeout(() => scoreEl.style.transform = "scale(1)", 200);
@@ -1318,6 +1328,7 @@
             
             endTitleEl.textContent = titleStr;
             finalScoreEl.textContent = score;
+            updateClaimButtonLabel();
 
             // Thresholds adapted to new maximum potential limit (~432 max)
             if (score >= 180) {

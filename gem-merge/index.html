@@ -427,12 +427,20 @@ const CONFIG = {
   DROP_CADENCE_FLOOR_S: 0.5,     // survival floor — applied to drop 201 and beyond
 
   // Score-driven stress — tapers seed pool toward red-only AND stretches the
-  // auto-drop interval as score climbs from 400→500, so the run asymptotes
-  // near the 500-ruby cap without ever clamping the counter
-  // (BEST-PRACTICES.md §05 difficulty-escalation pattern, CLAUDE.md §1.4).
-  SCORE_STRESS_START: 400,
-  SCORE_STRESS_FULL:  500,
-  SCORE_STRESS_HOLD_STRETCH: 0.6, // auto-drop interval × (1 + this × scoreStress) near cap
+  // auto-drop interval as score climbs, so supply thins well before the 500
+  // cap. Window starts earlier than the cap so the slowdown is felt while
+  // the player still has runway (BEST-PRACTICES.md §05 difficulty curve).
+  SCORE_STRESS_START: 250,
+  SCORE_STRESS_FULL:  450,
+  SCORE_STRESS_HOLD_STRETCH: 2.5, // auto-drop interval × (1 + this × scoreStress) near cap
+
+  // Award-brake — multiplies merge point gains by (1 - BRAKE_MAX × smoothstep)
+  // across the BRAKE window. Counter still ticks (never freezes), but each
+  // merge gets visibly stingier so the score asymptotes near 500 even with
+  // a long on-board chain still firing (CLAUDE.md §1.4: world calms down).
+  SCORE_AWARD_BRAKE_START: 460,
+  SCORE_AWARD_BRAKE_FULL:  540,
+  SCORE_AWARD_BRAKE_MAX:   0.9,
 
   // Tiny cooldown between drops — just enough to debounce a stray double-tap.
   DROP_COOLDOWN_S: 0.08,
@@ -776,6 +784,15 @@ function scoreStress() {
   return smoothstep(CONFIG.SCORE_STRESS_START, CONFIG.SCORE_STRESS_FULL, state.score);
 }
 
+// Award-brake — scales raw merge points down as score crosses the BRAKE
+// window. Returns the integer points to actually credit (and to display in
+// the floater) so the HUD and the visible "+N" stay in sync.
+function brakedAward(raw) {
+  const brake = smoothstep(CONFIG.SCORE_AWARD_BRAKE_START, CONFIG.SCORE_AWARD_BRAKE_FULL, state.score);
+  const mult = 1 - CONFIG.SCORE_AWARD_BRAKE_MAX * brake;
+  return Math.max(0, Math.round(raw * mult));
+}
+
 // Pick a drop tier weighted by score stress. Pass `forbidden` to exclude one
 // tier from the roll — used to enforce "no back-to-back same colour".
 function pickDropTier(forbidden = -1) {
@@ -871,9 +888,10 @@ function onMerge(a, c) {
     PHYSICS.removeBody(c);
     const mx = (a.x + c.x) / 2;
     const my = (a.y + c.y) / 2;
-    state.score += GEMS[MAX_TIER].points;
+    const awarded = brakedAward(GEMS[MAX_TIER].points);
+    state.score += awarded;
     state.merges += 1;
-    spawnFloater(mx, my, `+${GEMS[MAX_TIER].points}`, '#FFE258', 22);
+    if (awarded > 0) spawnFloater(mx, my, `+${awarded}`, '#FFE258', 22);
     spawnRing(mx, my, GEMS[MAX_TIER].radius * 1.6, '#FFD633');
     state.effects.push({ kind: 'flash', t: 0, dur: 0.35 });
     state.shake = { t: 0.4, mag: 6 };
@@ -889,11 +907,11 @@ function onMerge(a, c) {
   PHYSICS.removeBody(a);
   PHYSICS.removeBody(c);
   PHYSICS.addBody({ x: mx, y: my, radius: newGem.radius, tier: newTier, vx: mvx, vy: mvy });
-  const points = newGem.points;
-  state.score += points;
+  const awarded = brakedAward(newGem.points);
+  state.score += awarded;
   state.merges += 1;
   if (newTier > state.topTier) state.topTier = newTier;
-  spawnFloater(mx, my, `+${points}`, '#FFFFFF', 16);
+  if (awarded > 0) spawnFloater(mx, my, `+${awarded}`, '#FFFFFF', 16);
   spawnRing(mx, my, newGem.radius * 1.4, gemColorHex(newTier));
   playMerge(newTier);
 }

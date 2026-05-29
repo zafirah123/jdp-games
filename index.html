@@ -267,15 +267,34 @@
         if (game.status === 'approved-dev') {
           const envFlags = document.createElement('span');
           envFlags.className = 'env-flags';
+          const folderName = String(game.path || '')
+            .replace(/^\.?\//, '')
+            .replace(/\/$/, '');
 
           const stagingFlag = document.createElement('span');
           stagingFlag.className = 'env-flag' + (game.staging ? ' is-on' : '');
           stagingFlag.textContent = 'STAGING ' + (game.staging ? 'ON' : 'OFF');
+          if (game.staging) {
+            stagingFlag.style.cursor = 'pointer';
+            stagingFlag.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              window.open(`https://dev.pandai.org/games/genet/${folderName}/index.html`, '_blank', 'noopener');
+            });
+          }
           envFlags.appendChild(stagingFlag);
 
           const productionFlag = document.createElement('span');
           productionFlag.className = 'env-flag' + (game.production ? ' is-on' : '');
           productionFlag.textContent = 'PRODUCTION ' + (game.production ? 'ON' : 'OFF');
+          if (game.production) {
+            productionFlag.style.cursor = 'pointer';
+            productionFlag.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              window.open(`https://app.pandai.org/games/genet/${folderName}/index.html`, '_blank', 'noopener');
+            });
+          }
           envFlags.appendChild(productionFlag);
 
           titleWrap.appendChild(envFlags);

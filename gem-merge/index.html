@@ -426,10 +426,13 @@ const CONFIG = {
   ],
   DROP_CADENCE_FLOOR_S: 0.5,     // survival floor — applied to drop 201 and beyond
 
-  // Score-driven stress — still drives drop-pool skew near the 500-score cap
-  // (BEST-PRACTICES.md §05 difficulty-escalation pattern).
+  // Score-driven stress — tapers seed pool toward red-only AND stretches the
+  // auto-drop interval as score climbs from 400→500, so the run asymptotes
+  // near the 500-ruby cap without ever clamping the counter
+  // (BEST-PRACTICES.md §05 difficulty-escalation pattern, CLAUDE.md §1.4).
   SCORE_STRESS_START: 400,
   SCORE_STRESS_FULL:  500,
+  SCORE_STRESS_HOLD_STRETCH: 0.6, // auto-drop interval × (1 + this × scoreStress) near cap
 
   // Tiny cooldown between drops — just enough to debounce a stray double-tap.
   DROP_COOLDOWN_S: 0.08,
@@ -475,7 +478,7 @@ const MAX_TIER = GEMS.length - 1;
 // Drop pool: Red / Orange / Yellow are the workhorses, Green is a rare guest.
 // (Blue / Indigo / Purple only via merging — weights 0.)
 const DROP_WEIGHTS_CALM   = [45, 32, 20, 3, 0, 0, 0];
-const DROP_WEIGHTS_STRESS = [55, 28, 14, 3, 0, 0, 0];
+const DROP_WEIGHTS_STRESS = [100, 0, 0, 0, 0, 0, 0]; // full taper at score ≥ 500 — only reds spawn
 
 // =============================================================================
 // Asset preload — gem images load once, then reused via drawImage at any size.
@@ -802,7 +805,10 @@ function holdTimeForDrop(n) {
   return CONFIG.DROP_CADENCE_FLOOR_S;
 }
 function autoDropAfterSeconds() {
-  return holdTimeForDrop(state.dropsPlaced + 1);
+  const base = holdTimeForDrop(state.dropsPlaced + 1);
+  // Stretch the interval as score nears the 500 cap so the world calms down
+  // rather than the counter freezing (CLAUDE.md §1.4).
+  return base * (1 + CONFIG.SCORE_STRESS_HOLD_STRETCH * scoreStress());
 }
 
 // After DANGER_LINE_DROP_START_S elapsed, the danger line lowers by

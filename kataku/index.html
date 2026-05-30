@@ -356,7 +356,7 @@
 
 <div id="menu" class="overlay">
   <div class="card">
-    <h1>KATAKU</h1>
+    <h1 id="menuTitle">KATAKU</h1>
     <p id="menuSub"></p>
     <p class="best" id="bestText">&nbsp;</p>
     <button id="startBtn" class="cta"></button>
@@ -381,6 +381,7 @@
   </div>
 </div>
 
+<script src="./claim-callback.js?v=20260530.1"></script>
 <script>
 (() => {
 'use strict';
@@ -1181,21 +1182,39 @@ function showGameOver(reason) {
 }
 
 // =============================================================================
-// CLAIM SCORE â€” single end-of-game CTA (CLAUDE.md Â§6.5)
+// CLAIM SCORE — single end-of-game CTA (CLAUDE.md §6.5 / §6.6)
 // =============================================================================
-dom.claimBtn.addEventListener('click', () => {
+let claimLocked = false;
+const claimContext = window.ClaimCallback.getClaimContext();
+window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+
+async function buildClaimUrl() {
+  return window.ClaimCallback.buildClaimUrl({
+    claimContext,
+    score: Math.max(0, state.score | 0),
+    gameName: CONFIG.GAME_NAME,
+    fallbackUrl: CONFIG.CLAIM_URL,
+    extraData: {
+      solved: state.solvedCount,
+      total_guesses: state.totalGuesses,
+      skipped: state.skipped,
+    },
+  });
+}
+
+dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     startRun();
     return;
   }
-  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const url = CONFIG.CLAIM_URL
-    + `?game=${encodeURIComponent(CONFIG.GAME_NAME)}`
-    + `&score=${state.score}`
-    + `&token=${encodeURIComponent(token)}`;
-  location.href = url;
+  if (claimLocked) return;
+  claimLocked = true;
+  try {
+    location.href = await buildClaimUrl();
+  } catch (e) {
+    console.warn('[kataku] claim submit failed:', e);
+    claimLocked = false;
+  }
 });
 
 // =============================================================================
@@ -1218,3 +1237,14 @@ dom.claimBtn.addEventListener('click', () => {
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+

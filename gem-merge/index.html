@@ -310,7 +310,7 @@
 
 <div id="menu" class="overlay">
   <div class="card">
-    <h1>Gem Merge</h1>
+    <h1 id="menuTitle">Gem Merge</h1>
     <p class="sub" id="menuSub"></p>
     <div class="ladder" id="ladderPreview"></div>
     <p class="best" id="bestText">&nbsp;</p>
@@ -337,6 +337,7 @@
   </div>
 </div>
 
+<script src="./claim-callback.js?v=20260530.1"></script>
 <script>
 'use strict';
 
@@ -1386,51 +1387,44 @@ function endGame(reason) {
 }
 
 // =============================================================================
-// CLAIM SCORE callback flow â€” CLAUDE.md Â§6.5
+// CLAIM SCORE callback flow — supports default callback flow (§6.5) and Genet encrypted flow (§6.6)
 // =============================================================================
-function resolveCallbackUrl() {
-  const candidate = QS.get('callback_url');
-  if (candidate) {
-    try {
-      const u = new URL(candidate);
-      if (u.protocol === 'https:') return u.toString();
-    } catch (_) {}
-  }
-  return (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__)
-    ? window.__JDP_CALLBACK_URL__
-    : null;
-}
-function buildClaimPayload(finalScore, extra = {}) {
-  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  return { game: 'gem-merge', score: Math.max(0, finalScore | 0), token, ...extra };
-}
-function submitClaim() {
+let claimLocked = false;
+const claimContext = window.ClaimCallback.getClaimContext();
+window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+
+async function submitClaim() {
   if (isZeroScore()) {
     startGame();
     return;
   }
-  const payload = buildClaimPayload(state.score, {
+  if (claimLocked) return;
+  claimLocked = true;
+
+  const extra = {
     merges: state.merges,
     top_tier: state.topTier,
     duration_ms: Math.round(elapsedSeconds() * 1000),
+  };
+
+  const url = await window.ClaimCallback.buildClaimUrl({
+    claimContext,
+    score: Math.max(0, state.score | 0),
+    gameName: 'gem-merge',
+    fallbackUrl: null,
+    extraData: extra,
+    extraQuery: extra,
   });
-  const url = resolveCallbackUrl();
+
   if (url) {
-    const target = new URL(url);
-    for (const [k, v] of Object.entries(payload)) {
-      target.searchParams.set(k, String(v));
-    }
-    window.location.href = target.toString();
+    window.location.href = url;
   } else {
-    // No callback wired â€” log and stay on the screen so dev playthroughs aren't stuck.
-    console.log('[gem-merge] CLAIM SCORE (no callback configured)', payload);
+    console.log('[gem-merge] CLAIM SCORE (no callback configured)', extra);
     dom.claimBtn.textContent = `${COPY.score}: ${state.score}`;
     dom.claimBtn.disabled = true;
+    claimLocked = false;
   }
 }
-
 // =============================================================================
 // Input â€” pointer position drives dropper, click drops, keyboard fallback
 // =============================================================================
@@ -1609,3 +1603,15 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+

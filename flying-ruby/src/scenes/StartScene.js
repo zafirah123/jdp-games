@@ -9,6 +9,7 @@ export class StartScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+    this.pageTitle = new URLSearchParams(window.location.search).get('page_title') || '';
 
     this._drawBackground(width, height);
     this._drawLogo(width, height);
@@ -59,7 +60,8 @@ export class StartScene extends Phaser.Scene {
 
     // tagline below the logo — stroked + shadowed so it reads on the
     // detailed background without a dimming overlay
-    this.add.text(cx, height * 0.42, COPY.tagline, {
+    const subtitle = this.pageTitle.trim() || COPY.tagline;
+    this.add.text(cx, height * 0.42, subtitle, {
       fontFamily: FONTS.ui,
       fontSize:   '16px',
       fontStyle:  'bold',

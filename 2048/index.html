@@ -230,7 +230,7 @@
 
 <div id="menu" class="overlay">
   <div class="card">
-    <h1>2048</h1>
+    <h1 id="menuTitle">2048</h1>
     <p class="sub" id="menuSub"></p>
     <p class="best" id="bestText">&nbsp;</p>
     <button id="startBtn" class="cta"></button>
@@ -247,6 +247,7 @@
   </div>
 </div>
 
+<script src="./claim-callback.js?v=20260530.1"></script>
 <script>
 'use strict';
 
@@ -1141,36 +1142,35 @@ canvas.addEventListener('mouseup', (e) => {
   else attemptMove(dy > 0 ? 'down' : 'up');
 });
 
-// CLAIM SCORE â€” CLAUDE.md Â§6.5 â€” submit final score to the platform callback.
-function resolveCallbackUrl() {
-  const qs = new URLSearchParams(location.search);
-  const candidate = qs.get('callback_url');
-  if (candidate) {
-    try {
-      const u = new URL(candidate);
-      if (u.protocol === 'https:') return u.toString();
-    } catch (_) {}
-  }
-  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
-  return CONFIG.CLAIM_FALLBACK_URL;
-}
-function buildClaimUrl() {
-  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const base = resolveCallbackUrl();
-  const sep = base.includes('?') ? '&' : '?';
-  return base
-    + sep + 'game=' + encodeURIComponent(CONFIG.GAME_NAME)
-    + '&score=' + Math.max(0, state.score | 0)
-    + '&token=' + encodeURIComponent(token);
+// CLAIM SCORE — supports both default callback flow (§6.5) and Genet encrypted flow (§6.6).
+let claimLocked = false;
+const claimContext = window.ClaimCallback.getClaimContext();
+window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+
+async function buildClaimUrl() {
+  return window.ClaimCallback.buildClaimUrl({
+    claimContext,
+    score: Math.max(0, state.score | 0),
+    gameName: CONFIG.GAME_NAME,
+    fallbackUrl: CONFIG.CLAIM_FALLBACK_URL,
+  });
 }
 
 // Buttons
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
-dom.claimBtn.addEventListener('click', () => {
-  if (isZeroScore()) startGame();
-  else location.href = buildClaimUrl();
+dom.claimBtn.addEventListener('click', async () => {
+  if (isZeroScore()) {
+    startGame();
+    return;
+  }
+  if (claimLocked) return;
+  claimLocked = true;
+  try {
+    location.href = await buildClaimUrl();
+  } catch (e) {
+    console.warn('[2048] claim submit failed:', e);
+    claimLocked = false;
+  }
 });
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
@@ -1232,3 +1232,14 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+

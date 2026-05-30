@@ -546,6 +546,48 @@ after the player declines `CONTINUE` on a crash with no time left.
 only when final score is exactly `0`. For any score `> 0`, keep the
 single-CTA claim flow and do not offer in-page restart.
 
+### 6.6 Genet callback override (when integrating under `public/games/genet/`)
+
+If a game is being integrated for the Genet launcher flow, use this
+callback contract instead of the generic `game/score/token` payload in §6.5.
+
+- Read launch params from URL:
+  - `token` (required)
+  - `page_title` (optional)
+- Decode JWT payload from `token` and read:
+  - `res` (16-char AES key)
+  - `callback_url`
+- For score submission (`score > 0` only), redirect with query params:
+  - `token` (original launch token)
+  - `dd` (base64 AES-CBC encrypted payload JSON)
+  - `dv` (base64 IV)
+- Minimum decrypted payload:
+
+```json
+{
+  "score": 10,
+  "is_suspicious": false
+}
+```
+
+- Any game-specific stats must be nested under `data`.
+- Never submit score `0`; final score `<= 0` uses local `RETRY`.
+- Add a duplicate-submit guard (lock/flag) so one run cannot submit twice.
+- If `page_title` exists, apply it to `document.title` and visible heading
+  where applicable.
+- Version static JS/CSS includes in `index.html` and bump monotonically
+  (`YYYYMMDD.N`) on edits.
+
+Example:
+
+```html
+<script src="./src/main.js?v=20260529.1"></script>
+<script src="./claim-callback.js?v=20260529.1"></script>
+```
+
+- For Phaser implementations, preferred scene flow remains:
+  `BootScene` → `StartScene` → `GameScene` → `GameOverScene`.
+
 ---
 
 ## 7. Publishing a new game
@@ -645,6 +687,7 @@ A game is shippable when it satisfies **all** of:
 - [ ] End-of-game modal follows §6.5 — score `> 0` uses `CLAIM SCORE` callback CTA (payload includes `game`, `score`, random `token`); score `= 0` uses local `RETRY`
 - [ ] Game supports `callback_url` query param and platform fallback callback target
 - [ ] Game supports player-triggered early-end callback (same payload contract)
+- [ ] If using Genet launcher integration (§6.6), callback submit uses encrypted `token` + `dd` + `dv`, includes duplicate-submit guard, and never submits score `0`
 - [ ] Optional suspicious-score check (if present) runs locally pre-submit and flags payload
 - [ ] Optional `log` payload (if present) is lightweight and excludes PII/tracking
 - [ ] Dev jump via `?scene=` / `?phase=` query param wired from day one

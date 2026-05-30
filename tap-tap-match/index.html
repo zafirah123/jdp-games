@@ -111,6 +111,7 @@
     </button>
   </div>
 </div>
+<script src="./claim-callback.js?v=20260530.1"></script>
 <script>
 'use strict';
 
@@ -423,30 +424,25 @@ scoreLbl.textContent = COPY.scoreLabel;
 timeLbl.textContent  = COPY.timeLabel;
 
 // ============================================================
-// CLAIM SCORE â€” CLAUDE.md Â§6.5
+// CLAIM SCORE — supports default callback flow (§6.5) and Genet encrypted flow (§6.6)
 // ============================================================
-function resolveCallbackUrl() {
-  const qs = new URLSearchParams(location.search);
-  const candidate = qs.get('callback_url');
-  if (candidate) {
-    try {
-      const u = new URL(candidate);
-      if (u.protocol === 'https:') return u.toString();
-    } catch (_) {}
+let claimLocked = false;
+const claimContext = window.ClaimCallback.getClaimContext();
+if (claimContext.pageTitle) {
+  const t = claimContext.pageTitle.trim();
+  if (t) {
+    document.title = t;
+    COPY.title = t;
   }
-  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
-  return CONFIG.claimFallbackUrl;
 }
-function buildClaimUrl() {
-  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const base = resolveCallbackUrl();
-  const sep = base.includes('?') ? '&' : '?';
-  return base
-    + sep + 'game=' + encodeURIComponent(CONFIG.gameName)
-    + '&score=' + Math.max(0, state.score | 0)
-    + '&token=' + encodeURIComponent(token);
+
+async function buildClaimUrl() {
+  return window.ClaimCallback.buildClaimUrl({
+    claimContext,
+    score: Math.max(0, state.score | 0),
+    gameName: CONFIG.gameName,
+    fallbackUrl: CONFIG.claimFallbackUrl,
+  });
 }
 
 function syncHud() {
@@ -981,7 +977,7 @@ function eventPoint(e) {
   };
 }
 
-canvas.addEventListener('pointerdown', (e) => {
+canvas.addEventListener('pointerdown', async (e) => {
   e.preventDefault();
   ensureAudio();
   const p = eventPoint(e);
@@ -993,8 +989,18 @@ canvas.addEventListener('pointerdown', (e) => {
   if (state.scene === 'gameover') {
     if (pointInRect(p, BTN_CLAIM)) {
       playButton();
-      if (isZeroScore()) startGame();
-      else location.href = buildClaimUrl();
+      if (isZeroScore()) {
+        startGame();
+      } else {
+        if (claimLocked) return;
+        claimLocked = true;
+        try {
+          location.href = await buildClaimUrl();
+        } catch (err) {
+          console.warn('[tap-tap-match] claim submit failed:', err);
+          claimLocked = false;
+        }
+      }
     }
     return;
   }
@@ -1061,3 +1067,13 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+

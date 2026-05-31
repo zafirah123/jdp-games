@@ -169,7 +169,7 @@
   }
   .card .sub { font-size: 14px; color: #FFFFFF; margin: 0 0 18px; opacity: 0.92; line-height: 1.45; }
   .card .best { font-size: 14px; color: #FFD633; margin: 0 0 18px; font-weight: 600; min-height: 20px; }
-  .card .hint { font-size: 12px; color: rgba(255,255,255,0.6); margin: 14px 0 0; line-height: 1.5; }
+  .card .hint { font-size: 12px; color: rgba(255,255,255,0.6); margin: 26px 0 0; line-height: 1.6; }
   .card .hint kbd {
     background: rgba(255,214,51,0.15);
     border: 1px solid rgba(255,214,51,0.3);
@@ -268,6 +268,17 @@
   .tc-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
   #duckBtn { left: max(18px, env(safe-area-inset-left)); background: rgba(158,19,31,0.82); }
   #jumpBtn { right: max(18px, env(safe-area-inset-right)); background: linear-gradient(180deg,#FFE258,#FFBA0A); color: #031034; }
+  #shootBtn { left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: linear-gradient(180deg,#5cf07a,#1fb84a); color: #04210d; border-color: #2bd655; }
+  #shootBtn:active { transform: translateX(-50%) translateY(3px); }
+
+  /* Lives — pixel hearts under the HUD row */
+  .lives { display: flex; gap: 5px; margin: 8px auto 0; justify-content: center; pointer-events: none; }
+  .lives svg { filter: drop-shadow(0 2px 0 rgba(0,0,0,0.35)); }
+  /* Ammo — green pixel pips */
+  .ammo { display: flex; gap: 3px; margin: 6px auto 0; justify-content: center; align-items: center; pointer-events: none; }
+  .ammo i { width: 9px; height: 13px; border-radius: 2px; display: block; }
+  .ammo i.on  { background: #36e25e; box-shadow: 0 0 6px rgba(54,226,94,0.85), inset 0 0 2px rgba(255,255,255,0.6); }
+  .ammo i.off { background: #1f3a2a; }
   /* Hint nudging the buttons on coarse pointers; mouse users get the keyboard. */
   @media (pointer: fine) { .touch-controls.active { display: none; } }
 
@@ -289,12 +300,15 @@
       <svg viewBox="0 0 24 24"></svg>
     </button>
   </div>
+  <div id="lives" class="lives"></div>
+  <div id="ammo" class="ammo"></div>
   <div id="powerBadge" class="badge hidden"></div>
 </div>
 
 <!-- On-screen controls (touch) -->
 <div id="touchControls" class="touch-controls">
   <button id="duckBtn" class="tc-btn" aria-label="Duck"><span class="ic">▼</span><span id="duckLbl">DUCK</span></button>
+  <button id="shootBtn" class="tc-btn" aria-label="Shoot"><span class="ic">●</span><span id="shootLbl">SHOOT</span></button>
   <button id="jumpBtn" class="tc-btn" aria-label="Jump"><span class="ic">▲</span><span id="jumpLbl">JUMP</span></button>
 </div>
 
@@ -356,8 +370,8 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
-    menuSub: 'Float, jump and duck through 3 minutes.<br>Grab every ruby — race to 500!',
-    menuHint: 'Tap / <kbd>Space</kbd> to jump &nbsp;·&nbsp; hold the lower screen / <kbd>↓</kbd> to duck',
+    menuSub: "Jump! Duck! Shoot!<br>Let's rush for the high score!",
+    menuHint: 'Tap / <kbd>Space</kbd> jump &nbsp;·&nbsp; hold lower screen / <kbd>↓</kbd> duck &nbsp;·&nbsp; <kbd>X</kbd> shoot',
     scoreLabel: 'Rubies', timeLabel: 'Time',
     magnet: 'MAGNET!', rush: 'POWER RUSH!',
     paused: 'PAUSED', pauseSub: 'End the run now and submit your score?',
@@ -365,7 +379,7 @@ const COPY = {
     crash: 'CRASH!',
     crashSub: (mmss) => `${mmss} still left — keep your rubies and jump back in!`,
     continue: 'CONTINUE', giveUp: 'CLAIM SCORE',
-    newBest: 'NEW BEST!', jump: 'JUMP', duck: 'DUCK',
+    newBest: 'NEW BEST!', jump: 'JUMP', duck: 'DUCK', shoot: 'SHOOT',
     statScore: 'Rubies', statBest: 'Best', statDodged: 'Obstacles cleared', statTime: 'Time played',
   },
   ms: {
@@ -375,8 +389,8 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
-    menuSub: 'Terbang, lompat dan tunduk selama 3 minit.<br>Kutip setiap delima — kejar ke 500!',
-    menuHint: 'Ketuk / <kbd>Space</kbd> untuk lompat &nbsp;·&nbsp; tahan bahagian bawah / <kbd>↓</kbd> untuk tunduk',
+    menuSub: 'Lompat! Tunduk! Tembak!<br>Jom rentas untuk skor tertinggi!',
+    menuHint: 'Ketuk / <kbd>Space</kbd> lompat &nbsp;·&nbsp; tahan bawah / <kbd>↓</kbd> tunduk &nbsp;·&nbsp; <kbd>X</kbd> tembak',
     scoreLabel: 'Delima', timeLabel: 'Masa',
     magnet: 'MAGNET!', rush: 'KUASA RUSH!',
     paused: 'DIJEDA', pauseSub: 'Tamatkan pusingan dan hantar skor anda?',
@@ -384,7 +398,7 @@ const COPY = {
     crash: 'TERLANGGAR!',
     crashSub: (mmss) => `${mmss} masih berbaki — simpan delima dan teruskan!`,
     continue: 'TERUSKAN', giveUp: 'TUNTUT SKOR',
-    newBest: 'REKOD BAHARU!', jump: 'LOMPAT', duck: 'TUNDUK',
+    newBest: 'REKOD BAHARU!', jump: 'LOMPAT', duck: 'TUNDUK', shoot: 'TEMBAK',
     statScore: 'Delima', statBest: 'Terbaik', statDodged: 'Halangan dilepasi', statTime: 'Masa dimainkan',
   },
 }[LANG];
@@ -403,12 +417,13 @@ const CONFIG = {
   GROUND_FRAC: 0.82,         // groundY as a fraction of viewport height (on the sidewalk)
   BG_PARALLAX: 0.85,         // background scroll speed vs. gameplay
   BG_DIM: 0.34,              // dark scrim over the background art (calmer, less dizzying)
-  FLYER_BAND_FRAC: 0.71,     // flyer band bottom — standing pbot collides, crouch clears
+  FLYER_BAND_FRAC: 0.66,     // flyer NEUTRAL bottom — standing collides, crouch clears (allows a 15px rise)
   WALK_STEP_PX: 26,          // world px between walk-frame swaps
 
   // Jump arc
   GRAVITY: 2700,
   JUMP_V: 1100,
+  JUMP_V2: 800,              // double jump — weaker than the first
   DUCK_GRAVITY_MULT: 2.4,    // fast-fall when ducking mid-air
   COYOTE_SEC: 0.09,
 
@@ -430,13 +445,29 @@ const CONFIG = {
   // the jump clears comfortably.
   GROUND_H: 128,
   FLYER_H: 86,               // flying monster height
-  FLYER_BOB: 4,              // gentle float amplitude (world units)
+  FLYER_RISE: 15,            // floats UP this many px from neutral, back to neutral
+  ENEMY_HP: 4,               // pbot orbs needed to destroy an enemy
+  ENEMY_SHOOT_SEC: 2.0,      // ground tank fires a bullet this often
+  ENEMY_BULLET_EXTRA: 300,   // bullet px/s on top of the world scroll speed
+
+  // Lives — 3 per life-stretch; a hit costs one and respawns. Reset to 3 on a
+  // Continue (resume). Out of lives → the crash/continue flow.
+  LIVES: 3,
+  RESPAWN_SEC: 0.7,          // death-burst pause before pbot pops back in
+
+  // pbot's green orb cannon (standard ability, not a power-up)
+  PB_SHOOT_CD: 0.30,
+  PB_BULLET_SPEED: 580,
+  PB_AMMO_MAX: 10,           // bullet magazine
+  PB_AMMO_REGEN_SEC: 1,      // restore one bullet this often
 
   // Ruby supply — taper as score nears the cap (CLAUDE.md §1.4), never clamp.
-  // Spacing widened so ~40% fewer rubies spawn (less visual clutter).
-  RUBY_GAP_SEC: 1.75,
+  // Spacing widened a lot (sparse rubies) and the taper keeps a floor so the
+  // world never goes empty past the cap.
+  RUBY_GAP_SEC: 3.2,
   RUBY_TAPER_START: 420,
   RUBY_TAPER_END: 520,
+  RUBY_SPAWN_FLOOR: 0.2,     // minimum spawn chance — keeps a trickle past 500
 
   // Magnet (aid) power-up
   MAGNET_EVERY_MS: 9000, MAGNET_CHANCE: 0.6, MAGNET_DUR: 5, MAGNET_PULL: 640,
@@ -460,8 +491,8 @@ const dom = {
   hud: $('hud'), scoreVal: $('scoreVal'), scoreLabel: $('scoreLabel'),
   timePill: $('timePill'), timeVal: $('timeVal'), timeLabel: $('timeLabel'),
   endBtn: $('endBtn'), muteBtn: $('muteBtn'), powerBadge: $('powerBadge'),
-  touchControls: $('touchControls'), jumpBtn: $('jumpBtn'), duckBtn: $('duckBtn'),
-  jumpLbl: $('jumpLbl'), duckLbl: $('duckLbl'),
+  touchControls: $('touchControls'), jumpBtn: $('jumpBtn'), duckBtn: $('duckBtn'), shootBtn: $('shootBtn'),
+  jumpLbl: $('jumpLbl'), duckLbl: $('duckLbl'), shootLbl: $('shootLbl'), lives: $('lives'), ammo: $('ammo'),
   menu: $('menu'), menuTitle: $('menuTitle'), menuSub: $('menuSub'),
   menuHint: $('menuHint'), startBtn: $('startBtn'), bestText: $('bestText'), logo: $('logo'),
   pause: $('pause'), pauseTitle: $('pauseTitle'), pauseSub: $('pauseSub'),
@@ -489,6 +520,7 @@ dom.continueBtn.textContent = COPY.continue;
 dom.giveUpBtn.textContent = COPY.giveUp;
 dom.jumpLbl.textContent = COPY.jump;
 dom.duckLbl.textContent = COPY.duck;
+dom.shootLbl.textContent = COPY.shoot;
 
 // =============================================================================
 // Image assets — pbot frames, logo. Each gets an {img, ok} entry; the game
@@ -538,6 +570,15 @@ const state = {
   blasts: [],                // explosion rings (rush plow-through)
   deathBolts: [],            // Mega Man-style death burst pellets
   pbDead: false,             // hide pbot while the death burst plays
+  respawnT: 0,               // countdown before pbot pops back in (lives > 0)
+  lives: 3,                  // remaining lives this stretch
+  enemyBullets: [],          // yellow tank shots
+  pbBullets: [],             // pbot green orbs
+  shootCd: 0,                // shoot cooldown timer
+  ammo: 10, ammoRegenT: 0,   // bullet magazine + regen timer
+  jumpsUsed: 0,              // 0 grounded, 1 after first jump, 2 after double
+  rushSpawned: 0, rushSpawnT: 0, lastRushY: -999,  // rush-stream pacing/cap
+  shootHeld: false,
   worldDist: 0,              // accumulated scroll for parallax + ground texture
   dodged: 0,
   // pbot motion
@@ -596,11 +637,13 @@ function worldSpeed() {
   return s;
 }
 function rubySpawnChance() {
-  // 1 − smoothstep(taperStart, taperEnd, score): supply calms near the cap.
+  // 1 − smoothstep(taperStart, taperEnd, score): supply calms near the cap, but
+  // never below a floor so the world keeps a ruby trickle past 500 (§1.4 — an
+  // empty world reads as a bug).
   const a = CONFIG.RUBY_TAPER_START, b = CONFIG.RUBY_TAPER_END;
   const t = Math.min(1, Math.max(0, (state.score - a) / (b - a)));
   const smooth = t * t * (3 - 2 * t);
-  return 1 - smooth;
+  return Math.max(CONFIG.RUBY_SPAWN_FLOOR, 1 - smooth);
 }
 
 // =============================================================================
@@ -770,7 +813,7 @@ function spawnObstacle() {
     state.obstacles.push({
       kind: 'flyer', x: view.w + w,
       baseY, y: baseY, w, h,
-      sp: makeEnemy('flyer'), bobPhase: Math.random() * 6.28, scored: false,
+      sp: makeEnemy('flyer'), bobPhase: Math.random() * 6.28, hp: CONFIG.ENEMY_HP, scored: false,
     });
   } else {
     const h = CONFIG.GROUND_H * s;   // same standing height as pbot
@@ -780,32 +823,36 @@ function spawnObstacle() {
     state.obstacles.push({
       kind: 'ground', x: view.w + w,
       y: view.groundY - h, w, h,
-      sp: makeEnemy('ground'), phase: Math.floor(Math.random() * 2), scored: false,
+      sp: makeEnemy('ground'), phase: Math.floor(Math.random() * 2), hp: CONFIG.ENEMY_HP,
+      shootT: Math.random() * CONFIG.ENEMY_SHOOT_SEC, scored: false,
     });
   }
 }
 
+// Three spread-out formations (no tight clumps): a 3-tall vertical line, a
+// 5-tall vertical line, and a 5-ruby sine wave that undulates across the track.
 function spawnRubyFormation() {
   if (Math.random() > rubySpawnChance()) return;   // taper near the cap
   const s = S();
   const baseX = view.w + 40 * s;
-  const r = 18 * s;
-  const shape = Math.floor(Math.random() * 3);
-  const groundRun = view.groundY - CONFIG.PB_H * s * 0.5;  // run-through height
-  const jumpArc = view.groundY - CONFIG.PB_H * s * 1.35;   // catch mid-jump
-  if (shape === 0) {            // straight run line
-    const n = 3 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < n; i++) state.rubies.push(mkRuby(baseX + i * r * 3, groundRun, r));
-  } else if (shape === 1) {     // jump arc
-    const n = 5;
-    for (let i = 0; i < n; i++) {
-      const p = i / (n - 1);
-      const y = jumpArc + Math.sin(p * Math.PI) * -90 * s;
-      state.rubies.push(mkRuby(baseX + i * r * 2.6, y, r));
-    }
-  } else {                      // small cluster column
-    for (let i = 0; i < 3; i++) state.rubies.push(mkRuby(baseX, groundRun - i * r * 2.2, r));
+  const r = 17 * s;
+  const runY = view.groundY - CONFIG.PB_H * s * 0.45;     // low, run-through height
+  const topY = view.groundY - 195 * s;                    // top stays jump-reachable
+  // Past the cap keep it to the smallest formation so the trickle stays light.
+  const near = state.score >= CONFIG.RUBY_CAP - 40;
+  const shape = near ? 0 : (Math.random() * 3 | 0);
+  if (shape === 0) {                 // vertical line of 3
+    vColumn(baseX, runY, topY, r, 3);
+  } else if (shape === 1) {          // vertical line of 5
+    vColumn(baseX, runY, topY, r, 5);
+  } else {                           // sine wave of 5
+    const n = 5, dx = r * 3.0, amp = 78 * s, midY = runY - 46 * s;
+    for (let i = 0; i < n; i++) state.rubies.push(mkRuby(baseX + i * dx, midY - Math.sin(i / (n - 1) * Math.PI * 1.5) * amp, r));
   }
+}
+function vColumn(x, runY, topY, r, n) {
+  const dy = (runY - topY) / (n - 1);    // evenly spaced, top reachable by a jump
+  for (let i = 0; i < n; i++) state.rubies.push(mkRuby(x, runY - i * dy, r));
 }
 function mkRuby(x, y, r) { return { x, y, r, t: Math.random() * 6.28, taken: false }; }
 
@@ -836,15 +883,33 @@ function update(dt) {
 
   // timers
   if (state.invuln > 0) state.invuln -= dt;
+  if (state.shootCd > 0) state.shootCd -= dt;
+  // Regenerate one bullet every few seconds, up to the magazine max.
+  if (state.ammo < CONFIG.PB_AMMO_MAX) {
+    state.ammoRegenT += dt;
+    if (state.ammoRegenT >= CONFIG.PB_AMMO_REGEN_SEC) { state.ammoRegenT -= CONFIG.PB_AMMO_REGEN_SEC; state.ammo = Math.min(CONFIG.PB_AMMO_MAX, state.ammo + 1); updateAmmo(); }
+  } else state.ammoRegenT = 0;
+  if (state.shootHeld) shoot();   // auto-fire while held (rate-limited by cooldown)
   if (state.magnetT > 0) { state.magnetT -= dt; if (state.magnetT <= 0) updatePowerBadge(); }
   if (state.rushT > 0) { state.rushT -= dt; if (state.rushT <= 0) updatePowerBadge(); }
+  // Respawn after a non-fatal hit (lives remained): pbot pops back in invuln.
+  if (state.respawnT > 0) {
+    state.respawnT -= dt;
+    if (state.respawnT <= 0) {
+      state.pbDead = false; state.deathBolts = [];
+      state.pbY = 0; state.pbV = 0; state.grounded = true; state.ducking = false; state.jumpsUsed = 0;
+      state.invuln = CONFIG.RESUME_INVULN_SEC;
+      state.obstacles = state.obstacles.filter(o => o.x > view.w * 0.72);
+      state.enemyBullets = [];
+    }
+  }
 
   // pbot vertical motion
   if (!state.grounded) {
     const g = CONFIG.GRAVITY * (state.ducking ? CONFIG.DUCK_GRAVITY_MULT : 1) * S();
     state.pbV -= g * dt;
     state.pbY += state.pbV * dt;
-    if (state.pbY <= 0) { state.pbY = 0; state.pbV = 0; state.grounded = true; state.coyote = CONFIG.COYOTE_SEC; }
+    if (state.pbY <= 0) { state.pbY = 0; state.pbV = 0; state.grounded = true; state.coyote = CONFIG.COYOTE_SEC; state.jumpsUsed = 0; }
   } else if (state.coyote > 0) state.coyote -= dt;
 
   const dx = worldSpeed() * S() * dt;
@@ -854,16 +919,23 @@ function update(dt) {
   for (let i = state.obstacles.length - 1; i >= 0; i--) {
     const o = state.obstacles[i];
     o.x -= dx;
-    // Flyers gently bob so they read as floating (collision + sprite stay in sync).
-    if (o.kind === 'flyer') o.y = o.baseY + Math.sin((state._t + o.bobPhase) * 2.6) * CONFIG.FLYER_BOB * S();
+    // Flyers float UP from neutral (baseY) by up to FLYER_RISE px and back down
+    // to neutral — never lower, so they never dip toward the ground monsters.
+    if (o.kind === 'flyer') o.y = o.baseY - (0.5 - 0.5 * Math.cos((state._t + o.bobPhase) * 2.4)) * CONFIG.FLYER_RISE * S();
     if (!o.scored && o.x + o.w < view.pbX) { o.scored = true; state.dodged++; }
     if (o.x + o.w < -20) { state.obstacles.splice(i, 1); continue; }
-    if (state.invuln <= 0) {
+    // Ground tanks fire a glowing yellow bullet every couple of seconds while
+    // they're on screen and still ahead of pbot.
+    if (o.kind === 'ground' && o.x < view.w && o.x + o.w > view.pbX) {
+      o.shootT += dt;
+      if (o.shootT >= CONFIG.ENEMY_SHOOT_SEC) { o.shootT = 0; fireEnemyBullet(o); }
+    }
+    if (state.invuln <= 0 && !state.pbDead) {
       const ob = { x: o.x + o.w * 0.16, y: o.y + o.h * 0.12, w: o.w * 0.68, h: o.h * 0.78 };
       if (hit(pbotBox(), ob)) {
         if (state.rushT > 0) { // frenzy plows through — explode it, no crash
           explode(o.x + o.w / 2, o.y + o.h / 2); state.obstacles.splice(i, 1);
-        } else { crash(); return; }
+        } else { takeHit(); return; }
       }
     }
   }
@@ -878,7 +950,9 @@ function update(dt) {
   for (let i = state.rubies.length - 1; i >= 0; i--) {
     const ru = state.rubies[i];
     ru.x -= dx; ru.t += dt;
-    if (state.magnetT > 0) {
+    // Magnet (and Power Rush) only grab rubies already visible on screen, not
+    // ones still off the right edge.
+    if ((state.magnetT > 0 || state.rushT > 0) && ru.x < view.w && ru.x > 0) {
       const ddx = pbc.x - ru.x, ddy = pbc.y - ru.y, d = Math.hypot(ddx, ddy) || 1;
       if (d < 460 * S()) { const pull = CONFIG.MAGNET_PULL * S() * dt; ru.x += ddx / d * pull; ru.y += ddy / d * pull; }
     }
@@ -887,10 +961,18 @@ function update(dt) {
     if (hit(grab, rb)) { state.rubies.splice(i, 1); collectRuby(ru); }
   }
 
-  // power-up rush stream (rubies pour in during frenzy)
-  if (state.rushT > 0 && Math.random() < 0.35) {
-    const s = S();
-    state.rubies.push(mkRuby(view.w + 20, view.groundY - CONFIG.PB_H * s * (0.4 + Math.random() * 1.1), 18 * s));
+  // Power Rush stream — spaced out (no tight clumps), capped at 30 rubies for
+  // the whole frenzy. Heights vary and never land within 50px of the last one.
+  if (state.rushT > 0) {
+    state.rushSpawnT += dt;
+    if (state.rushSpawnT >= 0.26 && state.rushSpawned < 30) {
+      state.rushSpawnT = 0; state.rushSpawned++;
+      const s = S();
+      let y = 0;
+      for (let a = 0; a < 6; a++) { y = view.groundY - CONFIG.PB_H * s * (0.35 + Math.random() * 1.15); if (Math.abs(y - state.lastRushY) > 50 * s) break; }
+      state.lastRushY = y;
+      state.rubies.push(mkRuby(view.w + 20, y, 17 * s));
+    }
   }
 
   // scroll bubbles + collection
@@ -901,6 +983,38 @@ function update(dt) {
     if (bu.x + bu.r < -20) { state.bubbles.splice(i, 1); continue; }
     const bb = { x: bu.x - bu.r, y: bu.y - bu.r, w: bu.r * 2, h: bu.r * 2 };
     if (hit(grab, bb)) { state.bubbles.splice(i, 1); activatePower(bu.kind); }
+  }
+
+  // enemy bullets (yellow) — travel left; hit pbot costs a life unless safe.
+  for (let i = state.enemyBullets.length - 1; i >= 0; i--) {
+    const eb = state.enemyBullets[i];
+    eb.x += eb.vx * dt;
+    if (eb.x + eb.r < -20) { state.enemyBullets.splice(i, 1); continue; }
+    if (state.invuln <= 0 && state.rushT <= 0 && !state.pbDead) {
+      const box = { x: eb.x - eb.r, y: eb.y - eb.r, w: eb.r * 2, h: eb.r * 2 };
+      if (hit(pbotBox(), box)) { state.enemyBullets.splice(i, 1); takeHit(); return; }
+    }
+  }
+
+  // pbot orbs (green) — travel right; 6 hits destroy an enemy. They do NOT
+  // affect enemy bullets (the player can't shoot those down).
+  for (let i = state.pbBullets.length - 1; i >= 0; i--) {
+    const pbu = state.pbBullets[i];
+    pbu.x += pbu.vx * dt;
+    if (pbu.x - pbu.r > view.w + 20) { state.pbBullets.splice(i, 1); continue; }
+    const obx = { x: pbu.x - pbu.r, y: pbu.y - pbu.r, w: pbu.r * 2, h: pbu.r * 2 };
+    for (let j = state.obstacles.length - 1; j >= 0; j--) {
+      const o = state.obstacles[j];
+      const ob = { x: o.x + o.w * 0.14, y: o.y + o.h * 0.10, w: o.w * 0.72, h: o.h * 0.82 };
+      if (hit(obx, ob)) {
+        o.hp -= 1;
+        for (let k = 0; k < 5; k++) state.particles.push({ x: pbu.x, y: pbu.y, vx: (Math.random() - 0.5) * 220, vy: (Math.random() - 0.5) * 220, t: 0, life: 0.35, c: '#7bff7b', r: 3 * S() });
+        playOrbHit();
+        if (o.hp <= 0) { explode(o.x + o.w / 2, o.y + o.h / 2); state.obstacles.splice(j, 1); state.dodged++; }
+        state.pbBullets.splice(i, 1);
+        break;
+      }
+    }
   }
 
   // --- spawners ---
@@ -938,7 +1052,7 @@ function collectRuby(ru) {
 
 function activatePower(kind) {
   if (kind === 'magnet') { state.magnetT = CONFIG.MAGNET_DUR; playPower(); }
-  else { state.rushT = CONFIG.RUSH_DUR; state.invuln = Math.max(state.invuln, 0.4); playRush(); state.shake = 0.6; }
+  else { state.rushT = CONFIG.RUSH_DUR; state.invuln = Math.max(state.invuln, 0.4); state.rushSpawned = 0; state.rushSpawnT = 0; state.lastRushY = -999; playRush(); state.shake = 0.6; }
   for (let i = 0; i < 14; i++) state.particles.push({ x: view.pbX, y: view.groundY - CONFIG.PB_H * S() * 0.6, vx: (Math.random() - 0.5) * 360, vy: (Math.random() - 0.5) * 360, t: 0, life: 0.6, c: kind === 'magnet' ? '#57c7ff' : '#FFD633', r: 4 * S() });
   updatePowerBadge();
 }
@@ -971,15 +1085,54 @@ function megaDeath(x, y) {
   playDeath();
 }
 
+// Tank fires a glowing yellow bullet from its (left-facing) barrel, low to the
+// ground so pbot jumps to clear it.
+function fireEnemyBullet(o) {
+  const s = S();
+  const speed = (worldSpeed() * s) + CONFIG.ENEMY_BULLET_EXTRA * s;
+  state.enemyBullets.push({ x: o.x + o.w * 0.18, y: view.groundY - 46 * s, vx: -speed, r: 11 * s, t: 0 });
+  playEnemyShoot();
+}
+
+// pbot's standard green-orb cannon — fires rightward at oncoming enemies.
+function shoot() {
+  if (state.phase !== 'PLAYING' || state.pbDead) return;
+  if (state.shootCd > 0 || state.ammo <= 0) return;
+  state.shootCd = CONFIG.PB_SHOOT_CD;
+  state.ammo -= 1; updateAmmo();
+  const s = S(), f = getPbFrame();
+  const y = view.groundY - state.pbY * s - f.dh * 0.52;
+  state.pbBullets.push({ x: view.pbX + f.dw * 0.34, y, vx: CONFIG.PB_BULLET_SPEED * s, r: 10 * s, t: 0 });
+  playShoot();
+}
+
+// A hit costs a life. Lives left → death burst + respawn. Out of lives → crash.
+function takeHit() {
+  state.lives -= 1;
+  updateHearts();
+  if (state.lives > 0) {
+    megaDeath(view.pbX, view.groundY - CONFIG.PB_H * S() * 0.5);
+    state.respawnT = CONFIG.RESPAWN_SEC;
+  } else {
+    crash();
+  }
+}
+
 // =============================================================================
 // Jump / duck input handling
 // =============================================================================
 function doJump() {
-  if (state.phase !== 'PLAYING') return;
-  if (state.grounded || state.coyote > 0) {
+  if (state.phase !== 'PLAYING' || state.pbDead) return;
+  if (state.grounded || state.coyote > 0) {       // first jump
     state.pbV = CONFIG.JUMP_V * S();
-    state.grounded = false; state.coyote = 0; state.jumps++;
+    state.grounded = false; state.coyote = 0; state.jumpsUsed = 1; state.jumps++;
     playJump();
+  } else if (state.jumpsUsed < 2) {               // double jump — weaker
+    state.pbV = CONFIG.JUMP_V2 * S();
+    state.jumpsUsed = 2; state.jumps++;
+    // little air puff at pbot's feet
+    for (let i = 0; i < 7; i++) state.particles.push({ x: view.pbX, y: view.groundY - state.pbY * S(), vx: (Math.random() - 0.5) * 200, vy: 60 + Math.random() * 120, t: 0, life: 0.35, c: '#bff3ff', r: 3 * S() });
+    playJump2();
   }
 }
 function setDuck(on) {
@@ -1008,9 +1161,12 @@ function resumeFromCrash() {
   dom.cont.classList.add('hidden');
   // clear obstacles crowding the player so the resume is fair
   state.obstacles = state.obstacles.filter(o => o.x > view.w * 0.7);
+  state.enemyBullets = []; state.pbBullets = [];
+  state.lives = CONFIG.LIVES; updateHearts();   // lives reset to full on a Continue
+  state.ammo = CONFIG.PB_AMMO_MAX; state.ammoRegenT = 0; updateAmmo();
   state.invuln = CONFIG.RESUME_INVULN_SEC;
   state.pbY = 0; state.pbV = 0; state.grounded = true; state.ducking = false;
-  state.pbDead = false; state.deathBolts = [];
+  state.pbDead = false; state.deathBolts = []; state.respawnT = 0;
   state.sinceObstacle = 0;
   state.phase = 'PLAYING';
   showTouch(true);
@@ -1032,6 +1188,31 @@ function updatePowerBadge() {
   else if (state.magnetT > 0) { dom.powerBadge.className = 'badge magnet'; dom.powerBadge.textContent = COPY.magnet; }
   else { dom.powerBadge.className = 'badge hidden'; }
 }
+// Pixel-heart lives indicator — filled red for remaining, dark for spent.
+const HEART_GRID = [
+  [0, 1, 1, 0, 1, 1, 0],
+  [1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1],
+  [0, 1, 1, 1, 1, 1, 0],
+  [0, 0, 1, 1, 1, 0, 0],
+  [0, 0, 0, 1, 0, 0, 0],
+];
+function heartSVG(filled) {
+  const cell = 3, W = 7 * cell, H = 6 * cell, col = filled ? '#ff3b5c' : '#43324f';
+  let rects = '';
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 7; c++) if (HEART_GRID[r][c]) rects += `<rect x="${c * cell}" y="${r * cell}" width="${cell}" height="${cell}"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W * 1.7}" height="${H * 1.7}" fill="${col}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+function updateHearts() {
+  let html = '';
+  for (let i = 0; i < CONFIG.LIVES; i++) html += heartSVG(i < state.lives);
+  dom.lives.innerHTML = html;
+}
+function updateAmmo() {
+  let html = '';
+  for (let i = 0; i < CONFIG.PB_AMMO_MAX; i++) html += `<i class="${i < state.ammo ? 'on' : 'off'}"></i>`;
+  dom.ammo.innerHTML = html;
+}
 
 // =============================================================================
 // Draw
@@ -1052,8 +1233,20 @@ function draw() {
   // obstacles
   for (const o of state.obstacles) drawObstacle(o, t);
 
-  // rush tint
-  if (state.rushT > 0) { ctx.save(); ctx.globalAlpha = 0.12 + Math.sin(t * 10) * 0.04; ctx.fillStyle = '#FFD633'; ctx.fillRect(-sx, -sy, view.w, view.h); ctx.restore(); }
+  // bullets — yellow (enemy) and green (pbot), both glowing/sparkling orbs
+  for (const eb of state.enemyBullets) drawGlowOrb(eb.x, eb.y, eb.r, '#FFE258', '#ff8a1e', t * 9 + eb.x * 0.05);
+  for (const pbu of state.pbBullets) drawGlowOrb(pbu.x, pbu.y, pbu.r, '#c9ffce', '#27d651', t * 9 + pbu.x * 0.05);
+
+  // power-up glow — pulsing edge vignette that fades in/out (yellow Rush / green Magnet)
+  if (state.rushT > 0 || state.magnetT > 0) {
+    const col = state.rushT > 0 ? '255,214,51' : '54,226,94';
+    const pulse = 0.5 + 0.5 * Math.sin(t * 6);
+    const cx = view.w / 2 - sx, cy = view.h / 2 - sy;
+    const g = ctx.createRadialGradient(cx, cy, Math.min(view.w, view.h) * 0.22, cx, cy, Math.max(view.w, view.h) * 0.72);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, `rgba(${col},${(0.16 + 0.18 * pulse).toFixed(3)})`);
+    ctx.save(); ctx.fillStyle = g; ctx.fillRect(-sx, -sy, view.w, view.h); ctx.restore();
+  }
 
   if (state.phase !== 'OVER' && !state.pbDead) drawPbot(t);
 
@@ -1129,6 +1322,34 @@ function drawGround() {
   for (let x = -off; x < view.w; x += step) ctx.fillRect(Math.round(x), Math.round(view.groundY + 14 * S()), Math.round(20 * S()), Math.round(3 * S()));
   ctx.restore();
 }
+// Glowing energy orb (bullets) — heavy additive glow + twinkling sparkle.
+function drawGlowOrb(x, y, r, core, glow, phase) {
+  const tw = 0.65 + 0.35 * Math.sin(phase);   // twinkle
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';   // additive = heavy glow
+  for (const [rad, a] of [[r * 3.8, 0.30], [r * 2.1, 0.45]]) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+    g.addColorStop(0, glow); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = a * tw; ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.283); ctx.fill();
+  }
+  // 4-point sparkle star
+  const sp = r * (2.1 + 0.7 * Math.sin(phase * 1.7));
+  ctx.globalAlpha = 0.85 * tw; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1, r * 0.16); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x - sp, y); ctx.lineTo(x + sp, y); ctx.moveTo(x, y - sp); ctx.lineTo(x, y + sp); ctx.stroke();
+  // orbiting sparkle motes
+  for (let k = 0; k < 2; k++) {
+    const a = phase * 2 + k * Math.PI, ox = x + Math.cos(a) * r * 1.7, oy = y + Math.sin(a) * r * 1.7;
+    ctx.globalAlpha = 0.8 * tw; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(ox, oy, r * 0.22, 0, 6.283); ctx.fill();
+  }
+  ctx.restore();
+  // solid core (normal blending)
+  ctx.save();
+  ctx.fillStyle = core; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x - r * 0.28, y - r * 0.28, r * 0.42, 0, 6.283); ctx.fill();
+  ctx.restore();
+}
 function drawRuby(ru, t) {
   const spin = Math.abs(Math.sin(ru.t + t * 2));
   const w = ru.r * (0.5 + spin * 0.5), h = ru.r;
@@ -1183,6 +1404,7 @@ function tone(o) {
   osc.connect(g).connect(audioCtx.destination); osc.start(t); osc.stop(t + dur + 0.05);
 }
 function playJump()    { tone({ freq: 420, freqEnd: 720, type: 'square', dur: 0.14, gain: 0.12 }); }
+function playJump2()   { tone({ freq: 620, freqEnd: 980, type: 'square', dur: 0.12, gain: 0.10 }); }
 function playCollect() { tone({ freq: 880, type: 'triangle', dur: 0.10, gain: 0.14 }); tone({ freq: 1320, type: 'triangle', dur: 0.10, gain: 0.10, delay: 0.04 }); }
 function playPower()   { tone({ freq: 520, freqEnd: 1040, type: 'sine', dur: 0.3, gain: 0.16 }); }
 function playRush()    { tone({ freq: 300, freqEnd: 900, type: 'sawtooth', dur: 0.35, gain: 0.16 }); tone({ freq: 600, freqEnd: 1200, type: 'square', dur: 0.3, gain: 0.10, delay: 0.05 }); }
@@ -1195,6 +1417,9 @@ function playDeath() {
   tone({ freq: 160, freqEnd: 40, type: 'sawtooth', dur: 0.5, gain: 0.18 });
   tone({ freq: 90, freqEnd: 30, type: 'square', dur: 0.45, gain: 0.12, delay: 0.03 });
 }
+function playShoot()      { tone({ freq: 680, freqEnd: 1020, type: 'square', dur: 0.08, gain: 0.07 }); }
+function playOrbHit()     { tone({ freq: 520, freqEnd: 240, type: 'triangle', dur: 0.08, gain: 0.07 }); }
+function playEnemyShoot() { tone({ freq: 320, freqEnd: 180, type: 'sawtooth', dur: 0.10, gain: 0.06 }); }
 // Game-over jingle — short descending motif, friendly not foreboding.
 function playGameOver() {
   tone({ freq: 523, type: 'square', dur: 0.16, gain: 0.15 });
@@ -1289,6 +1514,9 @@ function startGame() {
   Object.assign(state, {
     phase: 'PLAYING', score: 0, elapsed: 0, worldDist: 0, dodged: 0,
     obstacles: [], rubies: [], bubbles: [], floaters: [], particles: [], blasts: [], deathBolts: [], pbDead: false,
+    respawnT: 0, lives: CONFIG.LIVES, enemyBullets: [], pbBullets: [], shootCd: 0,
+    ammo: CONFIG.PB_AMMO_MAX, ammoRegenT: 0, jumpsUsed: 0,
+    rushSpawned: 0, rushSpawnT: 0, lastRushY: -999, shootHeld: false,
     pbY: 0, pbV: 0, grounded: true, ducking: false, coyote: 0, invuln: 0.6,
     magnetT: 0, rushT: 0, sinceMagnetRoll: 0, sinceRushRoll: 0,
     sinceObstacle: -0.8, sinceRuby: 0, jumps: 0, shake: 0,
@@ -1300,6 +1528,8 @@ function startGame() {
   dom.hud.classList.remove('hidden');
   showTouch(true);
   updatePowerBadge();
+  updateHearts();
+  updateAmmo();
   updateHud();
   startMusic('game');
 }
@@ -1374,8 +1604,12 @@ canvas.addEventListener('mousedown', tapJump);
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { if (!e.repeat) { e.preventDefault(); doJump(); } }
   else if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); setDuck(true); }
+  else if (e.code === 'KeyX' || e.code === 'KeyF' || e.code === 'KeyJ') { e.preventDefault(); state.shootHeld = true; }
 });
-window.addEventListener('keyup', (e) => { if (e.code === 'ArrowDown' || e.code === 'KeyS') setDuck(false); });
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') setDuck(false);
+  else if (e.code === 'KeyX' || e.code === 'KeyF' || e.code === 'KeyJ') state.shootHeld = false;
+});
 
 // On-screen pads (mobile). Jump fires on press; duck is held.
 function bindHold(btn, on, off) {
@@ -1388,6 +1622,7 @@ function bindHold(btn, on, off) {
 }
 bindHold(dom.jumpBtn, () => doJump());
 bindHold(dom.duckBtn, () => setDuck(true), () => setDuck(false));
+bindHold(dom.shootBtn, () => { state.shootHeld = true; shoot(); }, () => { state.shootHeld = false; });
 function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });

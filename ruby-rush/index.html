@@ -475,6 +475,7 @@ const CONFIG = {
   RUSH_EVERY_MS: 22000, RUSH_CHANCE: 0.5, RUSH_DUR: 7, RUSH_SPEED_MULT: 1.5,
   RUSH_SUPPRESS_NEAR_CAP: 70,   // don't arm a rush within this many of the cap
 
+  MOBILE_ZOOM: 0.58,            // touch devices pull the camera back to show more field
   RESUME_INVULN_SEC: 1.6,       // grace window after a Continue
   STORAGE_KEY_BEST: 'ruby-rush:best',
   STORAGE_KEY_MUTE: 'ruby-rush:mute',
@@ -621,6 +622,9 @@ function resize() {
   ctx.imageSmoothingEnabled = false;
   // Scale gameplay to vertical space so jump height feels consistent.
   view.scale = Math.max(0.62, Math.min(1.35, view.h / 760));
+  // On touch devices, pull the camera back so the playfield reads more zoomed
+  // out (smaller sprites, more of the scene visible).
+  if (IS_TOUCH) view.scale = Math.max(0.45, view.scale * CONFIG.MOBILE_ZOOM);
   view.groundY = Math.round(view.h * CONFIG.GROUND_FRAC);
   view.pbX = Math.round(view.w * CONFIG.PB_X_FRAC);
 }

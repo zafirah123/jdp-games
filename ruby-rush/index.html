@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020d26">
+<title>Ruby Rush — JDP Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #020d26;
+    color: #fff;
+    font-family: 'Poppins', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  canvas#game {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .hidden { display: none !important; }
+
+  /* Top HUD bar — DESIGN.md §5.12 (Score · Time · Audio in one row) */
+  .hud-bar {
+    position: fixed; left: 0; right: 0; top: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: max(8px, env(safe-area-inset-top)) 8px 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hud-row {
+    width: 100%; max-width: 30rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    pointer-events: auto;
+  }
+  .jdp-pill {
+    flex: 1;
+    display: flex; align-items: stretch;
+    background: #fff;
+    border: 2px solid #FFB603;
+    border-radius: 30px;
+    overflow: hidden;
+    height: 40px;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+  .jdp-pill .pill-label {
+    background: #9E131F;
+    color: #FFD633;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex; align-items: center;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+  .jdp-pill .pill-value {
+    flex: 1;
+    background: #133B9F;
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 6px;
+    transition: color 0.2s, background 0.2s;
+  }
+  .jdp-pill .pill-value.font-mono { font-family: 'Roboto Mono', monospace; font-size: 15px; }
+  .jdp-pill.urgent .pill-value { background: #AF1726; color: #FFD633; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  .pill-value.bump { animation: pop 0.18s ease-out; }
+
+  /* Square control buttons — DESIGN.md §5.11 */
+  .icon-btn {
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    border-radius: 22px;
+    border: 2px solid #FFB603;
+    background: #9E131F;
+    color: #FFD633;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 80ms ease;
+    font-weight: 800; font-size: 11px; letter-spacing: 0.04em;
+    font-family: inherit;
+  }
+  .icon-btn:active { transform: scale(0.92); }
+  .icon-btn svg { width: 22px; height: 22px; fill: currentColor; }
+
+  /* Power-up status badge under the HUD row */
+  .badge {
+    margin: 8px auto 0;
+    border: 2px solid #FFD633;
+    border-radius: 999px;
+    padding: 4px 16px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #031034;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    width: fit-content;
+    pointer-events: none;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+  }
+  .badge.magnet { background: #57c7ff; }
+  .badge.rush   { background: #FFD633; animation: pulse 0.4s ease-in-out infinite alternate; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(2, 13, 38, 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    padding: 16px;
+  }
+  .card {
+    background: linear-gradient(180deg, #020d26 0%, #051335 100%);
+    border: 3px solid #FFD633;
+    border-radius: 24px;
+    padding: 28px 26px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 0 rgba(0,0,0,0.4);
+  }
+  .card .logo {
+    width: min(500px, 112%);
+    max-width: none;
+    height: auto;
+    display: block;
+    /* Scale up and overflow above the card top so the wordmark fills the hero.
+       Centred with a transform (margin:auto can't centre an element wider than
+       its container — it would collapse and shove the logo to the right). */
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: -52px 0 4px;
+    image-rendering: auto;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
+  }
+  .card h1 {
+    font-size: 40px;
+    margin: 0 0 6px;
+    font-weight: 800;
+    color: #FFD633;
+    letter-spacing: 1px;
+    text-shadow: 0 4px 0 #AF1726;
+    text-transform: uppercase;
+  }
+  .card h2 {
+    font-size: 26px;
+    margin: 0 0 14px;
+    color: #FFD633;
+    font-weight: 700;
+  }
+  .card .sub { font-size: 14px; color: #FFFFFF; margin: 0 0 18px; opacity: 0.92; line-height: 1.45; }
+  .card .best { font-size: 14px; color: #FFD633; margin: 0 0 18px; font-weight: 600; min-height: 20px; }
+  .card .hint { font-size: 12px; color: rgba(255,255,255,0.6); margin: 14px 0 0; line-height: 1.5; }
+  .card .hint kbd {
+    background: rgba(255,214,51,0.15);
+    border: 1px solid rgba(255,214,51,0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #FFD633;
+    font-family: inherit;
+    font-size: 11px;
+  }
+  .cta {
+    background: linear-gradient(180deg, #FFE258 0%, #FFBA0A 100%);
+    border: 3px solid #FFB603;
+    border-radius: 999px;
+    padding: 14px 36px;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 800;
+    color: #031034;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 0 #DE9D00;
+    transition: transform 0.08s, box-shadow 0.08s;
+    text-transform: uppercase;
+    width: 100%;
+  }
+  .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
+  .cta.secondary {
+    background: transparent;
+    border: 2px solid rgba(255,214,51,0.55);
+    color: #FFD633;
+    box-shadow: none;
+    font-size: 15px;
+    padding: 11px 24px;
+    margin-top: 10px;
+  }
+  .cta.secondary:active { transform: translateY(1px); box-shadow: none; }
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 16px;
+    margin: 0 0 20px;
+    font-size: 14px;
+  }
+  .stats .label { color: rgba(255,255,255,0.7); text-align: left; }
+  .stats .value { color: #FFD633; font-weight: 700; text-align: right; }
+  .new-best {
+    display: inline-block;
+    background: #FFD633;
+    color: #031034;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin: 0 0 12px;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+  /* Start menu uses the retro city art behind a dark scrim. Portrait art on
+     phones (9:16), the wide panorama in landscape. */
+  #menu {
+    background-image:
+      linear-gradient(180deg, rgba(2,13,38,0.50) 0%, rgba(2,13,38,0.88) 100%),
+      url('assets/backgrounds/bg-portrait.webp');
+    background-size: cover;
+    background-position: center bottom;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  @media (orientation: landscape) {
+    #menu {
+      background-image:
+        linear-gradient(180deg, rgba(2,13,38,0.50) 0%, rgba(2,13,38,0.88) 100%),
+        url('assets/backgrounds/bg.webp');
+    }
+  }
+
+  /* On-screen jump / duck pads — shown on touch devices during play. */
+  .touch-controls { display: none; }
+  .touch-controls.active { display: block; }
+  .tc-btn {
+    position: fixed;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    width: 92px; height: 92px; border-radius: 50%;
+    border: 3px solid #FFB603;
+    color: #FFD633;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px;
+    font-family: inherit; font-weight: 800; font-size: 12px; letter-spacing: 0.06em;
+    pointer-events: auto;
+    -webkit-user-select: none; user-select: none;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.35);
+    touch-action: none;
+    z-index: 12;
+    opacity: 0.92;
+  }
+  .tc-btn .ic { font-size: 30px; line-height: 1; }
+  .tc-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+  #duckBtn { left: max(18px, env(safe-area-inset-left)); background: rgba(158,19,31,0.82); }
+  #jumpBtn { right: max(18px, env(safe-area-inset-right)); background: linear-gradient(180deg,#FFE258,#FFBA0A); color: #031034; }
+  /* Hint nudging the buttons on coarse pointers; mouse users get the keyboard. */
+  @media (pointer: fine) { .touch-controls.active { display: none; } }
+
+  @media (max-width: 420px) {
+    .card h1 { font-size: 34px; }
+    .card .logo { width: min(118%, 420px); margin-top: -34px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hud-bar hidden">
+  <div class="hud-row">
+    <div class="jdp-pill"><span class="pill-label" id="scoreLabel">Rubies</span><span class="pill-value" id="scoreVal">0</span></div>
+    <button id="endBtn" class="icon-btn" aria-label="End run">END</button>
+    <div class="jdp-pill" id="timePill"><span class="pill-label" id="timeLabel">Time</span><span class="pill-value font-mono" id="timeVal">3:00</span></div>
+    <button id="muteBtn" class="icon-btn" aria-label="AUDIO ON" aria-pressed="false">
+      <svg viewBox="0 0 24 24"></svg>
+    </button>
+  </div>
+  <div id="powerBadge" class="badge hidden"></div>
+</div>
+
+<!-- On-screen controls (touch) -->
+<div id="touchControls" class="touch-controls">
+  <button id="duckBtn" class="tc-btn" aria-label="Duck"><span class="ic">▼</span><span id="duckLbl">DUCK</span></button>
+  <button id="jumpBtn" class="tc-btn" aria-label="Jump"><span class="ic">▲</span><span id="jumpLbl">JUMP</span></button>
+</div>
+
+<!-- Start menu -->
+<div id="menu" class="overlay">
+  <div class="card">
+    <img id="logo" class="logo hidden" alt="">
+    <h1 id="menuTitle">Ruby Rush</h1>
+    <p class="sub" id="menuSub"></p>
+    <p class="best" id="bestText">&nbsp;</p>
+    <button id="startBtn" class="cta"></button>
+    <p class="hint" id="menuHint"></p>
+  </div>
+</div>
+
+<!-- Pause / early-end (§6.5) -->
+<div id="pause" class="overlay hidden">
+  <div class="card">
+    <h2 id="pauseTitle"></h2>
+    <p class="sub" id="pauseSub"></p>
+    <button id="resumeBtn" class="cta"></button>
+    <button id="endRunBtn" class="cta secondary"></button>
+  </div>
+</div>
+
+<!-- Crash → Continue (§1.2 / §6.5) -->
+<div id="continue" class="overlay hidden">
+  <div class="card">
+    <h2 id="crashTitle"></h2>
+    <p class="sub" id="crashSub"></p>
+    <button id="continueBtn" class="cta"></button>
+    <button id="giveUpBtn" class="cta secondary"></button>
+  </div>
+</div>
+
+<!-- Final modal -->
+<div id="gameOver" class="overlay hidden">
+  <div class="card">
+    <h2 id="goTitle"></h2>
+    <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel"></span></div>
+    <div id="finalStats" class="stats"></div>
+    <button id="claimBtn" class="cta"></button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// =============================================================================
+// i18n — ?lang=ms switches the game's copy to Bahasa Melayu, English otherwise.
+// (CLAUDE.md §6.4 — canonical keys aligned across every JDP game.)
+// =============================================================================
+const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    start: 'START GAME',
+    timeUp: "TIME'S UP!",
+    gameOver: 'GAME OVER',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    claim: 'CLAIM SCORE',
+    menuSub: 'Float, jump and duck through 3 minutes.<br>Grab every ruby — race to 500!',
+    menuHint: 'Tap / <kbd>Space</kbd> to jump &nbsp;·&nbsp; hold the lower screen / <kbd>↓</kbd> to duck',
+    scoreLabel: 'Rubies', timeLabel: 'Time',
+    magnet: 'MAGNET!', rush: 'POWER RUSH!',
+    paused: 'PAUSED', pauseSub: 'End the run now and submit your score?',
+    resume: 'RESUME', endRun: 'END RUN',
+    crash: 'CRASH!',
+    crashSub: (mmss) => `${mmss} still left — keep your rubies and jump back in!`,
+    continue: 'CONTINUE', giveUp: 'CLAIM SCORE',
+    newBest: 'NEW BEST!', jump: 'JUMP', duck: 'DUCK',
+    statScore: 'Rubies', statBest: 'Best', statDodged: 'Obstacles cleared', statTime: 'Time played',
+  },
+  ms: {
+    start: 'MULA MAIN',
+    timeUp: 'MASA TAMAT!',
+    gameOver: 'PERMAINAN TAMAT',
+    audioOn: 'AUDIO ON',
+    audioOff: 'AUDIO OFF',
+    claim: 'TUNTUT SKOR',
+    menuSub: 'Terbang, lompat dan tunduk selama 3 minit.<br>Kutip setiap delima — kejar ke 500!',
+    menuHint: 'Ketuk / <kbd>Space</kbd> untuk lompat &nbsp;·&nbsp; tahan bahagian bawah / <kbd>↓</kbd> untuk tunduk',
+    scoreLabel: 'Delima', timeLabel: 'Masa',
+    magnet: 'MAGNET!', rush: 'KUASA RUSH!',
+    paused: 'DIJEDA', pauseSub: 'Tamatkan pusingan dan hantar skor anda?',
+    resume: 'SAMBUNG', endRun: 'TAMATKAN PUSINGAN',
+    crash: 'TERLANGGAR!',
+    crashSub: (mmss) => `${mmss} masih berbaki — simpan delima dan teruskan!`,
+    continue: 'TERUSKAN', giveUp: 'TUNTUT SKOR',
+    newBest: 'REKOD BAHARU!', jump: 'LOMPAT', duck: 'TUNDUK',
+    statScore: 'Delima', statBest: 'Terbaik', statDodged: 'Halangan dilepasi', statTime: 'Masa dimainkan',
+  },
+}[LANG];
+
+// =============================================================================
+// CONFIG — all tunables live here (CLAUDE.md pattern #1)
+// =============================================================================
+const CONFIG = {
+  GAME_NAME: 'ruby-rush',
+  GAME_DURATION_SEC: 180,
+  RUBY_CAP: 500,
+
+  // Vertical layout — world units, multiplied by view.scale at draw time.
+  PB_H: 150, PB_W: 120,
+  PB_X_FRAC: 0.24,            // pbot's fixed horizontal position
+  GROUND_FRAC: 0.82,         // groundY as a fraction of viewport height (on the sidewalk)
+  BG_PARALLAX: 0.85,         // background scroll speed vs. gameplay
+  BG_DIM: 0.34,              // dark scrim over the background art (calmer, less dizzying)
+  FLYER_BAND_FRAC: 0.71,     // flyer band bottom — standing pbot collides, crouch clears
+  WALK_STEP_PX: 26,          // world px between walk-frame swaps
+
+  // Jump arc
+  GRAVITY: 2700,
+  JUMP_V: 1100,
+  DUCK_GRAVITY_MULT: 2.4,    // fast-fall when ducking mid-air
+  COYOTE_SEC: 0.09,
+
+  // World speed — stepped up every 30s (per request), capped at 5 steps.
+  // (Dialled down ~20% from the original pace for comfort.)
+  SPEED_BASE: 240,
+  SPEED_STEP: 37,
+  SPEED_STEP_SEC: 30,
+  SPEED_STEP_MAX: 5,
+
+  // Obstacle spacing — measured in seconds-of-reaction, ramps tighter to 85%.
+  // Wider gaps so the ground tanks read clearly and arrive less frantically.
+  GAP_SEC: { start: 1.95, end: 1.20 },
+  RAMP_COMPLETE_AT: 0.85,
+  GAP_JITTER: 0.45,
+  FLYER_CHANCE: { start: 0.12, end: 0.42 },
+
+  // Enemy sizing (world units). Ground monsters are ~15% shorter than pbot so
+  // the jump clears comfortably.
+  GROUND_H: 128,
+  FLYER_H: 86,               // flying monster height
+  FLYER_BOB: 4,              // gentle float amplitude (world units)
+
+  // Ruby supply — taper as score nears the cap (CLAUDE.md §1.4), never clamp.
+  // Spacing widened so ~40% fewer rubies spawn (less visual clutter).
+  RUBY_GAP_SEC: 1.75,
+  RUBY_TAPER_START: 420,
+  RUBY_TAPER_END: 520,
+
+  // Magnet (aid) power-up
+  MAGNET_EVERY_MS: 9000, MAGNET_CHANCE: 0.6, MAGNET_DUR: 5, MAGNET_PULL: 640,
+  // Power Rush (frenzy) power-up
+  RUSH_EVERY_MS: 22000, RUSH_CHANCE: 0.5, RUSH_DUR: 7, RUSH_SPEED_MULT: 1.5,
+  RUSH_SUPPRESS_NEAR_CAP: 70,   // don't arm a rush within this many of the cap
+
+  RESUME_INVULN_SEC: 1.6,       // grace window after a Continue
+  STORAGE_KEY_BEST: 'ruby-rush:best',
+  STORAGE_KEY_MUTE: 'ruby-rush:mute',
+  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
+};
+
+// =============================================================================
+// DOM refs
+// =============================================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const $ = (id) => document.getElementById(id);
+const dom = {
+  hud: $('hud'), scoreVal: $('scoreVal'), scoreLabel: $('scoreLabel'),
+  timePill: $('timePill'), timeVal: $('timeVal'), timeLabel: $('timeLabel'),
+  endBtn: $('endBtn'), muteBtn: $('muteBtn'), powerBadge: $('powerBadge'),
+  touchControls: $('touchControls'), jumpBtn: $('jumpBtn'), duckBtn: $('duckBtn'),
+  jumpLbl: $('jumpLbl'), duckLbl: $('duckLbl'),
+  menu: $('menu'), menuTitle: $('menuTitle'), menuSub: $('menuSub'),
+  menuHint: $('menuHint'), startBtn: $('startBtn'), bestText: $('bestText'), logo: $('logo'),
+  pause: $('pause'), pauseTitle: $('pauseTitle'), pauseSub: $('pauseSub'),
+  resumeBtn: $('resumeBtn'), endRunBtn: $('endRunBtn'),
+  cont: $('continue'), crashTitle: $('crashTitle'), crashSub: $('crashSub'),
+  continueBtn: $('continueBtn'), giveUpBtn: $('giveUpBtn'),
+  gameOver: $('gameOver'), goTitle: $('goTitle'), goNewBest: $('goNewBest'),
+  newBestLabel: $('newBestLabel'), finalStats: $('finalStats'), claimBtn: $('claimBtn'),
+};
+
+// Localized static copy
+dom.menuSub.innerHTML = COPY.menuSub;
+dom.menuHint.innerHTML = COPY.menuHint;
+dom.startBtn.textContent = COPY.start;
+dom.claimBtn.textContent = COPY.claim;
+dom.newBestLabel.textContent = COPY.newBest;
+dom.scoreLabel.textContent = COPY.scoreLabel;
+dom.timeLabel.textContent = COPY.timeLabel;
+dom.pauseTitle.textContent = COPY.paused;
+dom.pauseSub.textContent = COPY.pauseSub;
+dom.resumeBtn.textContent = COPY.resume;
+dom.endRunBtn.textContent = COPY.endRun;
+dom.crashTitle.textContent = COPY.crash;
+dom.continueBtn.textContent = COPY.continue;
+dom.giveUpBtn.textContent = COPY.giveUp;
+dom.jumpLbl.textContent = COPY.jump;
+dom.duckLbl.textContent = COPY.duck;
+
+// =============================================================================
+// Image assets — pbot frames, logo. Each gets an {img, ok} entry; the game
+// renders a placeholder until the bitmap loads (CLAUDE.md pattern #8).
+// =============================================================================
+const IMG = {};
+function loadImg(key, src, onload) {
+  const img = new Image();
+  const rec = { img, ok: false };
+  img.onload = () => { rec.ok = true; if (onload) onload(rec); };
+  img.src = src;
+  IMG[key] = rec;
+}
+loadImg('walk1', 'assets/sprites/pbot-walk1.webp');
+loadImg('walk2', 'assets/sprites/pbot-walk2.webp');
+loadImg('jump',  'assets/sprites/pbot-jump.webp');
+loadImg('duck',  'assets/sprites/pbot-duck.webp');
+loadImg('bg',    'assets/backgrounds/bg.webp');
+loadImg('enemy1', 'assets/sprites/enemy-ground-1.webp');
+loadImg('enemy2', 'assets/sprites/enemy-ground-2.webp');
+for (let i = 0; i < 4; i++) loadImg('flyer' + i, 'assets/sprites/flyer-' + i + '.webp');
+// Optional logo — swaps in over the text title once it loads.
+loadImg('logo', 'assets/sprites/game_logo.webp', (rec) => {
+  dom.logo.src = rec.img.src; dom.logo.classList.remove('hidden'); dom.menuTitle.classList.add('hidden');
+});
+
+// =============================================================================
+// Sandbox-safe storage
+// =============================================================================
+function storageGet(k, f) { try { const v = localStorage.getItem(k); return v === null ? f : v; } catch (e) { return f; } }
+function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+// =============================================================================
+// State
+// =============================================================================
+const state = {
+  phase: 'MENU',             // MENU | PLAYING | PAUSED | CRASHED | OVER
+  score: 0,
+  best: parseInt(storageGet(CONFIG.STORAGE_KEY_BEST, '0'), 10) || 0,
+  muted: storageGet(CONFIG.STORAGE_KEY_MUTE, '0') === '1',
+  elapsed: 0,                // seconds of round actually played
+  obstacles: [],
+  rubies: [],
+  bubbles: [],               // power-up pickups drifting in
+  floaters: [],              // "+1" text pops
+  particles: [],             // sparkles / poofs
+  blasts: [],                // explosion rings (rush plow-through)
+  deathBolts: [],            // Mega Man-style death burst pellets
+  pbDead: false,             // hide pbot while the death burst plays
+  worldDist: 0,              // accumulated scroll for parallax + ground texture
+  dodged: 0,
+  // pbot motion
+  pbY: 0,                    // height above ground (0 = floating at rest line)
+  pbV: 0,                    // vertical velocity
+  grounded: true,
+  ducking: false,
+  coyote: 0,
+  invuln: 0,
+  // power-ups
+  magnetT: 0, rushT: 0,
+  sinceMagnetRoll: 0, sinceRushRoll: 0,
+  sinceObstacle: 0, sinceRuby: 0,
+  // anti-abuse
+  jumps: 0,
+  shake: 0,
+};
+
+// =============================================================================
+// Viewport / scale
+// =============================================================================
+const view = { w: 0, h: 0, dpr: 1, scale: 1, groundY: 0, pbX: 0 };
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.w = window.innerWidth; view.h = window.innerHeight; view.dpr = dpr;
+  canvas.width = Math.floor(view.w * dpr);
+  canvas.height = Math.floor(view.h * dpr);
+  canvas.style.width = view.w + 'px';
+  canvas.style.height = view.h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  // Scale gameplay to vertical space so jump height feels consistent.
+  view.scale = Math.max(0.62, Math.min(1.35, view.h / 760));
+  view.groundY = Math.round(view.h * CONFIG.GROUND_FRAC);
+  view.pbX = Math.round(view.w * CONFIG.PB_X_FRAC);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const S = () => view.scale;
+// Pixel-snapped fill rect — keeps the chunky pixel look crisp.
+function R(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.ceil(w)), Math.max(1, Math.ceil(h))); }
+
+// =============================================================================
+// Difficulty helpers
+// =============================================================================
+function rampT() {
+  const end = CONFIG.GAME_DURATION_SEC * CONFIG.RAMP_COMPLETE_AT;
+  return Math.min(1, state.elapsed / end);
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+function speedStep() { return Math.min(CONFIG.SPEED_STEP_MAX, Math.floor(state.elapsed / CONFIG.SPEED_STEP_SEC)); }
+function worldSpeed() {
+  let s = CONFIG.SPEED_BASE + speedStep() * CONFIG.SPEED_STEP;
+  if (state.rushT > 0) s *= CONFIG.RUSH_SPEED_MULT;
+  return s;
+}
+function rubySpawnChance() {
+  // 1 − smoothstep(taperStart, taperEnd, score): supply calms near the cap.
+  const a = CONFIG.RUBY_TAPER_START, b = CONFIG.RUBY_TAPER_END;
+  const t = Math.min(1, Math.max(0, (state.score - a) / (b - a)));
+  const smooth = t * t * (3 - 2 * t);
+  return 1 - smooth;
+}
+
+// =============================================================================
+// Procedural pixel enemies — a tiny LCG seeds a symmetric, friendly creature.
+// (CLAUDE.md pattern #8: generated content, #6: variants for free.)
+// =============================================================================
+function lcg(seed) { let s = (seed >>> 0) || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+let enemySeed = 1337;
+
+function makeEnemy(kind) {
+  const rnd = lcg(enemySeed = (enemySeed * 75 + 74) % 65537 + 7);
+  const hue = Math.floor(rnd() * 360);
+  // Vibrant but child-safe: bright body, darker shade, white + navy eyes.
+  const pal = {
+    a: `hsl(${hue}, 78%, 60%)`,
+    b: `hsl(${hue}, 70%, 44%)`,
+    c: `hsl(${(hue + 40) % 360}, 85%, 66%)`,  // accent spikes / wings
+    eye: '#FFFFFF', pupil: '#031034',
+  };
+  const COLS = 6, ROWS = 6;
+  const grid = [];
+  for (let r = 0; r < ROWS; r++) grid.push(new Array(COLS).fill(0));
+  // Build a mirrored half so the creature is left-right symmetric.
+  const half = Math.ceil(COLS / 2);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < half; c++) {
+      const edge = (r === 0 || r === ROWS - 1 || c === 0);
+      let on = rnd() > (edge ? 0.55 : 0.18);
+      // keep a solid core
+      if (r > 0 && r < ROWS - 1 && c >= 1) on = rnd() > 0.12;
+      let v = on ? 1 : 0;
+      if (on && rnd() > 0.7) v = 2;            // shading speckle
+      if (on && r === 0 && rnd() > 0.5) v = 3; // top accent (spike/ear)
+      grid[r][c] = v;
+      grid[r][COLS - 1 - c] = v;
+    }
+  }
+  // Friendly eyes on row 2 so it reads cute, never scary.
+  const er = 2;
+  grid[er][1] = 4; grid[er][COLS - 2] = 4;
+  const sprite = { grid, pal, hue, kind, flap: rnd() * 6.28 };
+  return sprite;
+}
+
+// Ground monsters use the tank sprite (treads roll via walk1/walk2); flyers
+// stay procedural until their sheet arrives.
+function drawObstacle(o, t) {
+  if (o.kind === 'ground' && IMG.enemy1 && IMG.enemy1.ok && IMG.enemy2 && IMG.enemy2.ok) {
+    const swap = (Math.floor(state.worldDist / (CONFIG.WALK_STEP_PX * S())) + (o.phase || 0)) % 2;
+    const rec = swap ? IMG.enemy2 : IMG.enemy1;
+    const x = Math.round(o.x), y = Math.round(o.y), w = Math.round(o.w), h = Math.round(o.h);
+    // Flip horizontally so the tank faces left, toward the oncoming pbot.
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(x + w, y); ctx.scale(-1, 1);
+    ctx.drawImage(rec.img, 0, 0, w, h);
+    ctx.restore();
+  } else if (o.kind === 'flyer' && IMG.flyer3 && IMG.flyer3.ok) {
+    const rec = IMG['flyer' + flyerFrame(o)];
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(rec.img, Math.round(o.x), Math.round(o.y), Math.round(o.w), Math.round(o.h));
+  } else {
+    drawEnemySprite(o.sp, o.x, o.y, o.w, o.h, t);
+  }
+}
+// Eyes rest open (frame 3); a quick blink to closed (frame 0) and back fires
+// every ~2.6s, phase-offset per flyer so they don't blink in unison.
+function flyerFrame(o) {
+  const cycle = 2.6, tt = (state._t + (o.bobPhase || 0)) % cycle;
+  if (tt < 0.24) { const seq = [3, 2, 1, 0, 1, 2, 3]; return seq[Math.min(seq.length - 1, (tt / 0.24 * seq.length) | 0)]; }
+  return 3;
+}
+
+function drawEnemySprite(sp, x, y, w, h, t) {
+  const COLS = sp.grid[0].length, ROWS = sp.grid.length;
+  const cw = w / COLS, ch = h / ROWS;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const v = sp.grid[r][c];
+      if (!v) continue;
+      const px = x + c * cw, py = y + r * ch;
+      if (v === 1) R(px, py, cw + 0.5, ch + 0.5, sp.pal.a);
+      else if (v === 2) R(px, py, cw + 0.5, ch + 0.5, sp.pal.b);
+      else if (v === 3) R(px, py, cw + 0.5, ch + 0.5, sp.pal.c);
+      else if (v === 4) { R(px, py, cw + 0.5, ch + 0.5, sp.pal.eye); R(px + cw * 0.28, py + ch * 0.28, cw * 0.45, ch * 0.45, sp.pal.pupil); }
+    }
+  }
+  // Flapping wings for flyers — two accent triangles that beat with time.
+  if (sp.kind === 'flyer') {
+    const beat = Math.sin(t * 12 + sp.flap);
+    const wy = y + h * 0.35 + beat * h * 0.18;
+    const ww = w * 0.42, wh = h * 0.3;
+    ctx.fillStyle = sp.pal.c;
+    ctx.beginPath();
+    ctx.moveTo(x, y + h * 0.5); ctx.lineTo(x - ww, wy); ctx.lineTo(x - ww * 0.4, wy + wh); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w, y + h * 0.5); ctx.lineTo(x + w + ww, wy); ctx.lineTo(x + w + ww * 0.4, wy + wh); ctx.closePath(); ctx.fill();
+  }
+}
+
+// =============================================================================
+// pbot — rendered from the four sprite-sheet frames. Legs animate (walk1/walk2)
+// while running, the jump frame plays airborne, the duck frame while crouching.
+// =============================================================================
+function pbFrameKey() {
+  if (!state.grounded) return 'jump';
+  if (state.ducking) return 'duck';
+  return (Math.floor(state.worldDist / (CONFIG.WALK_STEP_PX * S())) % 2) ? 'walk2' : 'walk1';
+}
+// Resolve the current frame's drawn size. All frames share one scale derived
+// from the walk frame so jump/duck keep their natural relative proportions.
+function getPbFrame() {
+  const key = pbFrameKey();
+  const rec = IMG[key];
+  const refH = (IMG.walk1 && IMG.walk1.ok) ? IMG.walk1.img.naturalHeight : 434;
+  const cs = (CONFIG.PB_H * S()) / refH;
+  if (rec && rec.ok) return { rec, dw: rec.img.naturalWidth * cs, dh: rec.img.naturalHeight * cs, key };
+  const dh = (key === 'duck' ? CONFIG.PB_H * 0.7 : CONFIG.PB_H) * S();
+  return { rec: null, dw: CONFIG.PB_W * S(), dh, key };
+}
+function drawPbot(t) {
+  const f = getPbFrame();
+  const baseY = view.groundY - state.pbY * S();
+  const x = view.pbX - f.dw / 2, y = baseY - f.dh;
+
+  // Contact shadow — tightens as pbot lifts off.
+  const lift = Math.max(0.18, 1 - state.pbY / 230);
+  ctx.save();
+  ctx.globalAlpha = 0.30 * lift; ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(view.pbX, view.groundY + 3 * S(), f.dw * 0.34 * lift, 8 * S() * lift, 0, 0, 6.283); ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  if (state.invuln > 0 && Math.floor(t * 12) % 2 === 0) ctx.globalAlpha = 0.4;
+  if (f.rec) { ctx.imageSmoothingEnabled = false; ctx.drawImage(f.rec.img, Math.round(x), Math.round(y), Math.round(f.dw), Math.round(f.dh)); }
+  else R(x, y, f.dw, f.dh, '#41c25a');
+  ctx.restore();
+}
+
+// pbot hitbox — derived from the drawn frame; legs splay so inset the sides,
+// and the head pokes the top. Duck frame is naturally short → clears flyers.
+function pbotBox() {
+  const f = getPbFrame();
+  const baseY = view.groundY - state.pbY * S();
+  const top = baseY - f.dh;
+  const ix = f.dw * 0.26, iyTop = f.dh * 0.12, iyBot = f.dh * 0.06;
+  return { x: view.pbX - f.dw / 2 + ix, y: top + iyTop, w: f.dw - ix * 2, h: f.dh - iyTop - iyBot };
+}
+function hit(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+
+// =============================================================================
+// Spawning
+// =============================================================================
+function spawnObstacle() {
+  const s = S();
+  const flyChance = lerp(CONFIG.FLYER_CHANCE.start, CONFIG.FLYER_CHANCE.end, rampT());
+  const isFlyer = Math.random() < flyChance;
+  if (isFlyer) {
+    const h = CONFIG.FLYER_H * s;
+    const aspect = (IMG.flyer3 && IMG.flyer3.ok) ? (IMG.flyer3.img.naturalWidth / IMG.flyer3.img.naturalHeight) : 1.25;
+    const w = h * aspect;
+    // Band sits where a standing pbot's head pokes in — must DUCK (and not jump).
+    // The float bob is small enough that ducking always clears and standing
+    // always collides (checked against FLYER_BAND_FRAC).
+    const bottomGap = CONFIG.PB_H * s * CONFIG.FLYER_BAND_FRAC;
+    const baseY = view.groundY - bottomGap - h;
+    state.obstacles.push({
+      kind: 'flyer', x: view.w + w,
+      baseY, y: baseY, w, h,
+      sp: makeEnemy('flyer'), bobPhase: Math.random() * 6.28, scored: false,
+    });
+  } else {
+    const h = CONFIG.GROUND_H * s;   // same standing height as pbot
+    // Width follows the tank sprite's aspect so it isn't stretched.
+    const aspect = (IMG.enemy1 && IMG.enemy1.ok) ? (IMG.enemy1.img.naturalWidth / IMG.enemy1.img.naturalHeight) : 0.72;
+    const w = h * aspect;
+    state.obstacles.push({
+      kind: 'ground', x: view.w + w,
+      y: view.groundY - h, w, h,
+      sp: makeEnemy('ground'), phase: Math.floor(Math.random() * 2), scored: false,
+    });
+  }
+}
+
+function spawnRubyFormation() {
+  if (Math.random() > rubySpawnChance()) return;   // taper near the cap
+  const s = S();
+  const baseX = view.w + 40 * s;
+  const r = 18 * s;
+  const shape = Math.floor(Math.random() * 3);
+  const groundRun = view.groundY - CONFIG.PB_H * s * 0.5;  // run-through height
+  const jumpArc = view.groundY - CONFIG.PB_H * s * 1.35;   // catch mid-jump
+  if (shape === 0) {            // straight run line
+    const n = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) state.rubies.push(mkRuby(baseX + i * r * 3, groundRun, r));
+  } else if (shape === 1) {     // jump arc
+    const n = 5;
+    for (let i = 0; i < n; i++) {
+      const p = i / (n - 1);
+      const y = jumpArc + Math.sin(p * Math.PI) * -90 * s;
+      state.rubies.push(mkRuby(baseX + i * r * 2.6, y, r));
+    }
+  } else {                      // small cluster column
+    for (let i = 0; i < 3; i++) state.rubies.push(mkRuby(baseX, groundRun - i * r * 2.2, r));
+  }
+}
+function mkRuby(x, y, r) { return { x, y, r, t: Math.random() * 6.28, taken: false }; }
+
+function spawnBubble(kind) {
+  const s = S();
+  const r = 30 * s;
+  state.bubbles.push({
+    kind, x: view.w + r, y: view.groundY - CONFIG.PB_H * s * (0.7 + Math.random() * 0.9),
+    r, t: 0,
+  });
+}
+
+// =============================================================================
+// Update
+// =============================================================================
+function update(dt) {
+  // animations that run in every phase
+  for (let i = state.floaters.length - 1; i >= 0; i--) { const f = state.floaters[i]; f.t += dt; f.y -= dt * 60; if (f.t > 0.8) state.floaters.splice(i, 1); }
+  for (let i = state.particles.length - 1; i >= 0; i--) { const p = state.particles[i]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; if (p.t > p.life) state.particles.splice(i, 1); }
+  for (let i = state.blasts.length - 1; i >= 0; i--) { state.blasts[i].t += dt; if (state.blasts[i].t > state.blasts[i].life) state.blasts.splice(i, 1); }
+  for (let i = state.deathBolts.length - 1; i >= 0; i--) { const d = state.deathBolts[i]; d.t += dt; d.x += d.vx * dt; d.y += d.vy * dt; if (d.t > d.life) state.deathBolts.splice(i, 1); }
+  if (state.shake > 0) state.shake = Math.max(0, state.shake - dt * 3);
+
+  if (state.phase !== 'PLAYING') return;
+
+  state.elapsed += dt;
+  if (state.elapsed >= CONFIG.GAME_DURATION_SEC) { state.elapsed = CONFIG.GAME_DURATION_SEC; endGame('time'); return; }
+
+  // timers
+  if (state.invuln > 0) state.invuln -= dt;
+  if (state.magnetT > 0) { state.magnetT -= dt; if (state.magnetT <= 0) updatePowerBadge(); }
+  if (state.rushT > 0) { state.rushT -= dt; if (state.rushT <= 0) updatePowerBadge(); }
+
+  // pbot vertical motion
+  if (!state.grounded) {
+    const g = CONFIG.GRAVITY * (state.ducking ? CONFIG.DUCK_GRAVITY_MULT : 1) * S();
+    state.pbV -= g * dt;
+    state.pbY += state.pbV * dt;
+    if (state.pbY <= 0) { state.pbY = 0; state.pbV = 0; state.grounded = true; state.coyote = CONFIG.COYOTE_SEC; }
+  } else if (state.coyote > 0) state.coyote -= dt;
+
+  const dx = worldSpeed() * S() * dt;
+  state.worldDist += dx;
+
+  // scroll obstacles + collisions
+  for (let i = state.obstacles.length - 1; i >= 0; i--) {
+    const o = state.obstacles[i];
+    o.x -= dx;
+    // Flyers gently bob so they read as floating (collision + sprite stay in sync).
+    if (o.kind === 'flyer') o.y = o.baseY + Math.sin((state._t + o.bobPhase) * 2.6) * CONFIG.FLYER_BOB * S();
+    if (!o.scored && o.x + o.w < view.pbX) { o.scored = true; state.dodged++; }
+    if (o.x + o.w < -20) { state.obstacles.splice(i, 1); continue; }
+    if (state.invuln <= 0) {
+      const ob = { x: o.x + o.w * 0.16, y: o.y + o.h * 0.12, w: o.w * 0.68, h: o.h * 0.78 };
+      if (hit(pbotBox(), ob)) {
+        if (state.rushT > 0) { // frenzy plows through — explode it, no crash
+          explode(o.x + o.w / 2, o.y + o.h / 2); state.obstacles.splice(i, 1);
+        } else { crash(); return; }
+      }
+    }
+  }
+
+  // scroll rubies + magnet pull + collection
+  const pb = pbotBox(); const pbc = { x: pb.x + pb.w / 2, y: pb.y + pb.h / 2 };
+  // Collect against pbot's FULL sprite footprint (tall + narrow), so a ruby
+  // overlapping the head or feet still counts — a center-radius check missed those.
+  const pf = getPbFrame();
+  const pfBaseY = view.groundY - state.pbY * S();
+  const grab = { x: view.pbX - pf.dw / 2, y: pfBaseY - pf.dh, w: pf.dw, h: pf.dh };
+  for (let i = state.rubies.length - 1; i >= 0; i--) {
+    const ru = state.rubies[i];
+    ru.x -= dx; ru.t += dt;
+    if (state.magnetT > 0) {
+      const ddx = pbc.x - ru.x, ddy = pbc.y - ru.y, d = Math.hypot(ddx, ddy) || 1;
+      if (d < 460 * S()) { const pull = CONFIG.MAGNET_PULL * S() * dt; ru.x += ddx / d * pull; ru.y += ddy / d * pull; }
+    }
+    if (ru.x + ru.r < -20) { state.rubies.splice(i, 1); continue; }
+    const rb = { x: ru.x - ru.r, y: ru.y - ru.r, w: ru.r * 2, h: ru.r * 2 };
+    if (hit(grab, rb)) { state.rubies.splice(i, 1); collectRuby(ru); }
+  }
+
+  // power-up rush stream (rubies pour in during frenzy)
+  if (state.rushT > 0 && Math.random() < 0.35) {
+    const s = S();
+    state.rubies.push(mkRuby(view.w + 20, view.groundY - CONFIG.PB_H * s * (0.4 + Math.random() * 1.1), 18 * s));
+  }
+
+  // scroll bubbles + collection
+  for (let i = state.bubbles.length - 1; i >= 0; i--) {
+    const bu = state.bubbles[i];
+    bu.x -= dx * 0.92; bu.t += dt;
+    bu.y += Math.sin(bu.t * 2) * 0.4 * S();
+    if (bu.x + bu.r < -20) { state.bubbles.splice(i, 1); continue; }
+    const bb = { x: bu.x - bu.r, y: bu.y - bu.r, w: bu.r * 2, h: bu.r * 2 };
+    if (hit(grab, bb)) { state.bubbles.splice(i, 1); activatePower(bu.kind); }
+  }
+
+  // --- spawners ---
+  state.sinceObstacle += dt;
+  const gapSec = lerp(CONFIG.GAP_SEC.start, CONFIG.GAP_SEC.end, rampT()) * (1 + (Math.random() - 0.5) * CONFIG.GAP_JITTER);
+  if (state.rushT <= 0 && state.sinceObstacle >= gapSec) { state.sinceObstacle = 0; spawnObstacle(); }
+
+  state.sinceRuby += dt;
+  if (state.sinceRuby >= CONFIG.RUBY_GAP_SEC) { state.sinceRuby = 0; spawnRubyFormation(); }
+
+  // magnet roll
+  state.sinceMagnetRoll += dt * 1000;
+  if (state.sinceMagnetRoll >= CONFIG.MAGNET_EVERY_MS) {
+    state.sinceMagnetRoll = 0;
+    if (state.magnetT <= 0 && Math.random() < CONFIG.MAGNET_CHANCE) spawnBubble('magnet');
+  }
+  // rush roll — suppressed near the cap so heavy payouts don't blow past 500
+  state.sinceRushRoll += dt * 1000;
+  if (state.sinceRushRoll >= CONFIG.RUSH_EVERY_MS) {
+    state.sinceRushRoll = 0;
+    const nearCap = state.score >= CONFIG.RUBY_CAP - CONFIG.RUSH_SUPPRESS_NEAR_CAP;
+    if (state.rushT <= 0 && !nearCap && Math.random() < CONFIG.RUSH_CHANCE) spawnBubble('rush');
+  }
+
+  updateHud();
+}
+
+function collectRuby(ru) {
+  state.score += 1;
+  state.floaters.push({ x: ru.x, y: ru.y, t: 0, text: '+1' });
+  for (let i = 0; i < 5; i++) state.particles.push({ x: ru.x, y: ru.y, vx: (Math.random() - 0.5) * 180, vy: -Math.random() * 220, t: 0, life: 0.5, c: '#FFD633', r: 3 * S() });
+  bumpScore();
+  playCollect();
+}
+
+function activatePower(kind) {
+  if (kind === 'magnet') { state.magnetT = CONFIG.MAGNET_DUR; playPower(); }
+  else { state.rushT = CONFIG.RUSH_DUR; state.invuln = Math.max(state.invuln, 0.4); playRush(); state.shake = 0.6; }
+  for (let i = 0; i < 14; i++) state.particles.push({ x: view.pbX, y: view.groundY - CONFIG.PB_H * S() * 0.6, vx: (Math.random() - 0.5) * 360, vy: (Math.random() - 0.5) * 360, t: 0, life: 0.6, c: kind === 'magnet' ? '#57c7ff' : '#FFD633', r: 4 * S() });
+  updatePowerBadge();
+}
+
+function poof(x, y, c) { for (let i = 0; i < 10; i++) state.particles.push({ x, y, vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300, t: 0, life: 0.5, c, r: 4 * S() }); }
+
+// Fiery explosion when pbot smashes a ground monster during Power Rush.
+function explode(x, y) {
+  state.blasts.push({ x, y, t: 0, life: 0.45 });
+  const cols = ['#FFE258', '#ffb800', '#ff6b3d', '#FFFFFF', '#b81c26'];
+  for (let i = 0; i < 26; i++) {
+    const a = Math.random() * 6.283, sp = (140 + Math.random() * 430) * S();
+    state.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80 * S(), t: 0, life: 0.5 + Math.random() * 0.35, c: cols[i % cols.length], r: (4 + Math.random() * 5) * S() });
+  }
+  state.shake = Math.max(state.shake, 0.55);
+  playExplosion();
+}
+
+// Mega Man-style death: pbot vanishes and 8 energy pellets burst outward
+// at even angles. Plays on every crash; pbot reappears on Continue.
+function megaDeath(x, y) {
+  state.pbDead = true;
+  state.deathBolts = [];
+  const n = 8, sp = 360 * S();
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 6.283;
+    state.deathBolts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: 1.0 });
+  }
+  state.shake = Math.max(state.shake, 0.6);
+  playDeath();
+}
+
+// =============================================================================
+// Jump / duck input handling
+// =============================================================================
+function doJump() {
+  if (state.phase !== 'PLAYING') return;
+  if (state.grounded || state.coyote > 0) {
+    state.pbV = CONFIG.JUMP_V * S();
+    state.grounded = false; state.coyote = 0; state.jumps++;
+    playJump();
+  }
+}
+function setDuck(on) {
+  if (state.phase !== 'PLAYING') return;
+  state.ducking = on;
+}
+
+// =============================================================================
+// Crash → Continue (CLAUDE.md §1.2 — time is a shared budget)
+// =============================================================================
+function crash() {
+  state.phase = 'CRASHED';
+  state.ducking = false;
+  showTouch(false);
+  state.shake = 0.8;
+  megaDeath(view.pbX, view.groundY - CONFIG.PB_H * S() * 0.5);
+  const left = CONFIG.GAME_DURATION_SEC - state.elapsed;
+  if (left <= 0.4) { endGame('crash'); return; }   // no time → final GAME OVER
+  dom.crashSub.textContent = COPY.crashSub(fmtTime(left));
+  setTimeout(() => {
+    if (state.phase !== 'CRASHED') return;
+    dom.cont.classList.remove('hidden');
+  }, 650);
+}
+function resumeFromCrash() {
+  dom.cont.classList.add('hidden');
+  // clear obstacles crowding the player so the resume is fair
+  state.obstacles = state.obstacles.filter(o => o.x > view.w * 0.7);
+  state.invuln = CONFIG.RESUME_INVULN_SEC;
+  state.pbY = 0; state.pbV = 0; state.grounded = true; state.ducking = false;
+  state.pbDead = false; state.deathBolts = [];
+  state.sinceObstacle = 0;
+  state.phase = 'PLAYING';
+  showTouch(true);
+}
+
+// =============================================================================
+// HUD
+// =============================================================================
+function bumpScore() { dom.scoreVal.classList.remove('bump'); void dom.scoreVal.offsetWidth; dom.scoreVal.classList.add('bump'); }
+function fmtTime(sec) { sec = Math.max(0, Math.ceil(sec)); const m = Math.floor(sec / 60); const s = sec % 60; return `${m}:${String(s).padStart(2, '0')}`; }
+function updateHud() {
+  dom.scoreVal.textContent = String(state.score);
+  const left = CONFIG.GAME_DURATION_SEC - state.elapsed;
+  dom.timeVal.textContent = fmtTime(left);
+  dom.timePill.classList.toggle('urgent', left <= 10);
+}
+function updatePowerBadge() {
+  if (state.rushT > 0) { dom.powerBadge.className = 'badge rush'; dom.powerBadge.textContent = COPY.rush; }
+  else if (state.magnetT > 0) { dom.powerBadge.className = 'badge magnet'; dom.powerBadge.textContent = COPY.magnet; }
+  else { dom.powerBadge.className = 'badge hidden'; }
+}
+
+// =============================================================================
+// Draw
+// =============================================================================
+function draw() {
+  const sx = state.shake > 0 ? (Math.random() - 0.5) * state.shake * 16 : 0;
+  const sy = state.shake > 0 ? (Math.random() - 0.5) * state.shake * 16 : 0;
+  ctx.save();
+  ctx.translate(sx, sy);
+  drawBackground();
+  drawGround();
+
+  // rubies
+  const t = state._t;
+  for (const ru of state.rubies) drawRuby(ru, t);
+  // bubbles
+  for (const bu of state.bubbles) drawBubble(bu, t);
+  // obstacles
+  for (const o of state.obstacles) drawObstacle(o, t);
+
+  // rush tint
+  if (state.rushT > 0) { ctx.save(); ctx.globalAlpha = 0.12 + Math.sin(t * 10) * 0.04; ctx.fillStyle = '#FFD633'; ctx.fillRect(-sx, -sy, view.w, view.h); ctx.restore(); }
+
+  if (state.phase !== 'OVER' && !state.pbDead) drawPbot(t);
+
+  // Mega Man-style death pellets — bright energy bursts radiating out.
+  for (const d of state.deathBolts) {
+    const p = d.t / d.life;
+    ctx.globalAlpha = Math.max(0, 1 - p * 0.5);
+    const r = 8 * S();
+    ctx.fillStyle = '#bff3ff'; ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(d.x, d.y, r * 0.5, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // explosion rings (drawn under the particles)
+  for (const b of state.blasts) {
+    const p = b.t / b.life;
+    ctx.save();
+    ctx.globalAlpha = (1 - p) * 0.9; ctx.strokeStyle = '#FFE258'; ctx.lineWidth = 5 * S();
+    ctx.beginPath(); ctx.arc(b.x, b.y, (10 + p * 80) * S(), 0, 6.283); ctx.stroke();
+    ctx.globalAlpha = (1 - p) * 0.55; ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(b.x, b.y, (6 + p * 24) * S(), 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+  // particles
+  for (const p of state.particles) { ctx.globalAlpha = Math.max(0, 1 - p.t / p.life); R(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r, p.c); }
+  ctx.globalAlpha = 1;
+  // floaters
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const f of state.floaters) {
+    ctx.globalAlpha = Math.max(0, 1 - f.t / 0.8);
+    ctx.font = `800 ${Math.round(18 * S())}px Poppins, sans-serif`;
+    ctx.fillStyle = '#FFD633'; ctx.strokeStyle = '#031034'; ctx.lineWidth = 3 * S();
+    ctx.strokeText(f.text, f.x, f.y); ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// Retro-city background — one image scrolled and mirror-tiled for a seamless
+// endless loop (CLAUDE.md §5.4 "mirror to tile", same trick as flying-ruby).
+function drawBackground() {
+  const bg = IMG.bg;
+  if (!bg || !bg.ok) { ctx.fillStyle = '#1a0f33'; ctx.fillRect(0, 0, view.w, view.h); return; }
+  const img = bg.img;
+  const tw = view.h * (img.naturalWidth / img.naturalHeight);   // scaled to fill height
+  const span = tw * 2;                                          // a pair (normal + mirror)
+  let off = (state.worldDist * CONFIG.BG_PARALLAX) % span;
+  if (off < 0) off += span;
+  ctx.imageSmoothingEnabled = false;
+  // Draw enough tiles to cover the viewport, alternating mirror so edges meet.
+  for (let i = -1; (i - 1) * tw - off < view.w; i++) {
+    const x = i * tw - off;
+    const mirror = ((i % 2) + 2) % 2 === 1;
+    if (mirror) {
+      ctx.save(); ctx.translate(x + tw, 0); ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, tw, view.h); ctx.restore();
+    } else {
+      ctx.drawImage(img, x, 0, tw, view.h);
+    }
+  }
+  // Dim scrim — calms the bright neon so the fast scroll is easier on the eyes.
+  ctx.fillStyle = `rgba(6,8,26,${CONFIG.BG_DIM})`;
+  ctx.fillRect(0, 0, view.w, view.h);
+}
+function drawGround() {
+  // Soft contact strip + full-speed motion dashes so ground motion reads even
+  // though the painted sidewalk parallaxes a touch slower.
+  ctx.save();
+  ctx.fillStyle = 'rgba(2,13,38,0.30)';
+  ctx.fillRect(0, view.groundY + 10 * S(), view.w, view.h - view.groundY);
+  const step = 54 * S(); let off = state.worldDist % step; if (off < 0) off += step;
+  ctx.fillStyle = 'rgba(255,214,51,0.45)';
+  for (let x = -off; x < view.w; x += step) ctx.fillRect(Math.round(x), Math.round(view.groundY + 14 * S()), Math.round(20 * S()), Math.round(3 * S()));
+  ctx.restore();
+}
+function drawRuby(ru, t) {
+  const spin = Math.abs(Math.sin(ru.t + t * 2));
+  const w = ru.r * (0.5 + spin * 0.5), h = ru.r;
+  const x = ru.x, y = ru.y;
+  ctx.fillStyle = '#b81c26';
+  ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + w, y); ctx.lineTo(x, y + h); ctx.lineTo(x - w, y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ff6b73';
+  ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + w * 0.5, y - h * 0.1); ctx.lineTo(x, y); ctx.lineTo(x - w * 0.5, y - h * 0.1); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#FFFFFF'; R(x - w * 0.15, y - h * 0.55, w * 0.22, h * 0.3, '#FFFFFF');
+}
+function drawBubble(bu, t) {
+  const r = bu.r;
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = bu.kind === 'magnet' ? 'rgba(87,199,255,0.30)' : 'rgba(255,214,51,0.30)';
+  ctx.beginPath(); ctx.arc(bu.x, bu.y, r * (1 + Math.sin(t * 4) * 0.05), 0, 6.283); ctx.fill();
+  ctx.lineWidth = 3 * S(); ctx.strokeStyle = bu.kind === 'magnet' ? '#57c7ff' : '#FFD633'; ctx.stroke();
+  ctx.restore();
+  if (bu.kind === 'magnet') {
+    // horseshoe magnet pixel icon
+    R(bu.x - r * 0.5, bu.y - r * 0.5, r * 0.28, r * 0.8, '#e23b3b');
+    R(bu.x + r * 0.22, bu.y - r * 0.5, r * 0.28, r * 0.8, '#e23b3b');
+    R(bu.x - r * 0.5, bu.y - r * 0.5, r, r * 0.28, '#e23b3b');
+    R(bu.x - r * 0.5, bu.y + r * 0.1, r * 0.28, r * 0.2, '#dfe7ef');
+    R(bu.x + r * 0.22, bu.y + r * 0.1, r * 0.28, r * 0.2, '#dfe7ef');
+  } else {
+    // lightning bolt pixel icon
+    ctx.fillStyle = '#FFD633';
+    ctx.beginPath();
+    ctx.moveTo(bu.x + r * 0.1, bu.y - r * 0.55); ctx.lineTo(bu.x - r * 0.35, bu.y + r * 0.1);
+    ctx.lineTo(bu.x, bu.y + r * 0.1); ctx.lineTo(bu.x - r * 0.1, bu.y + r * 0.55);
+    ctx.lineTo(bu.x + r * 0.4, bu.y - r * 0.15); ctx.lineTo(bu.x + r * 0.02, bu.y - r * 0.15);
+    ctx.closePath(); ctx.fill();
+  }
+}
+
+// =============================================================================
+// Audio — Web Audio synthesis, zero asset bytes (CLAUDE.md §4 / §0.4)
+// =============================================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; } }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function tone(o) {
+  if (state.muted) return; ensureAudio(); if (!audioCtx) return;
+  const t = audioCtx.currentTime + (o.delay || 0), dur = o.dur || 0.15;
+  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+  osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(o.freq, t);
+  if (o.freqEnd !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.freqEnd), t + dur);
+  g.gain.setValueAtTime(o.gain || 0.15, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(audioCtx.destination); osc.start(t); osc.stop(t + dur + 0.05);
+}
+function playJump()    { tone({ freq: 420, freqEnd: 720, type: 'square', dur: 0.14, gain: 0.12 }); }
+function playCollect() { tone({ freq: 880, type: 'triangle', dur: 0.10, gain: 0.14 }); tone({ freq: 1320, type: 'triangle', dur: 0.10, gain: 0.10, delay: 0.04 }); }
+function playPower()   { tone({ freq: 520, freqEnd: 1040, type: 'sine', dur: 0.3, gain: 0.16 }); }
+function playRush()    { tone({ freq: 300, freqEnd: 900, type: 'sawtooth', dur: 0.35, gain: 0.16 }); tone({ freq: 600, freqEnd: 1200, type: 'square', dur: 0.3, gain: 0.10, delay: 0.05 }); }
+function playPoof()    { tone({ freq: 600, freqEnd: 200, type: 'triangle', dur: 0.12, gain: 0.10 }); }
+function playExplosion(){ tone({ freq: 190, freqEnd: 42, type: 'sawtooth', dur: 0.34, gain: 0.22 }); tone({ freq: 95, freqEnd: 30, type: 'square', dur: 0.4, gain: 0.16, delay: 0.02 }); tone({ freq: 1200, freqEnd: 300, type: 'square', dur: 0.12, gain: 0.08 }); }
+function playCrash()   { tone({ freq: 220, freqEnd: 55, type: 'sawtooth', dur: 0.4, gain: 0.22 }); }
+// Mega Man-style death: rapid descending blips over a low boom.
+function playDeath() {
+  for (let i = 0; i < 8; i++) tone({ freq: 1180 - i * 120, type: 'square', dur: 0.10, gain: 0.10, delay: i * 0.045 });
+  tone({ freq: 160, freqEnd: 40, type: 'sawtooth', dur: 0.5, gain: 0.18 });
+  tone({ freq: 90, freqEnd: 30, type: 'square', dur: 0.45, gain: 0.12, delay: 0.03 });
+}
+// Game-over jingle — short descending motif, friendly not foreboding.
+function playGameOver() {
+  tone({ freq: 523, type: 'square', dur: 0.16, gain: 0.15 });
+  tone({ freq: 392, type: 'square', dur: 0.16, gain: 0.14, delay: 0.15 });
+  tone({ freq: 294, type: 'square', dur: 0.34, gain: 0.15, delay: 0.30 });
+}
+
+// -----------------------------------------------------------------------------
+// BGM — a tiny synth sequencer. Each run rolls a fresh 80s-vibe chiptune loop
+// (random root + arpeggio); the game-over screen gets a slower, softer loop.
+// All synthesized → zero asset bytes, and it honours the mute toggle.
+// -----------------------------------------------------------------------------
+const music = { playing: false, timer: null, next: 0, step: 0, seq: null, kind: null, spb: 0 };
+function noteFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+function bnote(freq, t, dur, type, gain, freqEnd) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, t);
+  if (freqEnd !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g).connect(audioCtx.destination); osc.start(t); osc.stop(t + dur + 0.05);
+}
+function makeRunSeq() {
+  const roots = [33, 35, 36, 40, 41];          // low bass roots (varies the key)
+  const root = roots[(Math.random() * roots.length) | 0];
+  const penta = [0, 3, 5, 7, 10];              // minor pentatonic = retro synth flavour
+  const len = 32, bass = new Array(len).fill(null), lead = new Array(len).fill(null);
+  const bassWalk = [0, 0, 12, 0, 7, 0, 10, 0];
+  for (let i = 0; i < len; i++) if (i % 2 === 0) bass[i] = root + bassWalk[(i / 2) % 8];
+  for (let i = 0; i < len; i++) if (i % 2 === 1 && Math.random() < 0.72) lead[i] = root + 24 + penta[(Math.random() * penta.length) | 0];
+  return { len, bass, lead };
+}
+function makeOverSeq() {
+  const root = 45, fall = [12, 10, 7, 5, 3, 0], len = 16;
+  const bass = new Array(len).fill(null), lead = new Array(len).fill(null);
+  for (let i = 0; i < len; i++) { if (i % 4 === 0) bass[i] = root; if (i % 2 === 0) lead[i] = root + fall[(i / 2) % fall.length]; }
+  return { len, bass, lead };
+}
+// Title-screen theme — driving Am–F–C–G arpeggio (the quintessential 80s
+// progression), continuous 16th-note lead so it feels energetic and exciting.
+function makeMenuSeq() {
+  const chords = [[57, 60, 64, 69], [53, 57, 60, 65], [60, 64, 67, 72], [55, 59, 62, 67]];
+  const bassRoots = [33, 29, 36, 31];
+  const arp = [0, 1, 2, 3, 2, 1, 0, 1];
+  const len = 32, bass = new Array(len).fill(null), lead = new Array(len).fill(null);
+  for (let i = 0; i < len; i++) {
+    const ch = (i >> 3) & 3;
+    lead[i] = chords[ch][arp[i & 7]];
+    if (i % 2 === 0) bass[i] = bassRoots[ch];
+  }
+  return { len, bass, lead };
+}
+function playStep(step, t) {
+  const s = music.seq, spb = music.spb, kind = music.kind, drums = kind !== 'over';
+  if (drums) {
+    if (step % 4 === 0) bnote(58, t, 0.16, 'sine', kind === 'menu' ? 0.18 : 0.16, 40);   // kick
+    if (step % 2 === 1) bnote(7600, t, 0.02, 'square', kind === 'menu' ? 0.008 : 0.006); // hat
+    if (step % 8 === 4) bnote(1500, t, 0.06, 'triangle', 0.04, 320);                     // snare
+    if (kind === 'menu' && step % 16 === 12) bnote(2400, t, 0.03, 'square', 0.02);       // extra clap
+  }
+  const leadType = kind === 'menu' ? 'sawtooth' : 'square';
+  const leadGain = kind === 'over' ? 0.06 : kind === 'menu' ? 0.06 : 0.05;
+  const b = s.bass[step]; if (b != null) bnote(noteFreq(b), t, spb * (drums ? 1.7 : 3), 'triangle', drums ? 0.11 : 0.09);
+  const l = s.lead[step]; if (l != null) bnote(noteFreq(l), t, spb * (drums ? 1.3 : 2.4), leadType, leadGain);
+}
+function schedMusic() {
+  if (!music.playing || !audioCtx) return;
+  while (music.next < audioCtx.currentTime + 0.12) {
+    playStep(music.step, music.next);
+    music.step = (music.step + 1) % music.seq.len;
+    music.next += music.spb;
+  }
+}
+function startMusic(kind) {
+  if (state.muted) return; ensureAudio(); if (!audioCtx) return;
+  stopMusic();
+  music.kind = kind;
+  music.seq = kind === 'over' ? makeOverSeq() : kind === 'menu' ? makeMenuSeq() : makeRunSeq();
+  const bpm = kind === 'over' ? 82 : kind === 'menu' ? (142 + (Math.random() * 14 | 0)) : (124 + (Math.random() * 26 | 0));
+  music.spb = 60 / bpm / 4;                    // one 16th-note step
+  music.step = 0; music.next = audioCtx.currentTime + 0.1; music.playing = true;
+  music.timer = setInterval(schedMusic, 25);
+}
+function stopMusic() { music.playing = false; if (music.timer) { clearInterval(music.timer); music.timer = null; } }
+
+// =============================================================================
+// Lifecycle
+// =============================================================================
+function startGame() {
+  Object.assign(state, {
+    phase: 'PLAYING', score: 0, elapsed: 0, worldDist: 0, dodged: 0,
+    obstacles: [], rubies: [], bubbles: [], floaters: [], particles: [], blasts: [], deathBolts: [], pbDead: false,
+    pbY: 0, pbV: 0, grounded: true, ducking: false, coyote: 0, invuln: 0.6,
+    magnetT: 0, rushT: 0, sinceMagnetRoll: 0, sinceRushRoll: 0,
+    sinceObstacle: -0.8, sinceRuby: 0, jumps: 0, shake: 0,
+  });
+  dom.menu.classList.add('hidden');
+  dom.gameOver.classList.add('hidden');
+  dom.pause.classList.add('hidden');
+  dom.cont.classList.add('hidden');
+  dom.hud.classList.remove('hidden');
+  showTouch(true);
+  updatePowerBadge();
+  updateHud();
+  startMusic('game');
+}
+
+function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
+  if (state.phase === 'OVER') return;
+  state.phase = 'OVER';
+  state.ducking = false;
+  showTouch(false);
+  dom.pause.classList.add('hidden');
+  dom.cont.classList.add('hidden');
+
+  const isNewBest = state.score > state.best;
+  if (isNewBest) { state.best = state.score; storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best)); }
+
+  dom.goTitle.textContent = cause === 'time' ? COPY.timeUp : COPY.gameOver;
+  dom.goNewBest.classList.toggle('hidden', !isNewBest);
+  dom.finalStats.innerHTML =
+    `<div class="label">${COPY.statScore}</div><div class="value">${state.score}</div>` +
+    `<div class="label">${COPY.statDodged}</div><div class="value">${state.dodged}</div>` +
+    `<div class="label">${COPY.statTime}</div><div class="value">${fmtTime(state.elapsed)}</div>` +
+    `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
+
+  stopMusic();
+  playGameOver();
+  setTimeout(() => {
+    dom.hud.classList.add('hidden');
+    dom.gameOver.classList.remove('hidden');
+    startMusic('over');
+  }, cause === 'time' ? 250 : 700);
+}
+
+// =============================================================================
+// CLAIM SCORE — §6.5 callback contract (game, score, token + suspicious)
+// =============================================================================
+function resolveCallbackUrl() {
+  const qs = new URLSearchParams(location.search);
+  const candidate = qs.get('callback_url');
+  if (candidate) { try { const u = new URL(candidate); if (u.protocol === 'https:') return u.toString(); } catch (_) {} }
+  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
+  return CONFIG.CLAIM_FALLBACK_URL;
+}
+function suspiciousCheck() {
+  // Local, non-blocking heuristic: more rubies than physically collectable.
+  const maxRate = 6; // rubies/sec ceiling incl. rush streams
+  const cap = Math.ceil(Math.max(8, state.elapsed) * maxRate);
+  if (state.score > cap) return 'rate';
+  if (state.score > 0 && state.jumps === 0 && state.dodged > 6) return 'no-input';
+  return null;
+}
+function buildClaimUrl() {
+  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const base = resolveCallbackUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  let url = base + sep + 'game=' + encodeURIComponent(CONFIG.GAME_NAME)
+    + '&score=' + Math.max(0, state.score | 0) + '&token=' + encodeURIComponent(token);
+  const sus = suspiciousCheck();
+  if (sus) url += '&suspicious=true&suspicious_reason=' + encodeURIComponent(sus);
+  return url;
+}
+
+// =============================================================================
+// Input
+// =============================================================================
+// Tapping / clicking the play area jumps. Ducking is held via the on-screen
+// DUCK pad (touch) or the ↓ key — keeps the tap unambiguous.
+function tapJump(e) { if (state.phase !== 'PLAYING') return; e.preventDefault(); doJump(); }
+canvas.addEventListener('touchstart', tapJump, { passive: false });
+canvas.addEventListener('mousedown', tapJump);
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { if (!e.repeat) { e.preventDefault(); doJump(); } }
+  else if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault(); setDuck(true); }
+});
+window.addEventListener('keyup', (e) => { if (e.code === 'ArrowDown' || e.code === 'KeyS') setDuck(false); });
+
+// On-screen pads (mobile). Jump fires on press; duck is held.
+function bindHold(btn, on, off) {
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); on(); }, { passive: false });
+  btn.addEventListener('touchend',   (e) => { e.preventDefault(); off && off(); }, { passive: false });
+  btn.addEventListener('touchcancel', () => off && off());
+  btn.addEventListener('mousedown',  (e) => { e.preventDefault(); on(); });
+  btn.addEventListener('mouseup',    () => off && off());
+  btn.addEventListener('mouseleave', () => off && off());
+}
+bindHold(dom.jumpBtn, () => doJump());
+bindHold(dom.duckBtn, () => setDuck(true), () => setDuck(false));
+function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
+
+dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
+dom.claimBtn.addEventListener('click', () => { location.href = buildClaimUrl(); });
+dom.endBtn.addEventListener('click', () => { if (state.phase === 'PLAYING') { state.phase = 'PAUSED'; state.ducking = false; showTouch(false); dom.pause.classList.remove('hidden'); } });
+dom.resumeBtn.addEventListener('click', () => { if (state.phase === 'PAUSED') { state.phase = 'PLAYING'; showTouch(true); dom.pause.classList.add('hidden'); } });
+dom.endRunBtn.addEventListener('click', () => endGame('early'));
+dom.continueBtn.addEventListener('click', () => resumeFromCrash());
+dom.giveUpBtn.addEventListener('click', () => endGame('crash'));
+dom.muteBtn.addEventListener('click', () => {
+  state.muted = !state.muted;
+  storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');
+  updateMuteUI();
+  if (state.muted) stopMusic();
+  else if (state.phase === 'PLAYING') startMusic('game');
+  else if (state.phase === 'OVER') startMusic('over');
+  else if (state.phase === 'MENU') startMusic('menu');
+});
+
+// Audio toggle icons (canonical across JDP games)
+const MUTE_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
+const MUTE_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
+function updateMuteUI() {
+  const svg = dom.muteBtn.querySelector('svg');
+  svg.innerHTML = state.muted ? MUTE_OFF : MUTE_ON;
+  const label = state.muted ? COPY.audioOff : COPY.audioOn;
+  dom.muteBtn.setAttribute('aria-pressed', state.muted ? 'true' : 'false');
+  dom.muteBtn.setAttribute('aria-label', label);
+  dom.muteBtn.setAttribute('title', label);
+}
+function showBest() {
+  if (state.best > 0) dom.bestText.innerHTML = `${COPY.statBest}: <b>${state.best}</b>`;
+  else dom.bestText.innerHTML = '&nbsp;';
+}
+
+// Pause when the tab is hidden so the wall-clock doesn't run on unfairly.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && state.phase === 'PLAYING') { state.phase = 'PAUSED'; state.ducking = false; showTouch(false); dom.pause.classList.remove('hidden'); }
+});
+
+// =============================================================================
+// Main loop
+// =============================================================================
+let lastT = 0;
+state._t = 0;
+function loop(t) {
+  if (!lastT) lastT = t;
+  const dt = Math.min((t - lastT) / 1000, 1 / 30);
+  lastT = t;
+  state._t = t / 1000;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// =============================================================================
+// Boot — ?phase=play dev jump (CLAUDE.md pattern #10) + persisted prefs
+// =============================================================================
+showBest();
+updateMuteUI();
+
+// Title-screen theme starts on the first user gesture (browsers block autoplay).
+// If that first gesture is the START button, startGame() plays the run theme
+// instead, so we skip the menu theme in that case.
+function unlockMenuMusic(e) {
+  document.removeEventListener('pointerdown', unlockMenuMusic);
+  document.removeEventListener('keydown', unlockMenuMusic);
+  const onStart = e && e.target && (e.target === dom.startBtn || (e.target.closest && e.target.closest('#startBtn')));
+  if (!onStart && state.phase === 'MENU' && !state.muted) { ensureAudio(); startMusic('menu'); }
+}
+document.addEventListener('pointerdown', unlockMenuMusic);
+document.addEventListener('keydown', unlockMenuMusic);
+
+if (new URLSearchParams(location.search).get('phase') === 'play') startGame();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

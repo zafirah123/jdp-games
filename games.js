@@ -22,6 +22,7 @@ window.GAMES = [
   { name: 'Puzzle', path: './puzzle/puzzle.html', status: 'pending', author: 'iklil' },
   { name: 'Ruby Breaker', path: './ruby-breaker-v2/', status: 'pending', author: 'pandaipixel' },
   { name: 'Ruby Rhythm', path: './ruby-rhythm/', status: 'pending', author: 'Koplo3' },
+  { name: 'Ruby Rush', path: './ruby-rush/', status: 'approved-dev', author: 'pandaipixel' },
   { name: 'Susun', path: './susun/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
   { name: 'Tap Tap Match', path: './tap-tap-match/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
   { name: 'Tetra Blocks', path: './tetra-blocks/tetra-blocks.html', status: 'pending', author: 'zafirah123' },

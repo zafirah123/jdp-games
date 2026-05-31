@@ -481,6 +481,15 @@ const CONFIG = {
   CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
 };
 
+// Touch devices get a gentler combat balance — enemies fall in 2 orbs and the
+// magazine is smaller (6) so the on-screen SHOOT pad stays comfortable.
+const IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+  || ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+if (IS_TOUCH) {
+  CONFIG.ENEMY_HP = 2;
+  CONFIG.PB_AMMO_MAX = 6;
+}
+
 // =============================================================================
 // DOM refs
 // =============================================================================
@@ -575,7 +584,7 @@ const state = {
   enemyBullets: [],          // yellow tank shots
   pbBullets: [],             // pbot green orbs
   shootCd: 0,                // shoot cooldown timer
-  ammo: 10, ammoRegenT: 0,   // bullet magazine + regen timer
+  ammo: CONFIG.PB_AMMO_MAX, ammoRegenT: 0,   // bullet magazine + regen timer
   jumpsUsed: 0,              // 0 grounded, 1 after first jump, 2 after double
   rushSpawned: 0, rushSpawnT: 0, lastRushY: -999,  // rush-stream pacing/cap
   shootHeld: false,

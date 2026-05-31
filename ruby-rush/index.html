@@ -420,10 +420,10 @@ const CONFIG = {
   FLYER_BAND_FRAC: 0.66,     // flyer NEUTRAL bottom — standing collides, crouch clears (allows a 15px rise)
   WALK_STEP_PX: 26,          // world px between walk-frame swaps
 
-  // Jump arc
-  GRAVITY: 2700,
-  JUMP_V: 1100,
-  JUMP_V2: 800,              // double jump — weaker than the first
+  // Jump arc — a touch higher + snappier so it reads well even zoomed out.
+  GRAVITY: 2950,
+  JUMP_V: 1260,
+  JUMP_V2: 920,              // double jump — weaker than the first
   DUCK_GRAVITY_MULT: 2.4,    // fast-fall when ducking mid-air
   COYOTE_SEC: 0.09,
 

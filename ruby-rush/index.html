@@ -622,9 +622,10 @@ function resize() {
   ctx.imageSmoothingEnabled = false;
   // Scale gameplay to vertical space so jump height feels consistent.
   view.scale = Math.max(0.62, Math.min(1.35, view.h / 760));
-  // On touch devices, pull the camera back so the playfield reads more zoomed
-  // out (smaller sprites, more of the scene visible).
-  if (IS_TOUCH) view.scale = Math.max(0.45, view.scale * CONFIG.MOBILE_ZOOM);
+  // Pull the camera back on phones (touch OR a narrow viewport) so the
+  // playfield reads more zoomed out — smaller sprites, more scene visible.
+  // Width-based fallback covers webviews where pointer/touch detection is flaky.
+  if (IS_TOUCH || view.w < 620) view.scale = Math.max(0.45, view.scale * CONFIG.MOBILE_ZOOM);
   view.groundY = Math.round(view.h * CONFIG.GROUND_FRAC);
   view.pbX = Math.round(view.w * CONFIG.PB_X_FRAC);
 }

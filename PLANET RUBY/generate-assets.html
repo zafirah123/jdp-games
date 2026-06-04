@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head><title>Asset Generator — Planet Ruby</title></head>
+<body style="background:#111;color:#fff;font-family:sans-serif;padding:20px;">
+<h2>🪐 Planet Ruby — Placeholder Asset Generator</h2>
+<p>Open this in a browser, then right-click each image to save as assets/</p>
+<div id="out" style="display:flex;flex-wrap:wrap;gap:20px;margin-top:20px;"></div>
+<script>
+const PLANETS = {
+  rubaria  : { bg:'#0d0005', accent:'#B81C26', emoji:'🔴', name:'Rubaria' },
+  glacius  : { bg:'#c8e8f5', accent:'#5aafdd', emoji:'🧊', name:'Glacius' },
+  infernus : { bg:'#1a0800', accent:'#ff6a00', emoji:'🌋', name:'Infernus' },
+  verdania : { bg:'#071a04', accent:'#3de06e', emoji:'🌿', name:'Verdania' },
+  nebulos  : { bg:'#0b0020', accent:'#c07af5', emoji:'🌌', name:'Nebulos' },
+};
+
+const out = document.getElementById('out');
+
+// Card thumbnails (160×160)
+Object.entries(PLANETS).forEach(([id, p]) => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 160;
+  const ctx = c.getContext('2d');
+
+  const g = ctx.createRadialGradient(80,80,10,80,80,80);
+  g.addColorStop(0, p.accent);
+  g.addColorStop(1, p.bg);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(80,80,78,0,Math.PI*2); ctx.fill();
+
+  ctx.font = '60px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(p.emoji, 80, 80);
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<div style="font-size:11px;margin-bottom:4px;">card-${id}.webp</div>`;
+  c.title = `card-${id}.webp`;
+  wrap.appendChild(c);
+  out.appendChild(wrap);
+});
+
+// Backgrounds (320×568 portrait)
+Object.entries(PLANETS).forEach(([id, p]) => {
+  const c  = document.createElement('canvas');
+  c.width  = 320; c.height = 568;
+  const ctx = c.getContext('2d');
+
+  const g = ctx.createLinearGradient(0,0,0,568);
+  g.addColorStop(0, p.bg);
+  g.addColorStop(1, p.accent + '33');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,320,568);
+
+  ctx.font = '80px serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.globalAlpha = 0.3;
+  ctx.fillText(p.emoji, 160, 284);
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText(p.name.toUpperCase(), 160, 40);
+
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<div style="font-size:11px;margin-bottom:4px;">bg-${id}.webp</div>`;
+  c.title = `bg-${id}.webp`;
+  wrap.appendChild(c);
+  out.appendChild(wrap);
+});
+
+// pbot placeholder
+const pc = document.createElement('canvas');
+pc.width = pc.height = 88;
+const pctx = pc.getContext('2d');
+pctx.fillStyle = '#fff';
+pctx.fillRect(0,0,88,88);
+pctx.fillStyle = '#B81C26';
+pctx.fillRect(10,16,24,24); // left eye
+pctx.fillRect(54,16,24,24); // right eye
+pctx.fillStyle = '#000';
+pctx.fillRect(10,50,68,8);  // mouth
+const pw = document.createElement('div');
+pw.innerHTML = `<div style="font-size:11px;margin-bottom:4px;">pbot.webp</div>`;
+pc.title = 'pbot.webp';
+pw.appendChild(pc);
+out.appendChild(pw);
+</script>
+</body>
+</html>

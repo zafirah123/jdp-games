@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Planet Ruby — JDP Games</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --jdp-yellow : #FDD83D;
+      --jdp-red    : #C0392B;
+      --jdp-navy   : #0d1b2e;
+      --jdp-navy2  : #0a1628;
+      --jdp-font   : 'Segoe UI', system-ui, sans-serif;
+      --accent     : #B81C26;
+    }
+    html, body { width:100%; height:100%; overflow:hidden; background:var(--jdp-navy2); font-family:var(--jdp-font); color:#fff; touch-action:manipulation; }
+    .screen { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; }
+    .screen.active { display:flex; }
+    .chrome { position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; z-index:100; pointer-events:none; }
+    .chrome > * { pointer-events:all; }
+    #logo { font-size:18px; font-weight:900; color:var(--jdp-yellow); letter-spacing:2px; display:flex; align-items:center; gap:6px; }
+    #logo-badge { width:32px; height:32px; background:var(--jdp-yellow); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; color:var(--jdp-red); }
+    #mute-btn { background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.2); border-radius:50%; width:44px; height:44px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+    #mute-btn:hover { background:rgba(255,255,255,.2); }
+    .btn { background:var(--jdp-yellow); color:var(--jdp-red); font-weight:900; font-size:17px; letter-spacing:1.5px; border:none; border-radius:100px; padding:0 32px; height:52px; min-width:160px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:transform .1s, filter .1s; box-shadow:0 4px 0 rgba(0,0,0,0.3); }
+    .btn:active { transform:scale(.95) translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,0.3); }
+    .btn:hover:not(:active) { filter:brightness(1.05); }
+    .btn.ghost { background:transparent; border:2px solid rgba(255,255,255,.35); color:#fff; box-shadow:none; }
+    .btn:disabled { opacity:.4; pointer-events:none; }
+    
+    /* ── TITLE SCREEN ── */
+    #screen-title { background:var(--jdp-navy2); gap:16px; }
+    #title-logo { font-size:clamp(36px,10vw,68px); font-weight:900; letter-spacing:4px; color:var(--jdp-yellow); }
+    #title-sub { font-size:13px; letter-spacing:3px; opacity:.55; text-transform:uppercase; }
+    #key-hint-title { font-size:12px; opacity:.35; letter-spacing:1px; }
+
+    /* Hero display on title */
+    #title-hero-wrap {
+      position:relative; width:140px; height:140px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    #title-hero-img {
+      width:130px; height:130px; object-fit:contain;
+      animation:bob 2s ease-in-out infinite;
+      filter:drop-shadow(0 8px 24px var(--hero-glow, rgba(180,28,38,0.6)));
+      transition: src 0.3s;
+    }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+    /* Gender toggle on title */
+    #gender-toggle {
+      display:flex; gap:8px; align-items:center;
+    }
+    .gender-btn {
+      background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.2);
+      border-radius:100px; padding:4px 14px; font-size:12px; font-weight:700;
+      cursor:pointer; transition:all .15s; color:#fff; letter-spacing:1px;
+    }
+    .gender-btn.active { background:var(--jdp-yellow); border-color:var(--jdp-yellow); color:var(--jdp-red); }
+
+    /* ── PLANET SELECT ── */
+    #screen-select { background:var(--jdp-navy2); padding-top:60px; gap:16px; justify-content:flex-start; }
+    #select-title { font-size:clamp(20px,5vw,30px); font-weight:900; letter-spacing:3px; color:var(--jdp-yellow); text-align:center; margin-top:16px; }
+    #carousel-wrapper { width:100%; overflow:hidden; position:relative; }
+    #carousel { display:flex; gap:16px; padding:20px 24px; transition:transform .35s cubic-bezier(.4,0,.2,1); width:max-content; }
+    @media (min-width:768px) {
+      #carousel-wrapper { overflow:visible; }
+      #carousel { width:auto; flex-wrap:nowrap; justify-content:center; transform:none !important; }
+    }
+    .planet-card { background:#111e30; border:2px solid rgba(255,255,255,.1); border-radius:20px; width:200px; flex-shrink:0; padding:16px; display:flex; flex-direction:column; align-items:center; gap:10px; cursor:pointer; transition:transform .2s, border-color .2s; user-select:none; }
+    .planet-card.active { transform:scale(1.08); border-color:var(--jdp-yellow); box-shadow:0 0 0 3px rgba(253,216,61,.25); }
+    @media (hover:hover) { .planet-card:hover:not(.active) { transform:scale(1.04); border-color:rgba(253,216,61,.4); } }
+    .card-thumb { width:90px; height:90px; border-radius:50%; background:var(--accent-color,#444); display:flex; align-items:center; justify-content:center; font-size:36px; overflow:hidden; position:relative; }
+    .card-thumb img { width:100%; height:100%; object-fit:contain; border-radius:50%; }
+    .card-name { font-size:18px; font-weight:900; letter-spacing:1px; }
+    .card-tagline { font-size:12px; opacity:.7; text-align:center; line-height:1.4; }
+    .card-best { font-size:12px; font-weight:700; color:var(--jdp-yellow); min-height:16px; }
+    .card-select-btn { width:100%; background:var(--jdp-yellow); color:var(--jdp-red); font-weight:900; font-size:14px; letter-spacing:1.5px; border:none; border-radius:100px; height:40px; cursor:pointer; transition:filter .1s, transform .1s; box-shadow:0 3px 0 rgba(0,0,0,0.3); }
+    .card-select-btn:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,0.3); }
+    .card-select-btn:hover:not(:active) { filter:brightness(1.06); }
+    #carousel-dots { display:flex; gap:8px; justify-content:center; }
+    @media (min-width:768px) { #carousel-dots { display:none; } }
+    .dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.25); transition:background .2s, transform .2s; }
+    .dot.active { background:var(--jdp-yellow); transform:scale(1.3); }
+    #key-hint { font-size:11px; opacity:.35; letter-spacing:1px; }
+    @media (max-width:767px) { #key-hint { display:none; } }
+
+    /* ── GAME SCREEN ── */
+    #screen-game { background:#000; justify-content:flex-start; padding:0; }
+    #game-canvas { display:block; touch-action:none; }
+    #hud { position:fixed; top:50px; left:0; right:0; display:flex; justify-content:space-between; align-items:center; padding:0 16px; pointer-events:none; z-index:50; }
+    #hud-rubies { background:var(--jdp-red); border-radius:100px; padding:6px 16px; font-size:16px; font-weight:900; color:#fff; display:flex; align-items:center; gap:6px; letter-spacing:.5px; }
+    #hud-rubies-label { font-size:11px; opacity:.8; letter-spacing:1.5px; font-weight:700; }
+    #hud-timer { background:var(--jdp-red); border-radius:100px; padding:6px 16px; font-size:16px; font-weight:900; color:#fff; display:flex; align-items:center; gap:8px; letter-spacing:.5px; }
+    #hud-timer-label { font-size:11px; opacity:.8; letter-spacing:1.5px; font-weight:700; }
+    #hud-timer.urgent { background:#e53e3e; animation:pulse 0.5s ease-in-out infinite alternate; }
+    @keyframes pulse { from{opacity:1} to{opacity:.6} }
+    #urgency-overlay { position:fixed; inset:0; border:4px solid #ff4444; pointer-events:none; opacity:0; z-index:90; }
+    #urgency-overlay.active { animation:edge-pulse .5s ease-in-out infinite alternate; }
+    @keyframes edge-pulse { from{opacity:0} to{opacity:.8} }
+    #powerup-hud { position:fixed; bottom:20px; left:0; right:0; display:flex; justify-content:center; gap:12px; pointer-events:none; z-index:50; }
+    .powerup-indicator { background:rgba(0,0,0,.65); border:1px solid rgba(253,216,61,.4); border-radius:100px; padding:5px 14px; font-size:12px; font-weight:700; display:none; align-items:center; gap:6px; color:var(--jdp-yellow); }
+    .powerup-indicator.active { display:flex; }
+    .float-text { position:fixed; font-size:18px; font-weight:900; color:var(--jdp-yellow); pointer-events:none; z-index:80; animation:float-up .6s ease-out forwards; }
+    @keyframes float-up { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(-40px)} }
+
+    /* ── OVERLAYS ── */
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; flex-direction:column; align-items:center; justify-content:center; gap:20px; z-index:200; }
+    .overlay.active { display:flex; }
+    .overlay-box { background:#111e30; border:2px solid rgba(253,216,61,.25); border-radius:24px; padding:36px 48px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:16px; max-width:320px; width:90%; }
+    .overlay-title { font-size:26px; font-weight:900; letter-spacing:2px; }
+    .overlay-score { font-size:52px; font-weight:900; color:var(--jdp-yellow); }
+    .overlay-best { font-size:14px; color:var(--jdp-yellow); letter-spacing:1px; background:rgba(253,216,61,.1); border:1px solid rgba(253,216,61,.3); border-radius:100px; padding:4px 16px; }
+    .overlay-btns { display:flex; flex-direction:column; gap:10px; width:100%; }
+    #flash-overlay { position:fixed; inset:0; background:#fff; pointer-events:none; opacity:0; z-index:300; }
+    #screen-game.gravity-flipped { animation:tilt-flip .4s ease forwards; }
+    @keyframes tilt-flip { from{transform:rotate(0deg)} to{transform:rotate(180deg)} }
+    #screen-game.gravity-normal { animation:tilt-normal .4s ease forwards; }
+    @keyframes tilt-normal { from{transform:rotate(180deg)} to{transform:rotate(0deg)} }
+    #star-rush-vignette { position:fixed; inset:0; background:radial-gradient(ellipse at center,transparent 40%,rgba(200,0,0,.35) 100%); pointer-events:none; opacity:0; z-index:85; transition:opacity .3s; }
+    #star-rush-vignette.active { opacity:1; }
+    #shield-ring { position:fixed; border:3px solid rgba(253,216,61,.6); border-radius:50%; pointer-events:none; opacity:0; z-index:86; transition:opacity .3s; }
+    #shield-ring.active { opacity:1; }
+    #screen-gameover { background:var(--jdp-navy2); gap:20px; }
+
+    /* Game over hero display */
+    #go-hero { width:100px; height:100px; object-fit:contain; filter:drop-shadow(0 4px 16px rgba(253,216,61,0.4)); animation:bob 2s ease-in-out infinite; }
+    
+    #fs-btn {
+      background:rgba(255,255,255,.12);
+      border:2px solid rgba(255,255,255,.2);
+      border-radius:50%;
+      width:44px; height:44px;
+      font-size:20px;
+      cursor:pointer;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      transition:background .15s;
+    }
+    #fs-btn:hover { background:rgba(255,255,255,.2); }
+    @media (min-width:768px) {
+      #fs-btn { display:flex; }
+    }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  </style>
+</head>
+<body>
+<div class="chrome">
+  <div id="logo-badge">🪐</div> PLANET RUBY</div>
+  <button id="mute-btn" title="Toggle mute" aria-label="Toggle mute">🔊</button>
+  <button id="fs-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶</button>
+</div>
+<div id="urgency-overlay"></div>
+<div id="flash-overlay"></div>
+<div id="star-rush-vignette"></div>
+<div id="shield-ring"></div>
+
+<!-- TITLE -->
+<div id="screen-title" class="screen active">
+  <img src="logo-badge.png" alt="Logo" style="width:150px;height:200px;filter:drop-shadow(0 4px 12px rgba(180,28,38,0.5));margin-bottom:-52px;">
+  <div id="title-logo">PLANET RUBY</div>
+  <div id="title-sub">Alien Frontier</div>
+  <div id="title-hero-wrap">
+    <img id="title-hero-img" src="" alt="Hero" />
+  </div>
+  <div id="gender-toggle">
+    <button class="gender-btn active" id="gbtn-m" onclick="setGender('m')">♂ HIM</button>
+    <button class="gender-btn" id="gbtn-f" onclick="setGender('f')">♀ HER</button>
+  </div>
+  <button class="btn" id="btn-start">START GAME</button>
+  <div id="key-hint-title">Tap or click to flap • Swipe to navigate planets</div>
+</div>
+
+<!-- PLANET SELECT -->
+<div id="screen-select" class="screen">
+  <div id="select-title">CHOOSE YOUR PLANET</div>
+  <div id="carousel-wrapper"><div id="carousel"></div></div>
+  <div id="carousel-dots"></div>
+  <div id="key-hint">← → ARROW KEYS TO BROWSE &nbsp;·&nbsp; ENTER TO SELECT</div>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen">
+  <canvas id="game-canvas"></canvas>
+  <div id="hud">
+    <div id="hud-rubies"><span id="hud-rubies-label">SCORE</span><span id="hud-ruby-count">0</span></div>
+    <div id="hud-timer"><span id="hud-timer-label">TIME</span><span id="hud-timer-value">3:00</span></div>
+  </div>
+  <div id="powerup-hud">
+    <div class="powerup-indicator" id="pi-shield">🛡️ GRAVITY SHIELD <span id="pi-shield-t"></span></div>
+    <div class="powerup-indicator" id="pi-frenzy">⭐ STAR RUSH <span id="pi-frenzy-t"></span></div>
+    <div class="powerup-indicator" id="pi-twist"></div>
+  </div>
+  <div class="overlay" id="overlay-continue">
+    <div class="overlay-box">
+      <div class="overlay-title">💥 CRASHED!</div>
+      <p style="font-size:13px;opacity:.65;">Time remaining — keep going?</p>
+      <div class="overlay-btns">
+        <button class="btn" id="btn-continue">CONTINUE</button>
+        <button class="btn ghost" id="btn-give-up">GIVE UP</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="screen-gameover" class="screen">
+  <div class="overlay-box" style="max-width:340px;width:92%;">
+    <img id="go-hero" src="" alt="Hero" />
+    <div class="overlay-title" id="go-title">TIME'S UP!</div>
+    <div style="font-size:12px;opacity:.55;letter-spacing:2px;">FINAL SCORE</div>
+    <div class="overlay-score" id="go-score">0</div>
+    <div class="overlay-best" id="go-best" style="display:none;">🏆 NEW BEST!</div>
+    <div class="overlay-btns">
+      <button class="btn" id="btn-claim">CLAIM SCORE</button>
+      <button class="btn ghost" id="btn-retry">RETRY</button>
+      <button class="btn ghost" id="btn-back-select">CHANGE PLANET</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const HEROES = {
+  rubaria: { m:'rubaria M.png',f:'rubaria F.png',},
+  glacius: { m:'glacius M.png',f:'glacius F.png',},
+  infernus: { m:'infernus M.png',f:'infernus F.png',},
+  verdania: {  m:'verdania M.png',f:'verdania F.png',},
+  nebulos: { m:'nebulos M.png',f:'nebulos F.png',},}
+
+const CONFIG = {
+  roundDurationMs:180000,
+  rubyValue:1,
+  difficulty:{
+    rampCompleteAt:0.85,
+    obstacleSpeed:{start:220,end:400},
+    obstacleGap:{start:240,end:155},
+    spawnEveryMs:{start:1800,end:1100},
+  },
+  economy:{taperStart:420,taperEnd:520,frenzyBlockAt:430},
+  aid:{spawnEveryMs:8000,chance:0.7,durationMs:5000,radius:180},
+  frenzy:{spawnEveryMs:21000,chance:0.6,durationMs:7000,speedMult:1.5},
+  planets:{
+    rubaria :{name:'Rubaria', emoji:'🔴',bg:'#0d0005',accent:'#B81C26',twist:null,    tagline:'The home planet — classic ruby frontier.',  heroGlow:'rgba(180,28,38,0.7)'},
+    glacius  :{name:'Glacius', emoji:'🧊',bg:'#c8e8f5',accent:'#5aafdd',twist:'drift',  tagline:'Ice-blue crystal pillars that drift sideways.',heroGlow:'rgba(90,175,221,0.7)'},
+    infernus :{name:'Infernus',emoji:'🌋',bg:'#1a0800',accent:'#ff6a00',twist:'gravity-flip',tagline:'Every 20s gravity inverts for 3 seconds.',heroGlow:'rgba(255,106,0,0.7)'},
+    verdania :{name:'Verdania',emoji:'🌿',bg:'#071a04',accent:'#3de06e',twist:'vine',   tagline:'Horizontal vine bars lurk inside the gaps.',  heroGlow:'rgba(61,224,110,0.7)'},
+    nebulos  :{name:'Nebulos', emoji:'🌌',bg:'#0b0020',accent:'#c07af5',twist:'wormhole',tagline:'Wormhole portals that skip one obstacle column.',heroGlow:'rgba(192,122,245,0.7)'},
+  },
+};
+
+const COPY = {
+  en:{'choose-planet':'CHOOSE YOUR PLANET','select':'SELECT','best':'BEST','start-game':'START GAME','continue':'CONTINUE','give-up':'GIVE UP','claim-score':'CLAIM SCORE','retry':'RETRY','change-planet':'CHANGE PLANET','final-score':'FINAL SCORE','continue-prompt':'Time remaining — keep going?','alien-frontier':'Alien Frontier — Choose Your Planet'},
+  ms:{'choose-planet':'PILIH PLANET ANDA','select':'PILIH','best':'TERBAIK','start-game':'MULA PERMAINAN','continue':'TERUSKAN','give-up':'MENYERAH','claim-score':'TUNTUT SKOR','retry':'CUBA SEMULA','change-planet':'TUKAR PLANET','final-score':'SKOR AKHIR','continue-prompt':'Masa masih ada — teruskan?','alien-frontier':'Sempadan Alien — Pilih Planet Anda'},
+};
+
+const params    = new URLSearchParams(location.search);
+const lang      = params.get('lang')==='ms' ? 'ms' : 'en';
+const devScene  = params.get('scene');
+const devPlanet = params.get('planet');
+function t(key){ return COPY[lang][key]??COPY.en[key]??key; }
+
+// ── Gender preference ──
+let selectedGender = 'm'; // 'm' | 'f'
+function setGender(g){
+  selectedGender = g;
+  document.getElementById('gbtn-m').classList.toggle('active', g==='m');
+  document.getElementById('gbtn-f').classList.toggle('active', g==='f');
+  updateTitleHero();
+}
+function getHeroSrc(planetId){
+  return (HEROES[planetId]??HEROES.rubaria)[selectedGender];
+}
+function updateTitleHero(){
+  const p = CONFIG.planets[G.planet??'rubaria'];
+  const img = document.getElementById('title-hero-img');
+  img.src = getHeroSrc(G.planet??'rubaria');
+  img.style.setProperty('--hero-glow', p.heroGlow);
+  document.getElementById('title-hero-img').style.filter = `drop-shadow(0 8px 24px ${p.heroGlow})`;
+}
+
+function lsGet(k,fb=null){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):fb;}catch{return fb;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function getBest(id){return lsGet(`planet-ruby:${id}:best`,null);}
+function setBest(id,s){const p=getBest(id);if(p===null||s>p){lsSet(`planet-ruby:${id}:best`,s);return true;}return false;}
+
+let muted=lsGet('planet-ruby:mute',false);
+let audioCtx=null;
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function playTone({freq=440,type='sine',duration=0.08,gain=0.3,detune=0}={}){
+  if(muted)return;
+  const ctx=getAudio(),osc=ctx.createOscillator(),g=ctx.createGain();
+  osc.connect(g);g.connect(ctx.destination);
+  osc.type=type;osc.frequency.value=freq;osc.detune.value=detune;
+  g.gain.setValueAtTime(gain,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
+  osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duration);
+}
+const SFX={
+  flap(){playTone({freq:880,duration:0.06});},
+  ruby(){[880,1100,1320].forEach((f,i)=>setTimeout(()=>playTone({freq:f,duration:0.08,gain:.25}),i*30));},
+  crash(){playTone({freq:80,type:'sawtooth',duration:0.3,gain:.4});setTimeout(()=>playTone({freq:60,type:'triangle',duration:0.2}),100);},
+  select(f=440){playTone({freq:f,duration:0.1,gain:.3});setTimeout(()=>playTone({freq:f*1.25,duration:0.1,gain:.3}),110);},
+  gravityFlip(){playTone({freq:120,type:'sawtooth',duration:0.4,gain:.35});playTone({freq:800,type:'sine',duration:0.4,gain:.2});},
+  wormhole(){[600,900,1400,600].forEach((f,i)=>setTimeout(()=>playTone({freq:f,duration:0.1,gain:.25}),i*80));},
+};
+
+const muteBtn=document.getElementById('mute-btn');
+function updateMuteBtn(){muteBtn.textContent=muted?'🔇':'🔊';}
+muteBtn.addEventListener('click',()=>{muted=!muted;lsSet('planet-ruby:mute',muted);updateMuteBtn();});
+updateMuteBtn();
+
+const SCREENS={title:document.getElementById('screen-title'),select:document.getElementById('screen-select'),game:document.getElementById('screen-game'),gameover:document.getElementById('screen-gameover')};
+function showScreen(name){Object.values(SCREENS).forEach(s=>s.classList.remove('active'));SCREENS[name].classList.add('active');}
+
+const carousel=document.getElementById('carousel');
+const carouselDots=document.getElementById('carousel-dots');
+const PLANET_IDS=Object.keys(CONFIG.planets);
+let activeCardIdx=0;
+
+function buildCarousel(){
+  carousel.innerHTML='';carouselDots.innerHTML='';
+  PLANET_IDS.forEach((id,idx)=>{
+    const p=CONFIG.planets[id],best=getBest(id);
+    const card=document.createElement('div');
+    card.className='planet-card'+(idx===activeCardIdx?' active':'');
+    card.style.setProperty('--accent-color',p.accent);
+    card.dataset.idx=idx;card.dataset.planetId=id;
+    // Hero thumbnail
+    const heroSrc=getHeroSrc(id);
+    card.innerHTML=`
+      <div class="card-thumb" style="background:${p.bg};">
+        <img src="${heroSrc}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">
+      </div>
+      <div class="card-name" style="color:${p.accent}">${p.name}</div>
+      <div class="card-tagline">${p.tagline}</div>
+      <div class="card-best">${best!==null?`${t('best')}: ${best}`:''}</div>
+      <button class="card-select-btn">${t('select')}</button>
+    `;
+    card.querySelector('.card-select-btn').addEventListener('click',e=>{e.stopPropagation();selectPlanet(id);});
+    card.addEventListener('click',()=>setActiveCard(idx));
+    carousel.appendChild(card);
+    const dot=document.createElement('div');
+    dot.className='dot'+(idx===0?' active':'');
+    carouselDots.appendChild(dot);
+  });
+}
+
+function setActiveCard(idx){
+  activeCardIdx=idx;
+  document.querySelectorAll('.planet-card').forEach((c,i)=>c.classList.toggle('active',i===idx));
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+  if(window.innerWidth<768){
+    const card=carousel.children[idx];
+    const wrapperW=document.getElementById('carousel-wrapper').clientWidth;
+    const offset=card.offsetLeft-(wrapperW/2)+(card.offsetWidth/2);
+    carousel.style.transform=`translateX(${-offset}px)`;
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(!SCREENS.select.classList.contains('active'))return;
+  if(e.key==='ArrowRight')setActiveCard(Math.min(activeCardIdx+1,PLANET_IDS.length-1));
+  if(e.key==='ArrowLeft') setActiveCard(Math.max(activeCardIdx-1,0));
+  if(e.key==='Enter')selectPlanet(PLANET_IDS[activeCardIdx]);
+});
+
+let touchStartX=0;
+carousel.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX;},{passive:true});
+carousel.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-touchStartX;
+  if(Math.abs(dx)>40){if(dx<0)setActiveCard(Math.min(activeCardIdx+1,PLANET_IDS.length-1));else setActiveCard(Math.max(activeCardIdx-1,0));}
+});
+
+const G={
+  planet:'rubaria',rubies:0,timeRemainingMs:CONFIG.roundDurationMs,
+  running:false,paused:false,lastTs:0,raf:null,
+  pbotY:0,pbotVY:0,pbotX:80,pbotW:56,pbotH:80,
+  gravity:1800,jumpForce:-620,gravityFlipped:false,
+  obstacles:[],nextObstacleMs:0,
+  gems:[],
+  aidActive:false,aidTimer:0,aidNextMs:0,
+  frenzyActive:false,frenzyTimer:0,frenzyNextMs:0,
+  twistGravFlipNext:0,twistGravFlipTimer:0,
+  twistWormholeNext:0,wormholes:[],
+  W:400,H:600,
+  heroImg:null,
+};
+
+const canvas=document.getElementById('game-canvas');
+const ctx=canvas.getContext('2d');
+
+function resizeCanvas(){
+  const isMobile = window.innerWidth < 768;
+  const w = isMobile ? Math.min(window.innerWidth, 480) : window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width=w;canvas.height=h;G.W=w;G.H=h;G.pbotY=h/2-G.pbotH/2;
+}
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas();
+
+function loadHeroImage(planetId){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>res(img);
+    img.onerror=()=>res(null);
+    img.src=getHeroSrc(planetId);
+  });
+}
+
+function lerp(a,b,t){return a+(b-a)*Math.min(t,1);}
+function getDiffAt(elapsed){
+  const ratio=elapsed/(CONFIG.roundDurationMs*CONFIG.difficulty.rampCompleteAt),d=CONFIG.difficulty;
+  return{speed:lerp(d.obstacleSpeed.start,d.obstacleSpeed.end,ratio),gap:lerp(d.obstacleGap.start,d.obstacleGap.end,ratio),spawnEvery:lerp(d.spawnEveryMs.start,d.spawnEveryMs.end,ratio)};
+}
+function rubySpawnAllowed(){
+  const e=CONFIG.economy;
+  if(G.rubies<e.taperStart)return true;
+  if(G.rubies>=e.taperEnd)return false;
+  return Math.random()<1-(G.rubies-e.taperStart)/(e.taperEnd-e.taperStart);
+}
+function spawnObstacle(elapsed){
+  const diff=getDiffAt(elapsed),gap=G.planet==='glacius'?diff.gap*1.15:diff.gap;
+  const gapY=60+Math.random()*(G.H-gap-120),w=40;
+  const obs={x:G.W+w,w,gapY,gap,speed:diff.speed*(G.frenzyActive?0.5:1),drift:0,driftT:0,vine:null};
+  if(G.planet==='verdania'&&Math.random()<0.4)obs.vine={y:gapY+gap*0.2+Math.random()*gap*0.4,x:obs.x,w:80+Math.random()*40,h:12,scrollV:30+Math.random()*20};
+  G.obstacles.push(obs);
+  if(rubySpawnAllowed()){
+    const count=G.frenzyActive?5:(Math.random()<0.3?3:1);
+    for(let i=0;i<count;i++)G.gems.push({x:obs.x+w+60+i*30,y:gapY+gap*0.2+Math.random()*gap*0.6,r:8,collected:false});
+  }
+}
+function spawnWormhole(){G.wormholes.push({x:G.W+30,y:G.H*0.3+Math.random()*G.H*0.4,r:28,life:4000,age:0});SFX.wormhole();}
+function activateWormhole(){G.obstacles.forEach(o=>{o.x-=200;if(o.vine)o.vine.x-=200;});G.gems.forEach(g=>{g.x-=200;});}
+function pbotRect(){return{x:G.pbotX+10,y:G.pbotY+10,w:G.pbotW-20,h:G.pbotH-20};}
+function rectsOverlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function checkCollisions(){
+  const pb=pbotRect();
+  if(pb.y<0||pb.y+pb.h>G.H)return true;
+  for(const o of G.obstacles){
+    const drift=o.drift||0;
+    if(rectsOverlap(pb,{x:o.x+drift,y:0,w:o.w,h:o.gapY}))return true;
+    if(rectsOverlap(pb,{x:o.x+drift,y:o.gapY+o.gap,w:o.w,h:G.H}))return true;
+    if(o.vine&&rectsOverlap(pb,{x:o.vine.x+drift,y:o.vine.y,w:o.vine.w,h:o.vine.h}))return true;
+  }
+  return false;
+}
+function collectRubies(){
+  const pb=pbotRect(),radius=G.aidActive?CONFIG.aid.radius:0;
+  G.gems.forEach(gem=>{
+    if(gem.collected)return;
+    const dx=(pb.x+pb.w/2)-gem.x,dy=(pb.y+pb.h/2)-gem.y,dist=Math.sqrt(dx*dx+dy*dy);
+    const pickup = radius > 0 ? dist < radius + gem.r :(pb.x<gem.x+gem.r&&pb.x+pb.w>gem.x-gem.r&&pb.y<gem.y+gem.r&&pb.y+pb.h>gem.y-gem.r);
+    if(pickup){gem.collected=true;G.rubies+=CONFIG.rubyValue;updateHUD();SFX.ruby();spawnFloatText(gem.x,gem.y,'+1');}
+  });
+  G.gems=G.gems.filter(g=>!g.collected&&g.x>-50);
+}
+function spawnFloatText(x,y,text){
+  const el=document.createElement('div');el.className='float-text';el.textContent=text;
+  el.style.left=`${x}px`;el.style.top=`${y}px`;document.body.appendChild(el);
+  el.addEventListener('animationend',()=>el.remove());
+}
+const hudRubyCount=document.getElementById('hud-ruby-count');
+const hudTimerVal=document.getElementById('hud-timer-value');
+const hudTimerEl=document.getElementById('hud-timer');
+function updateHUD(){
+  hudRubyCount.textContent=G.rubies;
+  const s=Math.max(0,Math.ceil(G.timeRemainingMs/1000)),min=Math.floor(s/60),sec=s%60;
+  hudTimerVal.textContent=`${min}:${sec.toString().padStart(2,'0')}`;
+  hudTimerEl.classList.toggle('urgent',s<=10);
+  document.getElementById('urgency-overlay').classList.toggle('active',s<=5);
+}
+function trySpawnAid(elapsed){if(G.aidActive||elapsed<G.aidNextMs)return;G.aidNextMs=elapsed+CONFIG.aid.spawnEveryMs;if(Math.random()<CONFIG.aid.chance)activateAid();}
+function trySpawnFrenzy(elapsed){if(G.frenzyActive||G.rubies>=CONFIG.economy.frenzyBlockAt||elapsed<G.frenzyNextMs)return;G.frenzyNextMs=elapsed+CONFIG.frenzy.spawnEveryMs;if(Math.random()<CONFIG.frenzy.chance)activateFrenzy();}
+function activateAid(){G.aidActive=true;G.aidTimer=CONFIG.aid.durationMs;document.getElementById('pi-shield').classList.add('active');}
+function deactivateAid(){G.aidActive=false;document.getElementById('pi-shield').classList.remove('active');}
+function activateFrenzy(){G.frenzyActive=true;G.frenzyTimer=CONFIG.frenzy.durationMs;document.getElementById('pi-frenzy').classList.add('active');document.getElementById('star-rush-vignette').classList.add('active');}
+function deactivateFrenzy(){G.frenzyActive=false;document.getElementById('pi-frenzy').classList.remove('active');document.getElementById('star-rush-vignette').classList.remove('active');}
+function updatePowerupTimers(dt){
+  if(G.aidActive){G.aidTimer-=dt;document.getElementById('pi-shield-t').textContent=`${Math.ceil(G.aidTimer/1000)}s`;if(G.aidTimer<=0)deactivateAid();}
+  if(G.frenzyActive){G.frenzyTimer-=dt;document.getElementById('pi-frenzy-t').textContent=`${Math.ceil(G.frenzyTimer/1000)}s`;if(G.frenzyTimer<=0)deactivateFrenzy();}
+}
+function updateTwists(dt,elapsed){
+  const piTwist=document.getElementById('pi-twist');
+  if(G.planet==='glacius')G.obstacles.forEach(o=>{o.driftT+=dt/1000;o.drift=Math.sin(o.driftT*1.2)*30;});
+  if(G.planet==='infernus'){
+    if(G.twistGravFlipTimer>0){
+      G.twistGravFlipTimer-=dt;piTwist.textContent=`🔃 ${Math.ceil(G.twistGravFlipTimer/1000)}s`;piTwist.classList.add('active');
+      if(G.twistGravFlipTimer<=0){G.gravity=1800;G.gravityFlipped=false;G.twistGravFlipTimer=0;piTwist.classList.remove('active');document.getElementById('screen-game').classList.remove('gravity-flipped');document.getElementById('screen-game').classList.add('gravity-normal');setTimeout(()=>document.getElementById('screen-game').classList.remove('gravity-normal'),400);}
+    }else if(elapsed>=G.twistGravFlipNext){G.twistGravFlipNext=elapsed+20000;G.twistGravFlipTimer=3000;G.gravity=-1800*0.4;G.gravityFlipped=true;SFX.gravityFlip();document.getElementById('screen-game').classList.add('gravity-flipped');}
+  }
+  if(G.planet==='nebulos'){
+    if(elapsed>=G.twistWormholeNext){G.twistWormholeNext=elapsed+30000;spawnWormhole();}
+    const pb=pbotRect();
+    G.wormholes=G.wormholes.filter(w=>{w.age+=dt;w.x-=getDiffAt(elapsed).speed*dt/1000;if(Math.hypot((pb.x+pb.w/2)-w.x,(pb.y+pb.h/2)-w.y)<w.r+10){activateWormhole();return false;}return w.age<w.life&&w.x>-100;});
+  }
+}
+
+function render(elapsed){
+  const p=CONFIG.planets[G.planet];
+  ctx.clearRect(0,0,G.W,G.H);
+  ctx.fillStyle=p.bg;ctx.fillRect(0,0,G.W,G.H);
+  if(G.planet==='nebulos'){
+    ctx.save();
+    for(let i=0;i<30;i++){const px=(Math.sin(i*137.5+elapsed*0.00015)*0.5+0.5)*G.W,py=(Math.cos(i*97.1+elapsed*0.00010)*0.5+0.5)*G.H;ctx.fillStyle=`rgba(192,122,245,${0.1+(i%5)*0.05})`;ctx.beginPath();ctx.arc(px,py,1.5,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+  }
+  G.wormholes.forEach(w=>{
+    ctx.save();ctx.globalAlpha=Math.min(w.age/2000,1)*0.85;
+    const grad=ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.r);
+    grad.addColorStop(0,'#fff');grad.addColorStop(0.5,p.accent);grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad;ctx.beginPath();ctx.arc(w.x,w.y,w.r*(1+Math.sin(w.age*0.003)*0.1),0,Math.PI*2);ctx.fill();ctx.restore();
+  });
+  G.obstacles.forEach(o=>{
+    const drift=o.drift||0;
+    ctx.fillStyle=p.accent;
+    ctx.fillRect(o.x+drift,0,o.w,o.gapY);ctx.fillRect(o.x+drift,o.gapY+o.gap,o.w,G.H);
+    if(G.planet==='glacius'){ctx.fillStyle='rgba(200,232,245,0.3)';ctx.fillRect(o.x+drift,o.gapY-6,o.w,6);ctx.fillRect(o.x+drift,o.gapY+o.gap,o.w,6);}
+    if(G.planet==='infernus'){ctx.fillStyle=`rgba(255,106,0,${0.1+Math.sin(elapsed*0.004+o.x)*0.08})`;ctx.fillRect(o.x+drift-4,0,8,G.H);}
+    if(o.vine){ctx.fillStyle='#3de06e';ctx.fillRect(o.vine.x+drift,o.vine.y,o.vine.w,o.vine.h);ctx.fillStyle='rgba(61,224,110,0.25)';ctx.fillRect(o.vine.x+drift-3,o.vine.y-3,o.vine.w+6,o.vine.h+6);}
+  });
+  G.gems.forEach(gem=>{
+    if(gem.collected)return;
+    ctx.fillStyle='#ff2255';ctx.beginPath();ctx.arc(gem.x,gem.y,gem.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(gem.x-2,gem.y-2,gem.r*0.35,0,Math.PI*2);ctx.fill();
+  });
+  if(G.aidActive){ctx.save();ctx.strokeStyle='rgba(253,216,61,0.45)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(G.pbotX+G.pbotW/2,G.pbotY+G.pbotH/2,CONFIG.aid.radius,0,Math.PI*2);ctx.stroke();ctx.restore();}
+
+  // Draw hero sprite as the player character
+  if(G.heroImg){
+    ctx.save();
+    if(G.gravityFlipped){ctx.translate(G.pbotX+G.pbotW/2,G.pbotY+G.pbotH/2);ctx.rotate(Math.PI);ctx.drawImage(G.heroImg,-G.pbotW/2,-G.pbotH/2,G.pbotW,G.pbotH);}
+    else{ctx.drawImage(G.heroImg,G.pbotX,G.pbotY,G.pbotW,G.pbotH);}
+    ctx.restore();
+  } else {
+    // Fallback pixel robot
+    ctx.save();
+    if(G.gravityFlipped){ctx.translate(G.pbotX+G.pbotW/2,G.pbotY+G.pbotH/2);ctx.rotate(Math.PI);ctx.translate(-G.pbotW/2,-G.pbotH/2);}else{ctx.translate(G.pbotX,G.pbotY);}
+    ctx.fillStyle='#1a3a5c';ctx.beginPath();ctx.roundRect(0,4,G.pbotW,G.pbotH-4,6);ctx.fill();
+    ctx.fillStyle='#0a1e30';ctx.beginPath();ctx.roundRect(4,8,G.pbotW-8,G.pbotH-18,4);ctx.fill();
+    ctx.fillStyle='#FDD83D';ctx.fillRect(7,12,12,12);ctx.fillRect(G.pbotW-19,12,12,12);
+    ctx.fillStyle='#0a1e30';ctx.fillRect(11,16,5,5);ctx.fillRect(G.pbotW-14,16,5,5);
+    ctx.fillStyle=p.accent;ctx.beginPath();ctx.arc(G.pbotW/2,G.pbotH-7,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#FDD83D';ctx.fillRect(G.pbotW/2-2,-5,4,6);
+    ctx.restore();
+  }
+}
+
+function gameLoop(ts){
+  if(!G.running||G.paused)return;
+  const dt=Math.min(ts-G.lastTs,50);G.lastTs=ts;
+  const elapsed=CONFIG.roundDurationMs-G.timeRemainingMs;
+  G.timeRemainingMs-=dt;
+  if(G.timeRemainingMs<=0){G.timeRemainingMs=0;updateHUD();endGame('timeup');return;}
+  updateHUD();
+  G.pbotVY+=G.gravity*dt/1000;G.pbotY+=G.pbotVY*dt/1000;
+  const diff=getDiffAt(elapsed),speed=diff.speed*(G.frenzyActive?CONFIG.frenzy.speedMult:1);
+  G.obstacles.forEach(o=>{o.x-=speed*dt/1000;if(o.vine){o.vine.x-=speed*dt/1000;o.vine.y+=o.vine.scrollV*dt/1000;}});
+  G.obstacles=G.obstacles.filter(o=>o.x>-200);
+  G.gems.forEach(g=>{g.x-=speed*dt/1000;});
+  G.nextObstacleMs-=dt;
+  if(G.nextObstacleMs<=0){spawnObstacle(elapsed);G.nextObstacleMs=diff.spawnEvery;}
+  updateTwists(dt,elapsed);trySpawnAid(elapsed);trySpawnFrenzy(elapsed);updatePowerupTimers(dt);
+  collectRubies();
+  if(checkCollisions()){SFX.crash();crashPbot();return;}
+  render(elapsed);
+  G.raf=requestAnimationFrame(gameLoop);
+}
+
+function crashPbot(){
+  G.running=false;
+  const flash=document.getElementById('flash-overlay');
+  flash.style.opacity='1';
+  setTimeout(()=>{
+    flash.style.transition='opacity 0.2s';flash.style.opacity='0';
+    const cx=G.pbotX+G.pbotW/2,cy=G.pbotY+G.pbotH/2;
+    const particles=[];
+    for(let i=0;i<12;i++){const angle=(i/12)*Math.PI*2;particles.push({x:cx,y:cy,vx:Math.cos(angle)*150,vy:Math.sin(angle)*150});}
+    const start=performance.now();
+    function animP(ts){
+      const age=ts-start;
+      ctx.clearRect(0,0,G.W,G.H);render(CONFIG.roundDurationMs-G.timeRemainingMs);
+      ctx.fillStyle='#FDD83D';
+      particles.forEach(p=>{p.x+=p.vx*0.016;p.y+=p.vy*0.016;ctx.globalAlpha=1-age/300;ctx.fillRect(p.x,p.y,6,6);});
+      ctx.globalAlpha=1;
+      if(age<300)requestAnimationFrame(animP);else setTimeout(()=>showContinueOrEnd(),500);
+    }
+    requestAnimationFrame(animP);
+  },100);
+}
+
+function showContinueOrEnd(){
+  if(G.timeRemainingMs>0){document.getElementById('overlay-continue').classList.add('active');G.paused=true;}
+  else endGame('crash');
+}
+function endGame(reason){
+  G.running=false;cancelAnimationFrame(G.raf);
+  const isNewBest=setBest(G.planet,G.rubies);
+  document.getElementById('go-title').textContent=reason==='timeup'?"TIME'S UP!":'GAME OVER';
+  document.getElementById('go-score').textContent=G.rubies;
+  document.getElementById('go-best').style.display=isNewBest?'block':'none';
+  // Update game over hero
+  document.getElementById('go-hero').src=getHeroSrc(G.planet);
+  const btnClaim=document.getElementById('btn-claim');
+  btnClaim.style.display=G.rubies>0?'':'none';btnClaim.textContent=t('claim-score');btnClaim.disabled=false;
+  showScreen('gameover');
+}
+function fireCallback(){
+  const callbackUrl=params.get('callback_url')||window.__JDP_CALLBACK_URL__;if(!callbackUrl)return;
+  const token=crypto.randomUUID();if(sessionStorage.getItem(`pr-token-${token}`))return;
+  sessionStorage.setItem(`pr-token-${token}`,'1');
+  const payload={game:'planet-ruby',score:G.rubies,token,planet:G.planet};
+  document.getElementById('btn-claim').disabled=true;
+  try{const url=new URL(callbackUrl);Object.entries(payload).forEach(([k,v])=>url.searchParams.set(k,v));window.location.href=url.toString();}
+  catch{window.parent.postMessage({type:'jdp-callback',...payload},'*');}
+}
+function selectPlanet(id){
+  G.planet=id;
+  SFX.select({rubaria:440,glacius:523,infernus:349,verdania:392,nebulos:466}[id]??440);
+  startGame(id);
+}
+async function startGame(planetId){
+  G.planet=planetId;G.rubies=0;G.timeRemainingMs=CONFIG.roundDurationMs;
+  G.running=true;G.paused=false;G.lastTs=performance.now();
+  G.pbotY=G.H/2-G.pbotH/2;G.pbotVY=0;G.gravity=1800;G.gravityFlipped=false;
+  G.obstacles=[];G.gems=[];G.wormholes=[];G.nextObstacleMs=500;
+  G.aidActive=false;G.aidTimer=0;G.aidNextMs=CONFIG.aid.spawnEveryMs;
+  G.frenzyActive=false;G.frenzyTimer=0;G.frenzyNextMs=CONFIG.frenzy.spawnEveryMs;
+  G.twistGravFlipNext=20000;G.twistGravFlipTimer=0;G.twistWormholeNext=30000;
+  deactivateAid();deactivateFrenzy();
+  document.getElementById('pi-twist').classList.remove('active');
+  document.getElementById('screen-game').classList.remove('gravity-flipped','gravity-normal');
+  document.getElementById('flash-overlay').style.opacity='0';
+  document.getElementById('flash-overlay').style.transition='';
+  // Load hero image for this planet+gender
+  G.heroImg = await loadHeroImage(planetId);
+  updateHUD();resizeCanvas();showScreen('game');
+  G.raf=requestAnimationFrame(ts=>{G.lastTs=ts;requestAnimationFrame(gameLoop);});
+}
+function flap(){if(!G.running||G.paused)return;G.pbotVY=G.gravityFlipped?-G.jumpForce:G.jumpForce;SFX.flap();}
+canvas.addEventListener('pointerdown',flap,{passive:true});
+document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();flap();}});
+
+document.getElementById('btn-start').addEventListener('click',()=>{buildCarousel();showScreen('select');});
+document.getElementById('btn-continue').addEventListener('click',()=>{
+  document.getElementById('overlay-continue').classList.remove('active');
+  G.running=true;G.paused=false;G.pbotVY=0;G.pbotY=G.H/2-G.pbotH/2;G.lastTs=performance.now();
+  G.raf=requestAnimationFrame(gameLoop);
+});
+document.getElementById('btn-give-up').addEventListener('click',()=>{document.getElementById('overlay-continue').classList.remove('active');endGame('crash');});
+document.getElementById('btn-claim').addEventListener('click',fireCallback);
+document.getElementById('btn-retry').addEventListener('click',()=>startGame(G.planet));
+document.getElementById('btn-back-select').addEventListener('click',()=>{buildCarousel();showScreen('select');});
+
+// Init title hero
+window.addEventListener('DOMContentLoaded',()=>{
+  updateTitleHero();
+});
+updateTitleHero();
+
+function initDevJumps(){
+  if(!devScene)return;
+  if(devScene==='select'){buildCarousel();showScreen('select');}
+  else if(devScene==='game')startGame(devPlanet??'rubaria');
+  else if(devScene==='gameover'){G.rubies=42;endGame('timeup');}
+}
+initDevJumps();
+
+const fsBtn = document.getElementById('fs-btn');
+function updateFsBtn(){
+  fsBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
+}
+fsBtn.addEventListener('click', () => {
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen().catch(()=>{});
+  }
+});
+document.addEventListener('fullscreenchange', updateFsBtn);
+
+
+</script>
+</body>
+</html>

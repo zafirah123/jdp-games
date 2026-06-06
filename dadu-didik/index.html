@@ -157,12 +157,14 @@ const CONFIG = {
   },
   minGroup:3,
   maxTier:6,
-  burst:{ pattern:'cross', score:40, perCleared:6 }, // 'cross' (5) | 'block' (9)
-  // Tuned via Monte-Carlo sim (50k games): casual p50 ~218, strong p50 ~423,
-  // near-perfect ~480; 500 reached by ~1.4% of strong runs / ~19% of perfect
-  // runs (counter never clamped) — see SPEC.md §5.
-  score:{ base:1.6, groupBonus:1, chainMult:[1,1.6,2.4,3.2,4] },
-  economy:{ softCap:500, hardenStart:400, hardenEnd:500 },
+  burst:{ pattern:'cross', perCell:10 }, // 'cross' (5) | 'block' (9); score = clearedCells * perCell
+  // COUNTABLE scoring (for student counting practice): a merge scores the SUM
+  // of the pips on the merged dice (= value × groupSize), multiplied by the
+  // combo number (chain step), capped at comboCap. e.g. three 4s on combo 2
+  // = (4+4+4) × 2 = 24. Monte-Carlo tuned: casual p50 ~293, strong ~593,
+  // near-perfect ~657; ~700 is the aspirational ceiling (counter uncapped).
+  score:{ comboCap:3 },           // combo multiplier maxes at ×3 (kid-friendly)
+  economy:{ softCap:700, hardenStart:450, hardenEnd:600 },
   continue:{ clearPattern:'3x3' },
   anim:{ place:180, slide:140, pop:180, chainStagger:160, burstFlash:220 },
 };
@@ -302,11 +304,11 @@ function burstCells(r,c){
 }
 
 function computeScore(value, groupSize, chainStep){
-  const resultValue = value===6?7:value+1;
-  const base  = resultValue*CONFIG.score.base;
-  const bonus = Math.max(0,groupSize-3)*resultValue*CONFIG.score.groupBonus;
-  const mult  = CONFIG.score.chainMult[Math.min(chainStep-1, CONFIG.score.chainMult.length-1)];
-  return Math.round((base+bonus)*mult);
+  // Countable: points = sum of the pips on the merged dice (all share `value`),
+  // multiplied by the combo number. e.g. three 4s on combo 2 = (4+4+4)×2 = 24.
+  const sumOfPips = value * groupSize;
+  const combo = Math.min(chainStep, CONFIG.score.comboCap);
+  return sumOfPips * combo;
 }
 
 /* Resolve merges on `board` (mutated). Returns ordered animation steps.
@@ -328,7 +330,7 @@ function resolveToSteps(board, seeds){
       for(const [rr,cc] of burstCells(r,c)){
         if(board[rr][cc]){ cleared.push({r:rr,c:cc,value:board[rr][cc].value}); board[rr][cc]=null; }
       }
-      const gained=CONFIG.burst.score+cleared.length*CONFIG.burst.perCleared;
+      const gained=(clusterCells.length+cleared.length)*CONFIG.burst.perCell;
       steps.push({type:'burst', anchor:{r,c}, cluster:clusterCells, cleared, resultValue:null, gained, chain});
     } else {
       const resultValue=v===6?7:v+1;
@@ -528,7 +530,8 @@ function fireStep(step){
     STATE.anims.push({type:'merge', anchor:step.anchor, cluster:step.cluster, resultValue:step.resultValue,
                       t0:STATE.lastNow, dur:CONFIG.anim.slide+CONFIG.anim.pop});
     floatText(ac.x,ac.y,'+'+step.gained);
-    if(step.chain>1) comboPopup(COPY.combo+' ×'+step.chain);
+    const combo=Math.min(step.chain, CONFIG.score.comboCap);
+    if(combo>1) comboPopup(COPY.combo+' ×'+combo);
     step.resultValue===7?sfx.ruby():(step.chain>1?sfx.chain(step.chain):sfx.merge(step.resultValue));
   }
   STATE.score+=step.gained;

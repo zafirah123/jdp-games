@@ -142,17 +142,15 @@ const CONFIG = {
 
   // ---- Ruby Burst (reskinned bomb) ----
   burst: { pattern: 'cross',      // 'cross' = anchor + 4 orthogonal (5 cells) | 'block' = 3x3 (9)
-           score: 40, perCleared: 6 },
+           perCell: 10 },         // burst score = clearedCells * perCell (countable)
 
-  // ---- Scoring (LOCKED — Monte-Carlo tuned, see §5) ----
+  // ---- Scoring — COUNTABLE (sum of pips × combo), see §5 ----
   score: {
-    base: 1.6,                    // merge points = resultValue * base
-    groupBonus: 1,                // each die beyond the 3rd: extraDie * resultValue * groupBonus
-    chainMult: [1, 1.6, 2.4, 3.2, 4], // chain step 1..5+, capped at the last entry
+    comboCap: 3,                  // merge = (value * groupSize) * min(chainStep, comboCap)
   },
 
-  // ---- Economy cap (difficulty-escalation path, BEST-PRACTICES §05) ----
-  economy: { softCap: 500, hardenStart: 400, hardenEnd: 500 },
+  // ---- Economy cap (difficulty-escalation path, §05; retargeted to ~700) ----
+  economy: { softCap: 700, hardenStart: 450, hardenEnd: 600 },
 
   // ---- Continue (mercy clear; time is a shared budget) ----
   continue: { clearPattern: '3x3' },   // unlimited continues while clock > 0
@@ -282,60 +280,79 @@ resolveMerges(board, anchorCells):
 
 ---
 
-## 5. Scoring (§D5, §D6)
+## 5. Scoring — countable (for student counting practice)
+
+**Design goal:** a student can verify every score by counting. The points for
+a merge are the **sum of the pips on the merged dice**, and a combo simply
+**multiplies that sum**. No fractions, no rounding.
 
 ```
 computeScore(value, groupSize, chainStep):
-  resultValue = (value == 6) ? 7 : value + 1        // Ruby counts as 7
-  base   = resultValue * CONFIG.score.base
-  bonus  = max(0, groupSize - 3) * resultValue * CONFIG.score.groupBonus
-  mult   = CONFIG.score.chainMult[min(chainStep, len-1)]
-  return round((base + bonus) * mult)
+  sumOfPips = value * groupSize        // all merged dice share `value`, so this
+                                       // is literally 3+3+3 (or 3+3+3+3, …)
+  combo     = min(chainStep, CONFIG.score.comboCap)   // the combo number, ×1..×3
+  return sumOfPips * combo
 
-rubyBurstScore(clearedCount):
-  return CONFIG.burst.score + clearedCount * CONFIG.burst.perCleared
+rubyBurstScore(clearedCellCount):
+  return clearedCellCount * CONFIG.burst.perCell      // count the squares × 10
 ```
 
+- **Count the dots → add → multiply.** Merge three 4s = 4+4+4 = **12**. If it
+  was your 2nd merge in the chain, ×2 = **24**. That's the whole model.
 - **One currency, one HUD number** (CLAUDE.md §1.3): the running **Score**.
-  No multipliers shown as a second number; the chain `×` shows transiently as
-  a **combo popup**, not a HUD field.
-- **Floating "+N"** at the merge anchor; **combo counter** popup when a chain
-  is longer than one step (BEST-PRACTICES §07 polish).
-- **Cap (never visible):** score is **not** clamped and **not** shown as
-  `/500`. As score crosses `hardenStart`, the spawn weights harden (§3) so
-  setups get genuinely harder — a 500 run reads as *earned*, a 487 as "almost
-  cracked it." If the player hits 500, a one-time `500 — MAX` badge is allowed
-  (§05), but it is not ambient HUD chrome.
+  The combo `×N` shows transiently as a **combo popup**, not a HUD field.
+- **Floating "+N"** at the merge anchor; **combo popup** (`COMBO ×N`) when the
+  combo multiplier is >1 (BEST-PRACTICES §07 polish).
+- **Cap (never visible):** score is **not** clamped and **not** shown as a
+  denominator. As score crosses `hardenStart`, the spawn weights harden (§3)
+  so setups get genuinely harder near the ceiling (§05 escalation).
 
-### Tuned constants (locked)
-
-The scoring constants were fixed by a **Monte-Carlo simulation** (a headless
-autoplay using the game's real resolver + difficulty ramp, with heuristic
-players across skill tiers, ~50k games). Final values:
+### Constants (Monte-Carlo tuned)
 
 ```
-base 1.6 · groupBonus 1 · chainMult [1, 1.6, 2.4, 3.2, 4] · burst 40 + 6/cleared
+score.comboCap 3   ·   burst.perCell 10
 ```
 
-Per-merge "+N" the player sees (chain 1, group 3): make-2 **+3**, make-3 **+5**,
-make-4 **+6**, make-5 **+8**, make-6 **+10**, ruby **+11**. Group of 4/5 adds a
-bonus; chains escalate (making a 3 at chain 1/2/3/4 = +5/+8/+12/+15); a Ruby
-Burst clearing 4 neighbours = **+64**.
+Per-merge "+N" the player sees (combo ×1, group of 3) — **each is just the dot
+sum**:
 
-Resulting score distribution (per 3-min round) — **500 is the aspirational
-ceiling, never clamped**:
+| Merge | Count | +N |
+|---|---|---|
+| three 1s | 1+1+1 | **+3** |
+| three 2s | 2+2+2 | **+6** |
+| three 3s | 3+3+3 | **+9** |
+| three 4s | 4+4+4 | **+12** |
+| three 5s | 5+5+5 | **+15** |
+| three 6s → Ruby | 6+6+6 | **+18** |
 
-| Player tier (sim) | median | reaches 400 | reaches 450 | **reaches 500** |
+A bigger group just sums more (four 3s = **+12**, five 3s = **+15**). Combos
+multiply (three 4s on combo ×1/×2/×3 = **+12 / +24 / +36**). A Ruby Burst
+clearing 5 cells = 5×10 = **+50**.
+
+> **Cap note — this game runs to ~700, not 500.** Pip-sum scoring is inherently
+> ~40% larger than an abstract formula, so over a 3-min / ~57-merge round it
+> can't fit the §1.4 500 default *and* stay literally countable. Per the
+> CLAUDE.md §6.5 "game-specific override" allowance, **Dadu Didik's ceiling is
+> ~700**; the callback payload may report a score >500. The §05
+> difficulty-escalation window is retargeted to `hardenStart 450 →
+> hardenEnd 600` accordingly. (If catalogue-wide 500 comparability is
+> required instead, switch the base to the *result die's* value — countable
+> but smaller — and re-tune; see open question below.)
+
+Resulting score distribution (per 3-min round, ~50k-game sim) — **counter
+never clamped**:
+
+| Player tier (sim) | median | reaches 500 | reaches 600 | **reaches 700** |
 |---|---|---|---|---|
-| casual  | ~218 | 0% | 0% | 0% |
-| average | ~324 | 1.7% | 0.1% | 0% |
-| strong  | ~423 | 73% | 23% | **1.4%** |
-| near-perfect (superhuman) | ~467 | 96% | 67% | **19%** |
+| casual  | ~293 | 0% | 0% | 0% |
+| average | ~448 | 18% | 0.7% | 0% |
+| strong  | ~593 | 93% | 44% | **3.8%** |
+| near-perfect (superhuman) | ~657 | 99% | 81% | **24%** |
 
-Casual sits in the §1.4 150–300 band; a great human run lands 400–450; 500
-demands near-perfect play (§05 escalation), and the counter stays uncapped
-(observed max ~606). Re-run the sim if `weightsEnd`, the round length, or the
-difficulty ramp change.
+Casual sits ~290; a great human run lands ~600; **700 is the aspirational
+ceiling** (reached by ~4% of strong runs), counter uncapped (observed max
+~880). Re-run the sim if `comboCap`, `weightsEnd`, round length, or the ramp
+change.
 
 ---
 
@@ -573,8 +590,9 @@ Get **1–4 playable before anything else.** That core loop is the whole game.
 ## 15. Resolved settings
 
 1. **Author:** `akmalakhpah` (used in the `games.js` entry).
-2. **Scoring:** LOCKED via Monte-Carlo simulation (§5) — `base 1.6`,
-   `groupBonus 1`, `chainMult [1, 1.6, 2.4, 3.2, 4]`, `burst 40 + 6/cleared`.
+2. **Scoring:** COUNTABLE for student practice (§5) — merge = sum of pips
+   (`value × groupSize`) × combo (`comboCap 3`); burst = `clearedCells × 10`.
+   Monte-Carlo tuned; ceiling ~700 (game-specific cap override, see §5 note).
 3. **Audio:** SFX-only, no BGM (D12).
 4. **Mascot:** pbot on the title screen only (D13).
 5. **Tray:** every piece is always a pair with 4-way rotation

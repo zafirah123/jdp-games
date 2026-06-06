@@ -1743,6 +1743,11 @@
                 document.getElementById('stat-popped').innerText = this.totalPopped;
                 document.getElementById('stat-combos').innerText = this.totalCombos;
 
+                // §6.5 — resolve the CTA against the FINAL score: CLAIM SCORE
+                // when score > 0, RETRY only when score = 0. (Initial load runs
+                // applyCopyToDOM() while score is still 0, so re-evaluate here.)
+                document.getElementById('restart-btn').textContent = endCtaLabel();
+
                 SoundSystem.playGameOver(victory);
 
                 overlay.classList.remove('hidden');

@@ -13,6 +13,7 @@
 // - `production`: true if available in production environment
 window.GAMES = [
   { name: '2048', path: './2048/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
+  { name: 'Ball Rush', path: './ball-rush/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Bubble Shooter', path: './bubble-shooter/', status: 'approved-dev', author: 'Koplo3' },
   { name: 'Dadu Didik', path: './dadu-didik/', status: 'approved-dev', author: 'akmalakhpah' },
   { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-dev', author: 'pandaipixel', staging: true, production: true },

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0d1b2e" />
+  <title>Ruby Breaker — Gem Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0d1b2e;
+      overflow: hidden;
+    }
+    /* Full-viewport parent. Phaser FIT-scales the 480×800 canvas into this
+       box and CENTER_BOTH keeps it centered. Plain block (no flex) so Phaser
+       is the ONLY thing centering the canvas — the previous flex-on-body plus
+       Phaser CENTER_BOTH double-centering pushed it off-center on wide laptop
+       viewports. */
+    #game {
+      width: 100vw;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

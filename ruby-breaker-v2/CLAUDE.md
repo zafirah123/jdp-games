@@ -4,53 +4,56 @@ Brick-breaker / gem-collector game. Phaser 3, built with Vite.
 
 ## IMPORTANT: edit the SOURCE, not the bundle
 
-This folder (`Desktop/jdp-games/ruby-breaker-v2/`) is the **deployed build** — a minified
-bundle in `assets/` plus `index.html` and image/audio assets. **Do not hand-edit the bundle.**
+This folder (`Desktop/jdp-games/ruby-breaker-v2/`) ships the **deployed build** at its root —
+a minified bundle in `assets/` plus the built `index.html` and image/audio assets.
+**Do not hand-edit the bundle.**
 
-The readable source project lives at:
+The readable Vite **source** is now vendored **in this repo** at:
 
 ```
-/Users/hanifanas/Downloads/ruby-breaker-v2/
+ruby-breaker-v2/source/
+  index.html         # dev entry (loads /src/main.js) — NOT the deployed one at the root
   src/scenes/{Boot,Preload,Start,Game,GameOver}Scene.js
   src/utils/{AudioManager,StorageManager}.js
   src/config/{gameConfig,levels}.js
-  public/            # static assets copied to the build root (pngs, m4a, ...)
-  vite.config.js     # base: './'  (note: its build.outDir points elsewhere — see Deploy)
+  src/{main,claimScore,copy}.js
+  public/            # static assets copied to the build root (pngs, mp3)
+  vite.config.js     # base: './', build.outDir: 'dist'
+  .gitignore         # node_modules/, dist/
 ```
 
-> History note: earlier in the project the source and this deployed bundle drifted apart
-> (gameplay was hand-patched into the bundle while the source lagged). As of 2026-05-21 the
-> source is the single source of truth again. Keep it that way — always edit `src/` then rebuild.
+> History note: the source used to live only in `~/Downloads/ruby-breaker-v2/` with no git
+> remote (backup risk). As of 2026-06-08 it's vendored here so source + deployed bundle travel
+> together in the pushed repo. The Downloads copy is now redundant. `bg-space.png` (unused,
+> 4.6 MB) was left out of the vendored `public/`. Always edit `source/src/` then rebuild.
 
 ## Build & deploy
 
-From the source project (`Downloads/ruby-breaker-v2/`):
+From `ruby-breaker-v2/source/`:
 
 ```
-npm install                              # first time only
-npx vite build --outDir dist --emptyOutDir   # build into a local dist/
+npm install      # first time only (node_modules is gitignored)
+npm run build    # builds into source/dist/ (gitignored)
 ```
 
-Then copy the build into this deployed folder (the repo that pushes to origin):
+Then copy the build up into the deployed root (the `npm run deploy` script does exactly this):
 
 ```
-DEST=/Users/hanifanas/Desktop/jdp-games/ruby-breaker-v2
-rm -f "$DEST/assets/"index-*.js          # drop the old hashed bundle
-cp dist/index.html "$DEST/index.html"
-cp dist/assets/index-*.js "$DEST/assets/"
-cp dist/*.png dist/*.jpeg dist/*.m4a "$DEST/"
+cp dist/index.html ..
+rm -f ../assets/index-*.js          # drop the old hashed bundle
+cp dist/assets/index-*.js ../assets/
+cp dist/*.png dist/*.jpeg dist/*.mp3 ..
 ```
 
-(`vite.config.js` `build.outDir` is `../jdp-games/ruby-breaker` — the Downloads jdp-games copy,
-NOT this Desktop repo — which is why we override `--outDir dist` and copy manually. Fix the
-config if you want `npm run build` to target this repo directly.)
+Or just run `npm run deploy` from `source/` (build + copy in one step), then commit the
+changed root files (`index.html`, `assets/index-*.js`) and push.
 
 ## Run locally
 
 From the repo root (`Desktop/jdp-games/`): `python3 -m http.server 8080`
-→ open **http://localhost:8080/ruby-breaker-v2/**
+→ open **http://localhost:8080/ruby-breaker-v2/** (serves the deployed bundle)
 
-Or, while developing the source: `cd Downloads/ruby-breaker-v2 && npm run dev` (Vite, port 3000).
+Or, while developing the source: `cd ruby-breaker-v2/source && npm run dev` (Vite, port 3000).
 
 ## Game rules / balance (current)
 

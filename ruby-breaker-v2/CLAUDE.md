@@ -108,8 +108,9 @@ All SFX/BGM are **synthesized at runtime** via the Web Audio API in `src/utils/A
   fails to load.
 - `AudioManager.gameover()` plays the BufferSource with `src.loop = true` and stores it in a
   module-scoped `gameoverSource` variable so it can be stopped later. `AudioManager.stopGameover()`
-  stops the looping source — `GameOverScene` calls this when the user clicks PLAY AGAIN or MAIN
-  MENU. Calling `gameover()` again (e.g. retry → game over) stops the previous loop first.
+  stops the source — `GameOverScene` calls this from the **CLAIM SCORE** button before handing off
+  to the platform (see the 2026-06-07 checkpoint; PLAY AGAIN / MAIN MENU were removed per root §6.5).
+  (Looping was also removed on 2026-05-26 — the clip now plays once. See that checkpoint.)
 - **MP3 exception to root §5.2 (AAC mandatory).** During the 2026-05-26 audio swap the
   AAC/.m4a produced by `afconvert` decoded inconsistently through Web Audio's `decodeAudioData`
   — game-over silently fell back to the synth jingle. MP3 decodes universally; for a 19 KB
@@ -300,3 +301,115 @@ half-second pause silent so the hand-off to pacman-die is clean.
   so they're not killed by `stopBGM`. That's correct — they're short one-shots, not loops.
 - The fetch URL is cache-busted: `pacman-die.mp3?v=${Date.now()}` so swapping the file on
   disk during dev doesn't require a hard refresh of the audio (only the bundle).
+
+---
+
+## CHECKPOINT — CLAIM SCORE callback + language + in-game pause (2026-06-07)
+
+Brings Ruby Breaker up to root CLAUDE.md §6.4 (language) and §6.5 (end-of-game
+callback + early-end). Latest deployed bundle `index-C5IS2gzt.js`. Three new/changed pieces,
+layered on the 2026-05-26 checkpoint; gameplay/physics/audio untouched.
+
+### 1. `src/claimScore.js` (new) — §6.5 callback contract
+
+Adapted from `flying-ruby/src/claimScore.js`. `claimScore(score, { cause, timeUsedMs })`
+resolves the callback target in §6.5 order — `?callback_url=` (https only) →
+`window.__JDP_CALLBACK_URL__` → null — appends the payload as query params and redirects
+(`window.location.href`), which survives Pandai's in-app WebViews better than `fetch`.
+
+- Payload: `game: 'ruby-breaker-v2'` (matches the games.js path), `score` (clamped ≥0 int),
+  fresh `token` (UUID v4 / hex fallback), plus optional `cause` + `timeUsedMs` diagnostics.
+- No callback configured (direct play) → logs the would-be payload to console and returns
+  instead of redirecting to a 404. Also mirrors every claim to `localStorage`
+  (`ruby-breaker-v2:claims`) for QA — wrapped in try/catch for sandboxed webviews.
+- **Do not hardcode a public callback URL** — that's the whole point of the resolver.
+
+### 2. `src/copy.js` (new) — §6.4 `?lang=ms` switching
+
+`COPY` object resolved once from `?lang=ms` (anything else → English; not persisted, URL is
+the source of truth). Canonical five + `claimScore` use the §6.4 table strings exactly
+(`START GAME`/`MULA MAIN`, `TIME'S UP!`/`MASA TAMAT!`, `GAME OVER`/`PERMAINAN TAMAT`,
+`CLAIM SCORE`/`TUNTUT SKOR`). Game-specific keys (how-to-play rows, pause copy, level/best
+labels, life-left text) live alongside. All three scenes import `COPY` — no hardcoded
+player-facing strings remain except the score "RUBY" HUD label.
+
+### 3. `GameScene` — in-game pause / early-end (§6.5 + user request)
+
+New top-right HUD: **pause** `⏸` and **mute** `🔊/🔇` buttons (depth 40, 8px tap padding).
+Adding the in-game mute also closes the §6.3 gap — previously only StartScene had one. Lives
+text moved to a second row (`y=36`) so it doesn't collide with the buttons.
+
+- `_togglePause()` → `_pauseRound()` sets `this.paused`, calls `physics.pause()`,
+  `this.time.paused = true`, and `AudioManager.stopBGM()`, then shows an overlay.
+- **`update()` and both `input.on` handlers now bail on `this.paused`** (in addition to
+  `!this.gameActive`), so the clock freezes and taps don't launch the ball while paused.
+- `_overControl(pointer)` bounds-checks the pause/mute buttons in the scene `pointerdown`
+  handler — without it, a tap on a control *also* fires the scene-level launch (Phaser's
+  global pointer event is independent of the buttons' own handlers).
+- Overlay (`_showPauseOverlay` / `_pauseBtn`) offers **CONTINUE** (resume) and
+  **EXIT & CLAIM** → `claimScore(this.score, { cause: 'early', timeUsedMs })`. Saves high
+  score first. This is the §6.5 player-accessible early-end.
+
+### 4. `GameOverScene` — single CLAIM SCORE CTA (§6.5)
+
+Removed **PLAY AGAIN** and **MAIN MENU** (the §6.5 no-in-game-retry rule). One CTA now:
+**CLAIM SCORE** → `claimScore(this.score, { cause })` where cause is `cap` (won) /
+`timeup` / `gameover`. Title uses `COPY.victory` (cap reached) / `COPY.timeUp` (timer) /
+`COPY.gameOver` (other), per the §6.4 state distinction.
+
+### If you touch this code
+
+- `claimScore` redirects via `window.location.href` — there's no return path in production.
+  Test with `?callback_url=https://example.com/claim` and watch the URL, or play with no
+  callback and read the console + `localStorage['ruby-breaker-v2:claims']`.
+- The pause button only works while `gameActive` (not after end-of-game).
+- If you re-add any scene `pointerdown` behaviour, keep the `_overControl` guard or control
+  taps will leak into gameplay.
+
+### 5. `GameScene.buildHUD` — top panel redesign (cosmetic)
+
+The flat `hud_bar` texture (90%-navy rect) read as invisible. Replaced with a drawn
+panel: navy base + faint `BLUE` lower band (fake gradient), a `BLUE_LT` top highlight, and a
+bold `B_RED` + `GOLD` bottom accent that lines up with the red playfield border at y=50.
+Two rounded "chips" group the stats — a `MAROON`/gold **RUBY** chip (gem icon + the single
+gold HUD number) on the left and a navy/`BLUE_LT` **LEVEL + TIMER** chip in the center.
+Pause/mute are cute gold-rimmed circular buttons (navy fill + white gloss highlight, press
+scale-tween) sitting on one right-side row with the lives readout — lives are now **heart
+emojis** (`refreshLivesHUD` → `❤️`×n, collapses to `❤️×N` past 5) instead of "HP:n", which
+de-crowds the corner. ROUND and TIME are now **two separate chips** (was one "LV+timer"
+chip) — "LV n" renamed to a ROUND label + number; `nextWave` sets `levelTx` to the number
+only. GameOverScene matches: `COPY.levelReached` → "ROUND n" / "PUSINGAN n", and the "/ 500"
+sub-line under the rubies count was removed (score shown bare, per §1.4 no cap telegraphing).
+Panel is depth 15; all
+HUD text/icons are depth 16+. `hud_bar` texture is still generated in PreloadScene but
+unused. `scoreTx` is now the number only (`addScore` sets `String(score)`); the "RUBY" label
+is a separate static text. HUD height stays 50px so world bounds / brick layout are untouched.
+
+### 6. Canvas centering fix (`index.html` + `main.js`)
+
+The page used `display:flex` centering on `<body>` **and** Phaser `autoCenter: CENTER_BOTH`
+on the FIT canvas — two centering systems fighting, which left the canvas off-center on wide
+laptop viewports. Fixed with the canonical Phaser pattern: a `<div id="game">` parent sized
+to `100vw × 100vh` (plain block, no flex), `parent: 'game'` in the scale config, and
+CENTER_BOTH as the **only** centering mechanism. Don't re-add flex/grid centering to `#game`
+or `body` — let Phaser own it.
+
+### 7. BGM audibility + clean start (`AudioManager.js`)
+
+In-game BGM is the synthesized D-minor arpeggio (no file). It was effectively inaudible — lead
+notes at `0.06` gain → `bgmGain(1)` → `masterGain(0.4)` ≈ `0.024`. Two fixes: (a) lead note
+gain raised to `0.16` and a soft sine **bass** voice (`BGM_BASS`) added on bar downbeats so the
+loop reads as music; (b) `scheduleBGMBatch` now **polls until `ctx.state === 'running'`** instead
+of queuing oscillators on a suspended (autoplay-blocked) context — previously a start-screen
+`playBGM()` piled notes on a frozen clock that blasted at once when audio unlocked. The
+AudioContext unlocks on the first user gesture (the START GAME click), so GameScene BGM is
+running by the time `create()` calls `playBGM()`.
+
+### Known remaining gaps (not addressed here — flag before "done")
+
+- **Mute is not persisted to `localStorage`** and not applied before first audio (§6.3/§0.4).
+  `AudioManager` keeps `muted` in a module variable only; `StorageManager` has `getPrefs`/
+  `setPref` ready to wire it.
+- **§1.4 / §1.5:** the run hard-ends at 500 (`endGame(true)`) rather than tapering spawns,
+  and there are 10 power-up types vs the two-max rule. Both are gameplay-balance changes,
+  out of scope for this callback/lang pass.

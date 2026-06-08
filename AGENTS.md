@@ -92,6 +92,10 @@ single-file games alike.
    - If `callback_url` is missing/invalid, use the platform callback
      fallback configured by product. Do not hardcode a public callback URL
      in game code.
+   - Guard the submit handler when building the callback URL. If no valid
+     callback target can be resolved, do not redirect to a null/empty URL
+     or leave the CTA appearing dead; show an explicit disabled/error state
+     or another clear local fallback.
    - Every game must allow the player to end early and trigger the same
      callback flow (with current score), not only at the final timeout.
    - Optional: run a game-local suspicious-score check before callback.
@@ -267,6 +271,9 @@ for the design-side checklist; the items below cover the harness/repo side.
       when score `> 0`, or `RETRY` when score is exactly `0`; callback
       flow per §6 baseline is used for all score `> 0` endings
       (`callback_url` support + product fallback).
+- [ ] Claim-submit path is guarded when callback resolution fails: no
+      `location.href = null` / dead-click state, and the player gets an
+      explicit disabled/error outcome instead.
 - [ ] Game supports early-end callback (player can finish early and submit
       score through the same callback contract).
 - [ ] If a suspicious-score check is implemented, it runs locally before

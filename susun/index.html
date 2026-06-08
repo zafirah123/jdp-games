@@ -246,6 +246,7 @@ const COPY = {
     menuSub: 'Stack as high as you can in 3 minutes.',
     menuHint: 'Tap, click, or press <kbd>Space</kbd>',
     claim: 'SUBMIT SCORE',
+    claimUnavailable: 'CALLBACK UNAVAILABLE',
     retry: 'RETRY',
     newBest: 'NEW BEST!',
     streak: 'STREAK',
@@ -268,6 +269,7 @@ const COPY = {
     menuSub: 'Susun setinggi mungkin dalam 3 minit.',
     menuHint: 'Ketuk, klik, atau tekan <kbd>Space</kbd>',
     claim: 'HANTAR SKOR',
+    claimUnavailable: 'PANGGIL BALIK TIADA',
     retry: 'RETRY',
     newBest: 'REKOD BAHARU!',
     streak: 'RENTETAN',
@@ -312,7 +314,7 @@ const CONFIG = {
   STORAGE_KEY_BEST: 'susun:best',
   STORAGE_KEY_MUTE: 'susun:mute',
   GAME_NAME: 'susun',
-  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
+  CLAIM_FALLBACK_URL: null,
 };
 
 const COS30 = Math.cos(Math.PI / 6);
@@ -350,7 +352,10 @@ dom.startBtn.textContent = COPY.start;
 dom.claimBtn.textContent = COPY.claim;
 dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
+function updateEndCta() {
+  dom.claimBtn.disabled = false;
+  dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim;
+}
 
 // =============================================================================
 // Sandbox-safe storage
@@ -957,13 +962,22 @@ window.addEventListener('keydown', (e) => {
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
+    claimLocked = false;
     startGame();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
   try {
-    location.href = await buildClaimUrl();
+    const claimUrl = await buildClaimUrl();
+    if (!claimUrl) {
+      console.warn('[susun] claim submit unavailable: no callback configured');
+      dom.claimBtn.textContent = COPY.claimUnavailable;
+      dom.claimBtn.disabled = true;
+      claimLocked = false;
+      return;
+    }
+    location.href = claimUrl;
   } catch (e) {
     console.warn('[susun] claim submit failed:', e);
     claimLocked = false;

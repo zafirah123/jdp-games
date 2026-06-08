@@ -263,6 +263,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
+    claimUnavailable: 'CALLBACK UNAVAILABLE',
     retry: 'RETRY',
     menuSub: 'Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.',
     menuHint: 'Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
@@ -281,6 +282,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
+    claimUnavailable: 'PANGGIL BALIK TIADA',
     retry: 'RETRY',
     menuSub: 'Leret untuk gerakkan jubin — dua jubin dengan nombor sama akan bergabung menjadi satu. Pastikan sekurang-kurangnya satu petak kosong atau permainan tamat. Dapatkan skor setinggi mungkin dalam 3 minit.',
     menuHint: 'Leret pada skrin sentuh, atau gunakan <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
@@ -299,7 +301,7 @@ const COPY = {
 // =============================================================================
 const CONFIG = {
   GAME_NAME: '2048',
-  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
+  CLAIM_FALLBACK_URL: null,
   GRID_SIZE: 4,
   GAME_DURATION_SEC: 180,
   // Each merge scores log2(result-tile) + 1 points:
@@ -377,7 +379,10 @@ dom.startBtn.textContent = COPY.start;
 dom.claimBtn.textContent = COPY.claim;
 dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
+function updateEndCta() {
+  dom.claimBtn.disabled = false;
+  dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim;
+}
 
 // =============================================================================
 // Sandbox-safe storage
@@ -1160,13 +1165,22 @@ async function buildClaimUrl() {
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
+    claimLocked = false;
     startGame();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
   try {
-    location.href = await buildClaimUrl();
+    const claimUrl = await buildClaimUrl();
+    if (!claimUrl) {
+      console.warn('[2048] claim submit unavailable: no callback configured');
+      dom.claimBtn.textContent = COPY.claimUnavailable;
+      dom.claimBtn.disabled = true;
+      claimLocked = false;
+      return;
+    }
+    location.href = claimUrl;
   } catch (e) {
     console.warn('[2048] claim submit failed:', e);
     claimLocked = false;

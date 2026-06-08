@@ -427,7 +427,9 @@ const CONFIG = {
     { fromMs: 120000, toMs: 180000, pool: 'hard' },
   ],
   URGENT_THRESHOLD_MS: 10000,
-  CLAIM_URL: 'https://app.pandai.org/app/game',
+  // Callback fallback must come from the launch context or platform config,
+  // not a public hardcoded URL in the game bundle.
+  CLAIM_URL: null,
 };
 
 // =============================================================================
@@ -437,7 +439,8 @@ const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 
 const COPY = {
   en: {
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'MISSED',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'SUBMIT SCORE', retry: 'RETRY',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
+    claimUnavailable: 'CALLBACK UNAVAILABLE',
     skip: 'SKIP (âˆ’15)',
     menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
     menuHint: 'Tip: green = right letter & spot, yellow = wrong spot, gray = not in the word.',
@@ -458,7 +461,8 @@ const COPY = {
   },
   ms: {
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'TERLEPAS',
-    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'HANTAR SKOR', retry: 'RETRY',
+    audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
+    claimUnavailable: 'PANGGIL BALIK TIADA',
     skip: 'LANGKAU (âˆ’15)',
     menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
     menuHint: 'Tip: hijau = huruf & tempat betul, kuning = tempat salah, kelabu = tiada dalam perkataan.',
@@ -626,7 +630,10 @@ dom.claimBtn.textContent = COPY.claim;
 dom.skipBtn.textContent = COPY.skip;
 dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
+function updateEndCta() {
+  dom.claimBtn.disabled = false;
+  dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim;
+}
 
 // =============================================================================
 // Mute toggle (DESIGN.md Â§5.11)
@@ -1182,7 +1189,7 @@ function showGameOver(reason) {
 }
 
 // =============================================================================
-// CLAIM SCORE — single end-of-game CTA (CLAUDE.md §6.5 / §6.6)
+// CLAIM SCORE - single end-of-game CTA (CLAUDE.md sections 6.5 / 6.6)
 // =============================================================================
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
@@ -1204,13 +1211,22 @@ async function buildClaimUrl() {
 
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
+    claimLocked = false;
     startRun();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
   try {
-    location.href = await buildClaimUrl();
+    const claimUrl = await buildClaimUrl();
+    if (!claimUrl) {
+      console.warn('[kataku] claim submit unavailable: no callback configured');
+      dom.claimBtn.textContent = COPY.claimUnavailable;
+      dom.claimBtn.disabled = true;
+      claimLocked = false;
+      return;
+    }
+    location.href = claimUrl;
   } catch (e) {
     console.warn('[kataku] claim submit failed:', e);
     claimLocked = false;

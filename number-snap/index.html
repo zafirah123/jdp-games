@@ -274,6 +274,7 @@ const COPY = {
   en: {
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
+    claimUnavailable: 'CALLBACK UNAVAILABLE',
     menuSub: 'Drag tiles to the grid. Build a connected path of 3–5 consecutive numbers to clear it. Chain clears for combos.',
     bestPrefix: 'Best',
     gridLocked: 'GRID LOCKED!',
@@ -285,6 +286,7 @@ const COPY = {
   ms: {
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
+    claimUnavailable: 'PANGGIL BALIK TIADA',
     menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3–5 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
     bestPrefix: 'Terbaik',
     gridLocked: 'GRID TERSEKAT!',
@@ -311,7 +313,7 @@ const CONFIG = {
   REROLL_INTERVAL_SEC: 60,
   REROLL_MAX_BANK: 3,
   REROLL_START_BANK: 1,
-  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
+  CLAIM_FALLBACK_URL: null,
   STORAGE_KEY_BEST: 'number-snap:best',
   STORAGE_KEY_MUTE: 'number-snap:mute',
   URGENCY_SECONDS: 10,
@@ -417,7 +419,10 @@ dom.endLabel.textContent = COPY.endRunShort;
 dom.rerollLabel.textContent = COPY.reroll;
 dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
+function updateEndCta() {
+  dom.claimBtn.disabled = false;
+  dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim;
+}
 
 function refreshBestText() {
   dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : ' ';
@@ -870,13 +875,22 @@ async function buildClaimUrl() {
 }
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
+    claimLocked = false;
     startRound();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
   try {
-    location.href = await buildClaimUrl();
+    const claimUrl = await buildClaimUrl();
+    if (!claimUrl) {
+      console.warn('[number-snap] claim submit unavailable: no callback configured');
+      dom.claimBtn.textContent = COPY.claimUnavailable;
+      dom.claimBtn.disabled = true;
+      claimLocked = false;
+      return;
+    }
+    location.href = claimUrl;
   } catch (e) {
     console.warn('[number-snap] claim submit failed:', e);
     claimLocked = false;

@@ -412,10 +412,21 @@ export class GameScene extends Phaser.Scene {
     // End run — outlined secondary
     const endBtn = this._modalButton(cx, cy + 92, 200, 48,
       COPY.endRunBtn, PALETTE.navy, PALETTE_CSS.yellow, PALETTE.yellow,
-      () => claimScore(this.score, {
-        timeUsedMs: this.carriedTimeMs + this.elapsedMs,
-        cause:      'early',
-      }),
+      () => {
+        const timeUsedMs = this.carriedTimeMs + this.elapsedMs;
+        if (this.score <= 0) {
+          this.scene.start('GameOverScene', {
+            score: 0,
+            timeUsedMs,
+            cause: 'crash',
+          });
+          return;
+        }
+        claimScore(this.score, {
+          timeUsedMs,
+          cause: 'early',
+        });
+      },
       /* outlined */ true);
     this.pauseOverlay.add(endBtn);
 

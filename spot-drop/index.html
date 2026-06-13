@@ -307,7 +307,7 @@ function buildJar(){
   const w = CONFIG.W, h = CONFIG.H, t = WALL;
   const opt = { isStatic:true, restitution:0.2, friction:0.4 };
   const walls = [
-    Bodies.rectangle(w/2, h + t/2, w*2, t, opt),              // floor
+    Bodies.rectangle(w/2, (h - 10) + t/2, w*2, t, opt),       // floor — top aligns with the drawn jar inner bottom (h-10)
     Bodies.rectangle(-t/2 + 30, h/2, t, h*2, opt),            // left
     Bodies.rectangle(w - 30 + t/2, h/2, t, h*2, opt),         // right
     // angled lower corners to gather tokens toward center

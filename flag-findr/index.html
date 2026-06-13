@@ -64,6 +64,7 @@ body{
 .card-syms{ display:flex; flex-wrap:wrap; gap:6px; }
 .card-syms .sym{ width:38px; height:38px; border-radius:12px; background:#fff; border:2px solid var(--jdp-dark-yellow);
   display:flex; align-items:center; justify-content:center; font-size:24px; line-height:1; transition:transform .2s ease, border-color .2s ease, background .2s ease; }
+.card-syms .sym img{ width:30px; height:20px; object-fit:cover; border-radius:3px; display:block; }
 .card-syms .sym.hit{ background:#1aa64b; border-color:#7CFFB0; transform:scale(1.18); }
 
 /* Canvas (the jar) */
@@ -81,7 +82,8 @@ body{
 .subtitle{ font-size:13px; font-weight:500; color:#cdd6ea; }
 .howto{ font-size:12.5px; font-weight:500; color:#e7ecf7; line-height:1.5; }
 .howto b{ color:var(--jdp-light-yellow); }
-.bigemoji{ font-size:34px; letter-spacing:4px; }
+.bigemoji{ display:flex; justify-content:center; gap:8px; }
+.bigemoji img{ width:54px; height:36px; object-fit:cover; border-radius:6px; border:2px solid var(--jdp-dark-yellow); display:block; }
 .cta-primary{ position:relative; background:linear-gradient(180deg,var(--jdp-cta-grad-start) 0%,var(--jdp-cta-grad-end) 100%); color:var(--jdp-cta-label); border:1px solid var(--jdp-light-yellow); border-radius:50px; padding:14px 30px; font-weight:700; font-size:18px; text-transform:uppercase; letter-spacing:.04em; box-shadow:0 8px 0 var(--jdp-cta-plate); cursor:pointer; transition:transform 80ms ease, box-shadow 80ms ease; }
 .cta-primary:active{ transform:translateY(8px); box-shadow:0 0 0 var(--jdp-cta-plate); }
 .ghost-btn{ background:transparent; border:none; color:#aab6d4; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; padding:6px 10px; }
@@ -133,7 +135,7 @@ body{
       <div class="scrim"></div>
       <div class="panel">
         <div class="logo">Flag<span class="drop">Findr</span></div>
-        <div class="bigemoji">🇲🇾🇵🇸🇨🇳</div>
+        <div class="bigemoji"><img src="./flags/my.svg" alt="my"><img src="./flags/ps.svg" alt="ps"><img src="./flags/cn.svg" alt="cn"></div>
         <div class="subtitle" id="subtitle">Spot the match in the jar!</div>
         <div class="howto" id="howto"></div>
         <button id="startBtn" class="cta-primary">START GAME</button>
@@ -189,14 +191,15 @@ const CONFIG = {
 };
 
 // Country flags (31 = enough for PG(2,5)). First 7 (ASEAN) show on the easy
-// early levels; the full set appears in the hard late game.
-// Note: flag emoji render on iOS/Android/macOS; on Windows they fall back to
-// the two-letter country code (e.g. "MY") — still distinguishable for matching.
-const EMOJI = [
-  '🇲🇾','🇸🇬','🇮🇩','🇹🇭','🇧🇳','🇵🇭','🇻🇳','🇰🇭','🇲🇲','🇱🇦',   // ASEAN
-  '🇺🇸','🇨🇳','🇬🇧','🇯🇵','🇰🇷','🇷🇺','🇮🇳','🇦🇺','🇨🇦','🇫🇷',
-  '🇸🇦','🇵🇸','🇧🇷','🇦🇷','🇩🇪','🇮🇹','🇪🇸','🇵🇰','🇿🇦','🇸🇪','🇹🇷',
+// early levels; the full set appears in the hard late game. Rendered as SVG
+// IMAGES (./flags/<code>.svg) — NOT emoji — because canvas fillText can't draw
+// flag emoji on Android/Chromium even where the DOM can.
+const FLAG_CODES = [
+  'my','sg','id','th','bn','ph','vn','kh','mm','la',   // ASEAN
+  'us','cn','gb','jp','kr','ru','in','au','ca','fr',
+  'sa','ps','br','ar','de','it','es','pk','za','se','tr',
 ];
+const flagImg = FLAG_CODES.map(c => { const im = new Image(); im.src = './flags/' + c + '.svg'; return im; });
 
 /* ============================================================
    COPY — EN / BM (CLAUDE.md §6.4). ?lang=ms switches.
@@ -403,7 +406,9 @@ function renderCard(){
   state.card.forEach(sym => {
     const d = document.createElement('div');
     d.className = 'sym'; d.dataset.sym = sym;
-    d.textContent = EMOJI[sym];
+    const im = document.createElement('img');
+    im.src = './flags/' + FLAG_CODES[sym] + '.svg'; im.alt = FLAG_CODES[sym];
+    d.appendChild(im);
     host.appendChild(d);
   });
 }
@@ -810,6 +815,17 @@ function drawRushVignette(){
 
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
+// rounded-rectangle path (for the flag chip clip); arcTo is universally supported
+function roundRectPath(x, y, w, h, rad){
+  ctx.beginPath();
+  ctx.moveTo(x+rad, y);
+  ctx.arcTo(x+w, y,   x+w, y+h, rad);
+  ctx.arcTo(x+w, y+h, x,   y+h, rad);
+  ctx.arcTo(x,   y+h, x,   y,   rad);
+  ctx.arcTo(x,   y,   x+w, y,   rad);
+  ctx.closePath();
+}
+
 // Glass-bubble look ported from gem-merge's drawGemSprite:
 //   back  = transparent radial body (white glare upper-left → clear → tinted rim)
 //   front = tinted outer rim + white inner refraction ring + specular glare arc
@@ -884,11 +900,19 @@ function drawToken(t){
 
   // normal token: frosted glass bubble with a gold rim (matches the card border)
   bubbleBack(r0, '#FFB603', 0.55);
-  ctx.save(); ctx.rotate(b.angle);                       // only the emoji tumbles; the glass stays upright
-  ctx.font = `${Math.round(r0*1.2)}px ${EMOJI_FONT}`;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(EMOJI[t.symbol] || '❔', 0, 1);
-  ctx.restore();
+  const img = flagImg[t.symbol];
+  if (img && img.complete && img.naturalWidth){
+    const fw = r0 * 1.46, fh = fw * 0.66;                 // flag chip (~3:2) inside the bubble
+    ctx.save();
+    ctx.rotate(b.angle);                                  // the flag tumbles; the glass stays upright
+    roundRectPath(-fw/2, -fh/2, fw, fh, 4);
+    ctx.save(); ctx.clip();
+    ctx.drawImage(img, -fw/2, -fh/2, fw, fh);
+    ctx.restore();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    roundRectPath(-fw/2, -fh/2, fw, fh, 4); ctx.stroke();
+    ctx.restore();
+  }
   bubbleFront(r0, '#FFB603');
   ctx.restore();
 }

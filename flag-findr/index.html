@@ -104,6 +104,21 @@ body{
 .endrun:active{ transform:translateX(-50%) scale(.94); }
 .pwr-banner{ position:absolute; left:50%; top:14px; transform:translateX(-50%); z-index:15; font-weight:800; font-size:13px; letter-spacing:.05em; padding:6px 14px; border-radius:20px; pointer-events:none; opacity:0; transition:opacity .2s; white-space:nowrap; }
 .pwr-banner.show{ opacity:1; }
+
+/* Country-name banner — learning reward shown on every correct spot */
+.flag-name{ position:absolute; left:50%; top:12px; transform:translateX(-50%); z-index:16;
+  display:flex; align-items:center; gap:8px; background:rgba(3,16,52,.92);
+  border:2px solid var(--jdp-dark-yellow); border-radius:14px; padding:6px 14px 6px 8px;
+  opacity:0; pointer-events:none; white-space:nowrap; }
+.flag-name img{ width:32px; height:21px; object-fit:cover; border-radius:3px; display:block; }
+.flag-name span{ font-weight:800; font-size:16px; color:#fff; letter-spacing:.02em; }
+.flag-name.show{ animation:flagpop 1.8s ease forwards; }
+@keyframes flagpop{
+  0%{ opacity:0; transform:translate(-50%,-8px) scale(.9); }
+  12%{ opacity:1; transform:translate(-50%,0) scale(1); }
+  78%{ opacity:1; transform:translate(-50%,0) scale(1); }
+  100%{ opacity:0; transform:translate(-50%,-6px) scale(.98); }
+}
 </style>
 </head>
 <body>
@@ -129,6 +144,7 @@ body{
     <canvas id="game"></canvas>
     <button id="endRunBtn" class="endrun" style="display:none">End Run</button>
     <div id="pwrBanner" class="pwr-banner"></div>
+    <div id="flagName" class="flag-name"></div>
 
     <!-- Start overlay -->
     <div id="startOverlay" class="overlay">
@@ -170,20 +186,15 @@ const CONFIG = {
   W: 480, H: 600,                 // logical jar resolution
   roundMs: 3 * 60 * 1000,
   rampCompleteAt: 0.85,
-  spotValue: { start: 2, end: 6 },// points per spot — ramps up as the round gets harder so a great run reaches ~500
   urgentSecs: 10,
   claimFallbackUrl: null,
-  // difficulty ramps ({start,end}) — peak by rampCompleteAt
-  pileSize:    { start: 5, end: 24 },
+  // bubble look ramps ({start,end}) over the round — peak by rampCompleteAt
   tokenRadius: { start: 38, end: 25 },
   rotJitter:   { start: 0.25, end: 1.0 },
-  spawnEveryMs:{ start: 480, end: 280 },
   stirEveryMs: 1500,
   // HINT: if the answer isn't tapped within this long, it jiggles to give it away.
   // Tiny (near-instant) early so beginners get help; grows as it gets harder.
   hintDelayMs: { start: 1800, end: 9000 },
-  // plane order thresholds by ramp progress (more symbols = harder scan)
-  planeStops: [ {p:0.34, q:2}, {p:0.67, q:3}, {p:1.01, q:5} ],
   // power-ups
   settle: { firstMs: 16000, everyMs: 26000, durationMs: 3200, bubbleR: 19, bubbleTTL: 2200 }, // aid: pauses time — small, fleeting bubble
   rush:   { firstMs: 30000, everyMs: 34000, durationMs: 7000, mult: 2 }, // frenzy: rain + double
@@ -200,6 +211,18 @@ const FLAG_CODES = [
   'sa','ps','br','ar','de','it','es','pk','za','se','tr',
 ];
 const flagImg = FLAG_CODES.map(c => { const im = new Image(); im.src = './flags/' + c + '.svg'; return im; });
+// country names [EN, MS] — shown on each correct spot so players learn the flag
+const FLAG_NAMES = {
+  my:['Malaysia','Malaysia'], sg:['Singapore','Singapura'], id:['Indonesia','Indonesia'],
+  th:['Thailand','Thailand'], bn:['Brunei','Brunei'], ph:['Philippines','Filipina'],
+  vn:['Vietnam','Vietnam'], kh:['Cambodia','Kemboja'], mm:['Myanmar','Myanmar'], la:['Laos','Laos'],
+  us:['United States','Amerika Syarikat'], cn:['China','China'], gb:['United Kingdom','United Kingdom'],
+  jp:['Japan','Jepun'], kr:['South Korea','Korea Selatan'], ru:['Russia','Rusia'], in:['India','India'],
+  au:['Australia','Australia'], ca:['Canada','Kanada'], fr:['France','Perancis'],
+  sa:['Saudi Arabia','Arab Saudi'], ps:['Palestine','Palestin'], br:['Brazil','Brazil'],
+  ar:['Argentina','Argentina'], de:['Germany','Jerman'], it:['Italy','Itali'], es:['Spain','Sepanyol'],
+  pk:['Pakistan','Pakistan'], za:['South Africa','Afrika Selatan'], se:['Sweden','Sweden'], tr:['Turkey','Turki'],
+};
 // power-up glyphs as SVG images too (canvas can't render the ❄️/⚡ emoji on some devices)
 const iconFreeze = new Image(); iconFreeze.src = './icons/snowflake.svg';
 const iconRush   = new Image(); iconRush.src   = './icons/red.svg';
@@ -232,30 +255,33 @@ const COPY = {
 }[lang];
 
 /* ============================================================
-   Finite projective plane PG(2,q) — the content generator.
-   Any two cards (lines) share exactly one symbol (point).
+   Card generator — two cards that share EXACTLY ONE flag.
+   We only ever show one pair (card vs jar) at a time, so we build them
+   directly instead of from a full projective plane (which only exists for
+   prime-power orders). This supports any card size k where 2k-1 ≤ #flags.
+   A "variety bag" cycles through every flag before repeating, so the player
+   keeps seeing fresh flags.
    ============================================================ */
-function modInv(a, m){ a = ((a % m) + m) % m; for (let b = 1; b < m; b++) if ((a * b) % m === 1) return b; return 1; }
-function makePlane(q){
-  const pts = [], seen = new Set();
-  const canon = (x,y,z) => {
-    const lead = x !== 0 ? x : (y !== 0 ? y : z);
-    const inv = modInv(lead, q);
-    return [ (x*inv)%q, (y*inv)%q, (z*inv)%q ];
-  };
-  for (let x=0;x<q;x++) for (let y=0;y<q;y++) for (let z=0;z<q;z++){
-    if (!x && !y && !z) continue;
-    const c = canon(x,y,z), k = c.join(',');
-    if (!seen.has(k)){ seen.add(k); pts.push(c); }
+const K_MAX = Math.floor((FLAG_CODES.length + 1) / 2);   // 31 flags → k up to 16
+
+let flagBag = [];
+function drawFlags(n){
+  const out = [];
+  while (out.length < n){
+    if (flagBag.length === 0){
+      flagBag = FLAG_CODES.map((_,i)=>i).filter(i => !out.includes(i));   // refill, minus this draw
+      for (let i=flagBag.length-1;i>0;i--){ const j=randInt(i+1); [flagBag[i],flagBag[j]] = [flagBag[j],flagBag[i]]; }
+    }
+    out.push(flagBag.pop());
   }
-  const cards = pts.map(L =>
-    pts.reduce((arr,P,i)=>{ if ((P[0]*L[0]+P[1]*L[1]+P[2]*L[2]) % q === 0) arr.push(i); return arr; }, [])
-  );
-  const through = pts.map(()=>[]);
-  cards.forEach((card,ci)=> card.forEach(pi=> through[pi].push(ci)));
-  return { n: pts.length, k: q+1, cards, through };
+  return out;
 }
-const PLANES = { 2: makePlane(2), 3: makePlane(3), 5: makePlane(5) };
+// card A (top) and card B (jar) of size k, sharing exactly one flag
+function buildPair(k){
+  const picks = drawFlags(2*k - 1);
+  const shared = picks[0];
+  return { A: [shared, ...picks.slice(1, k)], B: [shared, ...picks.slice(k, 2*k-1)], shared };
+}
 
 /* ============================================================
    STATE
@@ -266,7 +292,7 @@ const state = {
   timerMs: CONFIG.roundMs, elapsedMs: 0,
   card: [], cardSet: new Set(),
   answer: null,            // token that is the answer
-  plane: PLANES[2],
+  k: 3, cardsShownAtK: 0,  // card size, and how many times shown at this size
   inputLockUntil: 0,
   spawnAcc: 0, stirAcc: 0,
   cardElapsed: 0, jiggleAcc: 0, hintActive: false,
@@ -300,6 +326,10 @@ function resize(){
   viewW = r.width; viewH = r.height;
 }
 window.addEventListener('resize', resize);
+// recompute whenever the canvas's displayed size changes — e.g. the top card
+// wrapping to 2 rows (high k) shrinks the jar, which would otherwise leave the
+// tap-mapping (scale/offX/offY) stale and make correct taps miss.
+if (window.ResizeObserver){ new ResizeObserver(() => resize()).observe(canvas); }
 
 // map a client tap to logical jar coords
 function toLogical(clientX, clientY){
@@ -334,26 +364,11 @@ const clamp = (x,lo,hi)=> Math.max(lo, Math.min(hi, x));
 const lerp = (a,b,t)=> a + (b-a)*t;
 function rampT(){ return clamp(state.elapsedMs / (CONFIG.roundMs * CONFIG.rampCompleteAt), 0, 1); }
 function ramp(r){ return lerp(r.start, r.end, rampT()); }
-function currentQ(){ const p = rampT(); for (const s of CONFIG.planeStops) if (p < s.p) return s.q; return 5; }
 
 /* ============================================================
    Tokens / pile
    ============================================================ */
 function randInt(n){ return Math.floor(Math.random()*n); }
-// symbols currently shown in the jar (excludes power tokens and `except`)
-function jarSymbolSet(except){
-  const s = new Set();
-  for (const t of tokens){ if (t.isPower || t === except) continue; s.add(t.symbol); }
-  return s;
-}
-// a distractor that is NOT on the card and NOT already in the jar → no duplicate icons
-function uniqueDistractor(plane, cardSet, jarSet){
-  const avail = [];
-  for (let s = 0; s < plane.n; s++) if (!cardSet.has(s) && !jarSet.has(s)) avail.push(s);
-  return avail.length ? avail[randInt(avail.length)] : -2;   // -2 = no unique slot left
-}
-// max distinct tokens a jar can hold: the answer + every non-card symbol
-function uniqueCap(plane){ return plane.n - plane.k + 1; }
 function spawnToken(symbol, opts={}){
   const r = opts.r != null ? opts.r : ramp(CONFIG.tokenRadius) * (0.92 + Math.random()*0.16);
   const x = 70 + Math.random() * (CONFIG.W - 140);
@@ -375,30 +390,27 @@ function removeToken(tok){
   if (state.answer === tok) state.answer = null;
 }
 
-// choose a new target card; guarantee exactly one matching token in the jar
+// Spot It! style: your CARD (top) and the JAR share EXACTLY ONE flag.
+// Card size k grows 3,4,5,6,7,… and each size is played k times before stepping up.
 function pickCard(){
-  const plane = state.plane = PLANES[ currentQ() ];
-  // ensure we have something to make the answer from
-  const symTokens = tokens.filter(t => !t.isPower);
-  if (symTokens.length === 0){ spawnToken(randInt(plane.n), { y: CONFIG.H*0.4 }); }
-  const pool = tokens.filter(t => !t.isPower);
-  const ans = pool[ randInt(pool.length) ];
-  // answer symbol must be valid in this plane
-  if (ans.symbol >= plane.n){ ans.symbol = randInt(plane.n); ans.flip = 1; }
-  const answerSym = ans.symbol;
-  const ci = plane.through[answerSym][ randInt(plane.through[answerSym].length) ];
-  const card = plane.cards[ci];
-  const cardSet = new Set(card);
-  // relabel any OTHER token that carries a card symbol, keeping every icon unique
-  for (const t of tokens.slice()){
-    if (t === ans || t.isPower) continue;
-    if (cardSet.has(t.symbol)){
-      const s = uniqueDistractor(plane, cardSet, jarSymbolSet(t));
-      if (s >= 0){ t.symbol = s; t.flip = 1; }
-      else removeToken(t);   // no unique slot left → drop instead of duplicating
-    }
-  }
-  state.card = card; state.cardSet = cardSet; state.answer = ans;
+  if (state.cardsShownAtK >= state.k){ state.k = Math.min(state.k + 1, K_MAX); state.cardsShownAtK = 0; }
+  state.cardsShownAtK++;
+  const k = state.k;
+  // keep the jar at exactly k bubbles (= flags on the card)
+  let jar = tokens.filter(t => !t.isPower);
+  while (jar.length < k){ spawnToken(0); jar = tokens.filter(t => !t.isPower); }
+  while (jar.length > k){ removeToken(jar.pop()); jar = tokens.filter(t => !t.isPower); }
+
+  // two cards sharing exactly one flag: A = your card, B = the jar
+  const { A, B, shared } = buildPair(k);
+
+  // shuffle B's flags onto the jar bubbles (flip-animate the ones that change)
+  const syms = B.slice();
+  for (let i = syms.length-1; i > 0; i--){ const j = randInt(i+1); [syms[i],syms[j]] = [syms[j],syms[i]]; }
+  jar.forEach((t,i)=>{ if (t.symbol !== syms[i]) t.flip = 1; t.symbol = syms[i]; });
+
+  state.card = A; state.cardSet = new Set(A);
+  state.answer = jar.find(t => t.symbol === shared);
   state.cardElapsed = 0; state.jiggleAcc = 0; state.hintActive = false;  // restart the hint timer
   renderCard();
 }
@@ -418,6 +430,14 @@ function renderCard(){
 function flashCardSymbol(sym){
   const el = document.querySelector(`#cardSyms .sym[data-sym="${sym}"]`);
   if (el){ el.classList.add('hit'); setTimeout(()=> el && el.classList.remove('hit'), 350); }
+}
+// pop the country name (+ flag) at the top of the jar on a correct spot
+const flagNameEl = document.getElementById('flagName');
+function showFlagName(sym){
+  const code = FLAG_CODES[sym];
+  const name = (FLAG_NAMES[code] || [code, code])[lang === 'ms' ? 1 : 0];
+  flagNameEl.innerHTML = `<img src="./flags/${code}.svg" alt=""><span>${name}</span>`;
+  flagNameEl.classList.remove('show'); void flagNameEl.offsetWidth; flagNameEl.classList.add('show');
 }
 
 /* ============================================================
@@ -607,11 +627,12 @@ function tapAt(clientX, clientY){
   if (tok.isPower){ activatePower(tok.ptype); popToken(tok, '#7fd0ff', ''); return; }
 
   if (tok === state.answer){
-    const base = Math.round(ramp(CONFIG.spotValue));        // harder (later) spots are worth more
+    const base = state.card.length;                         // +score = number of flags on the card
     const val = base * (rushActive() ? CONFIG.rush.mult : 1);
     state.score += val;
     AudioFX.correct();
     flashCardSymbol(tok.symbol);
+    showFlagName(tok.symbol);   // learning reward: name the flag they just got
     pbotReact('hop');
     popToken(tok, '#FFD633', '+'+val);
     state.shake = Math.min(state.shake + 4, 8);
@@ -696,16 +717,11 @@ function update(dt){
     state.rushArmAt = now + CONFIG.rush.everyMs;
   }
 
-  // maintain pile size — capped so every icon in the jar stays unique
-  const cap = uniqueCap(state.plane);
-  let target = Math.round(ramp(CONFIG.pileSize)) + (rushActive() ? 4 : 0);
-  target = Math.min(target, cap);
-  const symCount = tokens.reduce((a,t)=> a + (t.isPower?0:1), 0);
-  state.spawnAcc += dt;
-  const spawnEvery = ramp(CONFIG.spawnEveryMs) / (rushActive() ? 2.4 : 1);
-  if (!frozenNow && symCount < target && state.spawnAcc >= spawnEvery){
-    const s = uniqueDistractor(state.plane, state.cardSet, jarSymbolSet());
-    if (s >= 0){ state.spawnAcc = 0; spawnToken(s); }
+  // safety: the jar should always hold exactly plane.k bubbles with a valid answer;
+  // if one somehow left the jar, rebuild the round (count is otherwise set by pickCard).
+  const symN = tokens.reduce((a,t)=> a + (t.isPower ? 0 : 1), 0);
+  if (!frozenNow && (symN < state.k || tokens.indexOf(state.answer) < 0)){
+    pickCard();
   }
 
   // periodic stir so the pile keeps jostling (anti-memorization)
@@ -946,15 +962,11 @@ function startGame(){
   state.settleArmAt = performance.now() + CONFIG.settle.firstMs;
   state.rushArmAt = performance.now() + CONFIG.rush.firstMs;
   state.spawnAcc = 0; state.stirAcc = 0; state.shake = 0; state.inputLockUntil = 0;
-  state.plane = PLANES[2];
+  state.k = 3; state.cardsShownAtK = 0; flagBag = [];   // restart the level progression + variety bag
   document.getElementById('startOverlay').classList.add('hidden');
   document.getElementById('overOverlay').classList.add('hidden');
   document.getElementById('endRunBtn').style.display = 'block';
-  // seed an initial pile of DISTINCT symbols, then pick first card
-  const seedSyms = Array.from({length: PLANES[2].n}, (_,i)=>i);
-  for (let i=seedSyms.length-1;i>0;i--){ const j=randInt(i+1); [seedSyms[i],seedSyms[j]]=[seedSyms[j],seedSyms[i]]; }
-  const seed = Math.min(Math.round(CONFIG.pileSize.start), uniqueCap(PLANES[2]));
-  for (let i=0;i<seed;i++) spawnToken(seedSyms[i], { y: -20 - i*46 });
+  // first round — pickCard spawns the k bubbles (= flags on the card)
   pickCard();
   syncHud();
   AudioFX.ensure(); AudioFX.resume(); AudioFX.startBgm();

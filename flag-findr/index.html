@@ -200,6 +200,9 @@ const FLAG_CODES = [
   'sa','ps','br','ar','de','it','es','pk','za','se','tr',
 ];
 const flagImg = FLAG_CODES.map(c => { const im = new Image(); im.src = './flags/' + c + '.svg'; return im; });
+// power-up glyphs as SVG images too (canvas can't render the ❄️/⚡ emoji on some devices)
+const iconFreeze = new Image(); iconFreeze.src = './icons/snowflake.svg';
+const iconRush   = new Image(); iconRush.src   = './icons/red.svg';
 
 /* ============================================================
    COPY — EN / BM (CLAUDE.md §6.4). ?lang=ms switches.
@@ -214,7 +217,7 @@ const COPY = {
     claim: 'CLAIM SCORE', retry: 'RETRY', spots: 'Spots',
     scoreLabel: 'Score', timeLabel: 'Time',
     newBest: 'NEW BEST!', best: 'Best', endRun: 'End Run',
-    settle: '❄️ FREEZE — jar stops!', rush: '⚡ Spot Rush ×2!',
+    settle: '❄️ FREEZE — jar stops!', rush: '💎 Spot Rush ×2!',
   },
   ms: {
     subtitle: 'Cari bendera yang sama!',
@@ -224,7 +227,7 @@ const COPY = {
     claim: 'TUNTUT SKOR', retry: 'RETRY', spots: 'Skor',
     scoreLabel: 'Skor', timeLabel: 'Masa',
     newBest: 'REKOD BAHARU!', best: 'Terbaik', endRun: 'Tamatkan',
-    settle: '❄️ BEKU — balang henti!', rush: '⚡ Rentak Ganda ×2!',
+    settle: '❄️ BEKU — balang henti!', rush: '💎 Rentak Ganda ×2!',
   },
 }[lang];
 
@@ -578,7 +581,7 @@ function activatePower(ptype){
     banner.textContent = COPY.settle; banner.style.background = 'rgba(40,120,255,.9)'; banner.style.color='#fff';
   } else {
     state.rushUntil = performance.now() + CONFIG.rush.durationMs;
-    banner.textContent = COPY.rush; banner.style.background = 'rgba(255,182,3,.95)'; banner.style.color='#3a2400';
+    banner.textContent = COPY.rush; banner.style.background = 'rgba(184,28,38,.95)'; banner.style.color='#fff';
   }
   banner.classList.add('show');
   setTimeout(()=> banner.classList.remove('show'), 1400);
@@ -813,8 +816,6 @@ function drawRushVignette(){
   ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
 }
 
-const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-
 // rounded-rectangle path (for the flag chip clip); arcTo is universally supported
 function roundRectPath(x, y, w, h, rad){
   ctx.beginPath();
@@ -864,8 +865,8 @@ function drawToken(t){
     // Power-ups read as SOLID glowing orbs (not clear glass) so they stand
     // apart from the standard bubbles: freeze = vivid blue, rush = vivid orange.
     const isSettle = t.ptype === 'settle';
-    const tint = isSettle ? '#2E8BFF' : '#FF6A1A';
-    const glow = isSettle ? '#8FD0FF' : '#FFB347';
+    const tint = isSettle ? '#2E8BFF' : '#C2182A';   // freeze = blue, rush = ruby red
+    const glow = isSettle ? '#8FD0FF' : '#FF6B7A';
     const tf = (t.ttl != null && t.ttl < 450) ? Math.max(0.35, t.ttl/450) : 1; // shrink just before it pops
     const r = r0 * tf;
     const pulse = 0.5 + 0.5*Math.sin(performance.now()/120);
@@ -886,9 +887,11 @@ function drawToken(t){
     ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
 
-    ctx.font = `${Math.round(r*1.0)}px ${EMOJI_FONT}`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(isSettle ? '❄️' : '⚡', 0, 1);
+    const ic = isSettle ? iconFreeze : iconRush;
+    if (ic && ic.complete && ic.naturalWidth){
+      const s = r * (isSettle ? 1.95 : 1.5);   // snowflake fills the orb; ruby gem sized to read
+      ctx.drawImage(ic, -s/2, -s/2, s, s);
+    }
 
     // tinted inner ring + specular glare (no white outer border)
     ctx.strokeStyle = tint; ctx.lineWidth = 1.5;

@@ -13,7 +13,7 @@
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Spot Drop</title>
+<title>FlagFindr</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
 <style>
@@ -132,7 +132,7 @@ body{
     <div id="startOverlay" class="overlay">
       <div class="scrim"></div>
       <div class="panel">
-        <div class="logo">SPOT<span class="drop"> DROP</span></div>
+        <div class="logo">Flag<span class="drop">Findr</span></div>
         <div class="bigemoji">🇲🇾🇵🇸🇨🇳</div>
         <div class="subtitle" id="subtitle">Spot the match in the jar!</div>
         <div class="howto" id="howto"></div>
@@ -164,7 +164,7 @@ const { Engine, World, Bodies, Body, Composite, Query } = Matter;
    CONFIG — all tuning lives here (BEST-PRACTICES §02)
    ============================================================ */
 const CONFIG = {
-  gameName: 'spot-drop',
+  gameName: 'flag-findr',
   W: 480, H: 600,                 // logical jar resolution
   roundMs: 3 * 60 * 1000,
   rampCompleteAt: 0.85,
@@ -963,7 +963,7 @@ function endRun(byTimer){
 const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
 if (claimContext.pageTitle){ const t = claimContext.pageTitle.trim(); if (t) document.title = t; }
 async function buildClaimUrl(){
-  if (!window.ClaimCallback){ console.warn('[spot-drop] claim-callback.js not loaded'); return null; }
+  if (!window.ClaimCallback){ console.warn('[flag-findr] claim-callback.js not loaded'); return null; }
   return window.ClaimCallback.buildClaimUrl({
     claimContext, score: Math.max(0, state.score|0),
     gameName: CONFIG.gameName, fallbackUrl: CONFIG.claimFallbackUrl,
@@ -974,9 +974,9 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
   if (claimLocked) return; claimLocked = true;
   try {
     const url = await buildClaimUrl();
-    if (!url){ console.warn('[spot-drop] no callback configured'); claimLocked = false; return; }
+    if (!url){ console.warn('[flag-findr] no callback configured'); claimLocked = false; return; }
     location.href = url;
-  } catch(err){ console.warn('[spot-drop] claim failed', err); claimLocked = false; }
+  } catch(err){ console.warn('[flag-findr] claim failed', err); claimLocked = false; }
 });
 document.getElementById('endRunBtn').addEventListener('click', ()=> endRun(false));
 

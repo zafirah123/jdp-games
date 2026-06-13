@@ -133,7 +133,7 @@ body{
       <div class="scrim"></div>
       <div class="panel">
         <div class="logo">SPOT<span class="drop"> DROP</span></div>
-        <div class="bigemoji">🍎🌙⭐</div>
+        <div class="bigemoji">🇲🇾🇵🇸🇨🇳</div>
         <div class="subtitle" id="subtitle">Spot the match in the jar!</div>
         <div class="howto" id="howto"></div>
         <button id="startBtn" class="cta-primary">START GAME</button>
@@ -188,11 +188,14 @@ const CONFIG = {
   powerTTL: 7000,                 // a floating power token despawns if untapped
 };
 
-// Curated, widely-supported, child-safe emoji (31 = enough for PG(2,5))
+// Country flags (31 = enough for PG(2,5)). First 7 (ASEAN) show on the easy
+// early levels; the full set appears in the hard late game.
+// Note: flag emoji render on iOS/Android/macOS; on Windows they fall back to
+// the two-letter country code (e.g. "MY") — still distinguishable for matching.
 const EMOJI = [
-  '🍎','🍊','🍋','🍇','🍓','🍉','🍌','🥝','🍑','🍒',
-  '🐶','🐱','🐰','🦊','🐻','🐼','🐯','🦁','🐸','🐵',
-  '⭐','🌙','🌈','🌸','🍀','🌻','🍄','🦋','🐢','🚀','🎈',
+  '🇲🇾','🇸🇬','🇮🇩','🇹🇭','🇧🇳','🇵🇭','🇻🇳','🇰🇭','🇲🇲','🇱🇦',   // ASEAN
+  '🇺🇸','🇨🇳','🇬🇧','🇯🇵','🇰🇷','🇷🇺','🇮🇳','🇦🇺','🇨🇦','🇫🇷',
+  '🇸🇦','🇵🇸','🇧🇷','🇦🇷','🇩🇪','🇮🇹','🇪🇸','🇳🇿','🇿🇦','🇸🇪','🇹🇷',
 ];
 
 /* ============================================================
@@ -201,8 +204,8 @@ const EMOJI = [
 const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en: {
-    subtitle: 'Spot the matching picture!',
-    howto: 'Your <b>card</b> up top and the <b>jar</b> below share exactly <b>one</b> picture. Find it, then tap that bubble in the jar!',
+    subtitle: 'Spot the matching flag!',
+    howto: 'Your <b>card</b> up top and the <b>jar</b> below share exactly <b>one</b> flag. Find it, then tap that bubble in the jar!',
     cardHint: 'One of these is in the jar ↓',
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
     claim: 'CLAIM SCORE', retry: 'RETRY', spots: 'Spots',
@@ -211,8 +214,8 @@ const COPY = {
     settle: '❄️ FREEZE — jar stops!', rush: '⚡ Spot Rush ×2!',
   },
   ms: {
-    subtitle: 'Cari gambar yang sama!',
-    howto: '<b>Kad</b> anda di atas dan <b>balang</b> di bawah berkongsi <b>satu</b> gambar sahaja. Cari, dan klik gambar itu dalam balang!',
+    subtitle: 'Cari bendera yang sama!',
+    howto: '<b>Kad</b> anda di atas dan <b>balang</b> di bawah berkongsi <b>satu</b> bendera sahaja. Cari, dan klik bendera itu dalam balang!',
     cardHint: 'Satu ada dalam balang ↓',
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
     claim: 'TUNTUT SKOR', retry: 'RETRY', spots: 'Skor',

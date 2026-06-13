@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>
+// Ensure a trailing slash so relative asset paths (./pbot.webp, ./claim-callback.js)
+// resolve correctly on servers that don't auto-redirect directories.
+(function(){
+  var p = location.pathname, last = p.split('/').pop();
+  if (!/\/$/.test(p) && !/\.[a-z0-9]+$/i.test(last)) {
+    location.replace(p + '/' + location.search + location.hash);
+  }
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Spot Drop</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+
+:root{
+  --jdp-black:#031034; --jdp-blue:#133B9F; --jdp-brick:#9E131F; --jdp-light-red:#AF1726;
+  --jdp-dark-yellow:#FFB603; --jdp-light-yellow:#FFD633;
+  --jdp-cta-grad-start:#FFE258; --jdp-cta-grad-end:#FFBA0A; --jdp-cta-plate:#DE9D00; --jdp-cta-label:#DE0909;
+}
+*{ -webkit-tap-highlight-color:transparent; }
+html,body{ height:100%; }
+body{
+  margin:0; font-family:'Poppins',sans-serif;
+  background:radial-gradient(circle at 50% 30%, var(--jdp-blue) 0%, var(--jdp-black) 75%);
+  color:#fff; touch-action:none; overflow:hidden;
+}
+.title-font{ font-weight:900; }
+
+.wrap{ width:100%; max-width:28rem; height:100%; margin:0 auto;
+  display:flex; flex-direction:column; align-items:center;
+  padding:8px; gap:8px; box-sizing:border-box;
+  padding-top:max(8px, env(safe-area-inset-top));
+}
+
+/* HUD pills — DESIGN.md §5.2 / §5.12 */
+.hud{ width:100%; display:flex; justify-content:space-between; align-items:center; gap:8px; z-index:10; flex-shrink:0; }
+.jdp-pill{ background:#fff; border:2px solid var(--jdp-dark-yellow); border-radius:30px; overflow:hidden; display:flex; align-items:stretch; min-width:0; }
+.jdp-pill .pill-label{ background:var(--jdp-brick); color:var(--jdp-light-yellow); padding:4px 12px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; display:flex; align-items:center; white-space:nowrap; }
+.jdp-pill .pill-value{ background:var(--jdp-blue); color:#fff; padding:4px 12px; font-size:18px; font-weight:800; display:flex; align-items:center; justify-content:flex-end; flex:1; white-space:nowrap; }
+.mute{ width:44px; height:44px; flex-shrink:0; border-radius:22px; border:2px solid var(--jdp-dark-yellow); background:var(--jdp-brick); color:var(--jdp-light-yellow); display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer; transition:transform 80ms ease; }
+.mute:active{ transform:scale(.92); }
+.mute svg{ width:22px; height:22px; fill:currentColor; }
+
+@keyframes pulse-urgent{ 0%,100%{ transform:scale(1); color:#fff; } 50%{ transform:scale(1.15); color:var(--jdp-light-yellow); } }
+.pulse-urgent{ animation:pulse-urgent .8s infinite; }
+
+/* Card panel — the Spot It "card" to match against the jar */
+.card-panel{ width:100%; flex-shrink:0; display:flex; align-items:center; gap:8px;
+  background:rgba(3,16,52,.6); border:2px solid var(--jdp-dark-yellow); border-radius:16px; padding:8px 10px; }
+#pbot{ width:46px; height:46px; flex-shrink:0; image-rendering:auto; transform-origin:bottom center; }
+#pbot.hop{ animation:pbothop .45s ease; }
+#pbot.shake{ animation:pbotshake .35s ease; }
+@keyframes pbothop{ 0%{ transform:translateY(0) scale(1);} 30%{ transform:translateY(-10px) scale(1.08,.95);} 60%{ transform:translateY(0) scale(.96,1.04);} 100%{ transform:translateY(0) scale(1);} }
+@keyframes pbotshake{ 0%,100%{ transform:translateX(0) rotate(0);} 25%{ transform:translateX(-4px) rotate(-6deg);} 75%{ transform:translateX(4px) rotate(6deg);} }
+.card-body{ flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.card-hint{ font-size:9px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--jdp-light-yellow); }
+.card-syms{ display:flex; flex-wrap:wrap; gap:6px; }
+.card-syms .sym{ width:38px; height:38px; border-radius:12px; background:#fff; border:2px solid var(--jdp-dark-yellow);
+  display:flex; align-items:center; justify-content:center; font-size:24px; line-height:1; transition:transform .2s ease, border-color .2s ease, background .2s ease; }
+.card-syms .sym.hit{ background:#1aa64b; border-color:#7CFFB0; transform:scale(1.18); }
+
+/* Canvas (the jar) */
+.stage{ position:relative; width:100%; flex:1; min-height:0; border-radius:18px; overflow:hidden;
+  border:2px solid var(--jdp-dark-yellow); background:linear-gradient(180deg,#0a1c44 0%,#061534 100%); }
+#game{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+/* Overlays */
+.overlay{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; gap:14px; z-index:20; }
+.overlay.hidden{ display:none; }
+.scrim{ position:absolute; inset:0; background:rgba(3,16,52,.82); backdrop-filter:blur(2px); }
+.panel{ position:relative; background:rgba(3,16,52,.92); border:2px solid var(--jdp-dark-yellow); border-radius:20px; padding:22px 20px; max-width:340px; width:100%; display:flex; flex-direction:column; align-items:center; gap:12px; }
+.logo{ font-weight:900; font-size:38px; line-height:1; letter-spacing:.01em; color:var(--jdp-light-yellow); text-shadow:0 3px 0 var(--jdp-brick); }
+.logo .drop{ color:#fff; }
+.subtitle{ font-size:13px; font-weight:500; color:#cdd6ea; }
+.howto{ font-size:12.5px; font-weight:500; color:#e7ecf7; line-height:1.5; }
+.howto b{ color:var(--jdp-light-yellow); }
+.bigemoji{ font-size:34px; letter-spacing:4px; }
+.cta-primary{ position:relative; background:linear-gradient(180deg,var(--jdp-cta-grad-start) 0%,var(--jdp-cta-grad-end) 100%); color:var(--jdp-cta-label); border:1px solid var(--jdp-light-yellow); border-radius:50px; padding:14px 30px; font-weight:700; font-size:18px; text-transform:uppercase; letter-spacing:.04em; box-shadow:0 8px 0 var(--jdp-cta-plate); cursor:pointer; transition:transform 80ms ease, box-shadow 80ms ease; }
+.cta-primary:active{ transform:translateY(8px); box-shadow:0 0 0 var(--jdp-cta-plate); }
+.ghost-btn{ background:transparent; border:none; color:#aab6d4; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; padding:6px 10px; }
+.ghost-btn:active{ color:#fff; }
+.endhead{ font-weight:900; font-size:26px; color:var(--jdp-light-yellow); }
+.scorebig{ font-weight:900; font-size:64px; line-height:1; color:#fff; }
+.scorelbl{ font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#aab6d4; }
+.newbest{ font-weight:800; font-size:14px; color:#7CFFB0; letter-spacing:.05em; display:none; }
+.newbest.show{ display:block; animation:pop .4s ease; }
+@keyframes pop{ 0%{ transform:scale(.4); opacity:0;} 60%{ transform:scale(1.15);} 100%{ transform:scale(1); opacity:1;} }
+.bestline{ font-size:12px; color:#aab6d4; }
+
+/* In-game early-end — bottom-center floating pill (matches gem-merge) */
+.endrun{ position:fixed; bottom:max(12px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  z-index:15; background:rgba(3,16,52,.7); color:rgba(255,214,51,.85); border:1px solid rgba(255,182,3,.5);
+  border-radius:999px; padding:9px 20px; font:700 13px/1 'Poppins',sans-serif; letter-spacing:.08em;
+  text-transform:uppercase; cursor:pointer; }
+.endrun:active{ transform:translateX(-50%) scale(.94); }
+.pwr-banner{ position:absolute; left:50%; top:14px; transform:translateX(-50%); z-index:15; font-weight:800; font-size:13px; letter-spacing:.05em; padding:6px 14px; border-radius:20px; pointer-events:none; opacity:0; transition:opacity .2s; white-space:nowrap; }
+.pwr-banner.show{ opacity:1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- HUD -->
+  <div class="hud">
+    <div class="jdp-pill flex-1"><span class="pill-label" id="scoreLabel">Score</span><span id="score" class="pill-value title-font">0</span></div>
+    <div class="jdp-pill flex-1"><span class="pill-label" id="timeLabel">Time</span><span id="timer" class="pill-value font-mono">03:00</span></div>
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false"><svg viewBox="0 0 24 24"></svg></button>
+  </div>
+
+  <!-- Card to match -->
+  <div class="card-panel" id="cardPanel">
+    <img id="pbot" src="./pbot.webp" alt="pbot">
+    <div class="card-body">
+      <div class="card-hint" id="cardHint">Find this on your card…</div>
+      <div class="card-syms" id="cardSyms"></div>
+    </div>
+  </div>
+
+  <!-- Jar -->
+  <div class="stage">
+    <canvas id="game"></canvas>
+    <button id="endRunBtn" class="endrun" style="display:none">End Run</button>
+    <div id="pwrBanner" class="pwr-banner"></div>
+
+    <!-- Start overlay -->
+    <div id="startOverlay" class="overlay">
+      <div class="scrim"></div>
+      <div class="panel">
+        <div class="logo">SPOT<span class="drop"> DROP</span></div>
+        <div class="bigemoji">🍎🌙⭐</div>
+        <div class="subtitle" id="subtitle">Spot the match in the jar!</div>
+        <div class="howto" id="howto"></div>
+        <button id="startBtn" class="cta-primary">START GAME</button>
+      </div>
+    </div>
+
+    <!-- Game over overlay -->
+    <div id="overOverlay" class="overlay hidden">
+      <div class="scrim"></div>
+      <div class="panel">
+        <div class="endhead" id="endHead">TIME'S UP!</div>
+        <div class="newbest" id="newBest">NEW BEST!</div>
+        <div class="scorelbl" id="endScoreLbl">Spots</div>
+        <div class="scorebig" id="endScore">0</div>
+        <div class="bestline" id="bestLine">Best: 0</div>
+        <button id="claimBtn" class="cta-primary">CLAIM SCORE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./claim-callback.js?v=20260613.1"></script>
+<script>
+"use strict";
+const { Engine, World, Bodies, Body, Composite, Query } = Matter;
+
+/* ============================================================
+   CONFIG — all tuning lives here (BEST-PRACTICES §02)
+   ============================================================ */
+const CONFIG = {
+  gameName: 'spot-drop',
+  W: 480, H: 600,                 // logical jar resolution
+  roundMs: 3 * 60 * 1000,
+  rampCompleteAt: 0.85,
+  spotValue: { start: 2, end: 6 },// points per spot — ramps up as the round gets harder so a great run reaches ~500
+  urgentSecs: 10,
+  claimFallbackUrl: null,
+  // difficulty ramps ({start,end}) — peak by rampCompleteAt
+  pileSize:    { start: 5, end: 24 },
+  tokenRadius: { start: 38, end: 25 },
+  rotJitter:   { start: 0.25, end: 1.0 },
+  spawnEveryMs:{ start: 480, end: 280 },
+  stirEveryMs: 1500,
+  // HINT: if the answer isn't tapped within this long, it jiggles to give it away.
+  // Tiny (near-instant) early so beginners get help; grows as it gets harder.
+  hintDelayMs: { start: 1800, end: 9000 },
+  // plane order thresholds by ramp progress (more symbols = harder scan)
+  planeStops: [ {p:0.34, q:2}, {p:0.67, q:3}, {p:1.01, q:5} ],
+  // power-ups
+  settle: { firstMs: 16000, everyMs: 26000, durationMs: 3200, bubbleR: 19, bubbleTTL: 2200 }, // aid: pauses time — small, fleeting bubble
+  rush:   { firstMs: 30000, everyMs: 34000, durationMs: 7000, mult: 2 }, // frenzy: rain + double
+  powerTTL: 7000,                 // a floating power token despawns if untapped
+};
+
+// Curated, widely-supported, child-safe emoji (31 = enough for PG(2,5))
+const EMOJI = [
+  '🍎','🍊','🍋','🍇','🍓','🍉','🍌','🥝','🍑','🍒',
+  '🐶','🐱','🐰','🦊','🐻','🐼','🐯','🦁','🐸','🐵',
+  '⭐','🌙','🌈','🌸','🍀','🌻','🍄','🦋','🐢','🚀','🎈',
+];
+
+/* ============================================================
+   COPY — EN / BM (CLAUDE.md §6.4). ?lang=ms switches.
+   ============================================================ */
+const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
+const COPY = {
+  en: {
+    subtitle: 'Spot the matching picture!',
+    howto: 'Your <b>card</b> up top and the <b>jar</b> below share exactly <b>one</b> picture. Find it, then tap that bubble in the jar!',
+    cardHint: 'One of these is in the jar ↓',
+    start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
+    claim: 'CLAIM SCORE', retry: 'RETRY', spots: 'Spots',
+    scoreLabel: 'Score', timeLabel: 'Time',
+    newBest: 'NEW BEST!', best: 'Best', endRun: 'End Run',
+    settle: '❄️ FREEZE — jar stops!', rush: '⚡ Spot Rush ×2!',
+  },
+  ms: {
+    subtitle: 'Cari gambar yang sama!',
+    howto: '<b>Kad</b> anda di atas dan <b>balang</b> di bawah berkongsi <b>satu</b> gambar sahaja. Cari, dan klik gambar itu dalam balang!',
+    cardHint: 'Satu ada dalam balang ↓',
+    start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
+    claim: 'TUNTUT SKOR', retry: 'RETRY', spots: 'Skor',
+    scoreLabel: 'Skor', timeLabel: 'Masa',
+    newBest: 'REKOD BAHARU!', best: 'Terbaik', endRun: 'Tamatkan',
+    settle: '❄️ BEKU — balang henti!', rush: '⚡ Rentak Ganda ×2!',
+  },
+}[lang];
+
+/* ============================================================
+   Finite projective plane PG(2,q) — the content generator.
+   Any two cards (lines) share exactly one symbol (point).
+   ============================================================ */
+function modInv(a, m){ a = ((a % m) + m) % m; for (let b = 1; b < m; b++) if ((a * b) % m === 1) return b; return 1; }
+function makePlane(q){
+  const pts = [], seen = new Set();
+  const canon = (x,y,z) => {
+    const lead = x !== 0 ? x : (y !== 0 ? y : z);
+    const inv = modInv(lead, q);
+    return [ (x*inv)%q, (y*inv)%q, (z*inv)%q ];
+  };
+  for (let x=0;x<q;x++) for (let y=0;y<q;y++) for (let z=0;z<q;z++){
+    if (!x && !y && !z) continue;
+    const c = canon(x,y,z), k = c.join(',');
+    if (!seen.has(k)){ seen.add(k); pts.push(c); }
+  }
+  const cards = pts.map(L =>
+    pts.reduce((arr,P,i)=>{ if ((P[0]*L[0]+P[1]*L[1]+P[2]*L[2]) % q === 0) arr.push(i); return arr; }, [])
+  );
+  const through = pts.map(()=>[]);
+  cards.forEach((card,ci)=> card.forEach(pi=> through[pi].push(ci)));
+  return { n: pts.length, k: q+1, cards, through };
+}
+const PLANES = { 2: makePlane(2), 3: makePlane(3), 5: makePlane(5) };
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  scene: 'start',          // start | play | over
+  score: 0, best: 0,
+  timerMs: CONFIG.roundMs, elapsedMs: 0,
+  card: [], cardSet: new Set(),
+  answer: null,            // token that is the answer
+  plane: PLANES[2],
+  inputLockUntil: 0,
+  spawnAcc: 0, stirAcc: 0,
+  cardElapsed: 0, jiggleAcc: 0, hintActive: false,
+  shake: 0,
+  settleUntil: 0, rushUntil: 0, wasFrozen: false, wasRush: false,
+  settleArmAt: CONFIG.settle.firstMs, rushArmAt: CONFIG.rush.firstMs,
+};
+let tokens = [];           // {body, symbol, born, flip, pop, isPower, ptype, ttl}
+let particles = [];        // {x,y,vx,vy,life,max,col,r}
+let floats = [];           // {x,y,vy,life,txt}
+const engine = Engine.create();
+engine.gravity.y = 1;
+const world = engine.world;
+
+/* ============================================================
+   CANVAS
+   ============================================================ */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let DPR = 1, viewW = CONFIG.W, viewH = CONFIG.H, scale = 1, offX = 0, offY = 0;
+
+function resize(){
+  const r = canvas.getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(r.width * DPR);
+  canvas.height = Math.round(r.height * DPR);
+  // letterbox logical W×H into the canvas
+  scale = Math.min(canvas.width / CONFIG.W, canvas.height / CONFIG.H);
+  offX = (canvas.width - CONFIG.W * scale) / 2;
+  offY = (canvas.height - CONFIG.H * scale) / 2;
+  viewW = r.width; viewH = r.height;
+}
+window.addEventListener('resize', resize);
+
+// map a client tap to logical jar coords
+function toLogical(clientX, clientY){
+  const r = canvas.getBoundingClientRect();
+  const cx = (clientX - r.left) * DPR, cy = (clientY - r.top) * DPR;
+  return { x: (cx - offX) / scale, y: (cy - offY) / scale };
+}
+
+/* ============================================================
+   JAR walls
+   ============================================================ */
+const WALL = 26;
+function buildJar(){
+  const w = CONFIG.W, h = CONFIG.H, t = WALL;
+  const opt = { isStatic:true, restitution:0.2, friction:0.4 };
+  const walls = [
+    Bodies.rectangle(w/2, h + t/2, w*2, t, opt),              // floor
+    Bodies.rectangle(-t/2 + 30, h/2, t, h*2, opt),            // left
+    Bodies.rectangle(w - 30 + t/2, h/2, t, h*2, opt),         // right
+    // angled lower corners to gather tokens toward center
+    Bodies.rectangle(70, h-50, 120, t, { ...opt, angle: 0.5 }),
+    Bodies.rectangle(w-70, h-50, 120, t, { ...opt, angle: -0.5 }),
+  ];
+  Composite.add(world, walls);
+}
+buildJar();
+
+/* ============================================================
+   Ramp helpers (BEST-PRACTICES §03)
+   ============================================================ */
+const clamp = (x,lo,hi)=> Math.max(lo, Math.min(hi, x));
+const lerp = (a,b,t)=> a + (b-a)*t;
+function rampT(){ return clamp(state.elapsedMs / (CONFIG.roundMs * CONFIG.rampCompleteAt), 0, 1); }
+function ramp(r){ return lerp(r.start, r.end, rampT()); }
+function currentQ(){ const p = rampT(); for (const s of CONFIG.planeStops) if (p < s.p) return s.q; return 5; }
+
+/* ============================================================
+   Tokens / pile
+   ============================================================ */
+function randInt(n){ return Math.floor(Math.random()*n); }
+// symbols currently shown in the jar (excludes power tokens and `except`)
+function jarSymbolSet(except){
+  const s = new Set();
+  for (const t of tokens){ if (t.isPower || t === except) continue; s.add(t.symbol); }
+  return s;
+}
+// a distractor that is NOT on the card and NOT already in the jar → no duplicate icons
+function uniqueDistractor(plane, cardSet, jarSet){
+  const avail = [];
+  for (let s = 0; s < plane.n; s++) if (!cardSet.has(s) && !jarSet.has(s)) avail.push(s);
+  return avail.length ? avail[randInt(avail.length)] : -2;   // -2 = no unique slot left
+}
+// max distinct tokens a jar can hold: the answer + every non-card symbol
+function uniqueCap(plane){ return plane.n - plane.k + 1; }
+function spawnToken(symbol, opts={}){
+  const r = opts.r != null ? opts.r : ramp(CONFIG.tokenRadius) * (0.92 + Math.random()*0.16);
+  const x = 70 + Math.random() * (CONFIG.W - 140);
+  const y = opts.y != null ? opts.y : -40 - Math.random()*60;
+  const body = Bodies.circle(x, y, r, {
+    restitution: 0.32, friction: 0.45, frictionAir: 0.012, density: 0.0014,
+  });
+  Body.setAngle(body, (Math.random()-0.5) * 2 * ramp(CONFIG.rotJitter) * Math.PI);
+  Body.setAngularVelocity(body, (Math.random()-0.5) * 0.15);
+  Composite.add(world, body);
+  const tok = { body, symbol, born: performance.now(), flip: 0, pop: 0,
+    isPower: !!opts.isPower, ptype: opts.ptype || null, ttl: opts.ttl || 0 };
+  tokens.push(tok);
+  return tok;
+}
+function removeToken(tok){
+  Composite.remove(world, tok.body);
+  const i = tokens.indexOf(tok); if (i>=0) tokens.splice(i,1);
+  if (state.answer === tok) state.answer = null;
+}
+
+// choose a new target card; guarantee exactly one matching token in the jar
+function pickCard(){
+  const plane = state.plane = PLANES[ currentQ() ];
+  // ensure we have something to make the answer from
+  const symTokens = tokens.filter(t => !t.isPower);
+  if (symTokens.length === 0){ spawnToken(randInt(plane.n), { y: CONFIG.H*0.4 }); }
+  const pool = tokens.filter(t => !t.isPower);
+  const ans = pool[ randInt(pool.length) ];
+  // answer symbol must be valid in this plane
+  if (ans.symbol >= plane.n){ ans.symbol = randInt(plane.n); ans.flip = 1; }
+  const answerSym = ans.symbol;
+  const ci = plane.through[answerSym][ randInt(plane.through[answerSym].length) ];
+  const card = plane.cards[ci];
+  const cardSet = new Set(card);
+  // relabel any OTHER token that carries a card symbol, keeping every icon unique
+  for (const t of tokens.slice()){
+    if (t === ans || t.isPower) continue;
+    if (cardSet.has(t.symbol)){
+      const s = uniqueDistractor(plane, cardSet, jarSymbolSet(t));
+      if (s >= 0){ t.symbol = s; t.flip = 1; }
+      else removeToken(t);   // no unique slot left → drop instead of duplicating
+    }
+  }
+  state.card = card; state.cardSet = cardSet; state.answer = ans;
+  state.cardElapsed = 0; state.jiggleAcc = 0; state.hintActive = false;  // restart the hint timer
+  renderCard();
+}
+
+function renderCard(){
+  const host = document.getElementById('cardSyms');
+  host.innerHTML = '';
+  state.card.forEach(sym => {
+    const d = document.createElement('div');
+    d.className = 'sym'; d.dataset.sym = sym;
+    d.textContent = EMOJI[sym];
+    host.appendChild(d);
+  });
+}
+function flashCardSymbol(sym){
+  const el = document.querySelector(`#cardSyms .sym[data-sym="${sym}"]`);
+  if (el){ el.classList.add('hit'); setTimeout(()=> el && el.classList.remove('hit'), 350); }
+}
+
+/* ============================================================
+   Effects
+   ============================================================ */
+function burst(x,y,col){
+  for (let i=0;i<14;i++){
+    const a = Math.random()*Math.PI*2, sp = 2 + Math.random()*5;
+    particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 1, life:0, max:28+Math.random()*16, col, r:2+Math.random()*3 });
+  }
+}
+function addFloat(x,y,txt){ floats.push({ x, y, vy:-1.1, life:0, max:55, txt }); }
+
+/* ============================================================
+   AUDIO — Web Audio synthesis (zero bytes)
+   ============================================================ */
+const AudioFX = (()=>{
+  let actx=null, master=null, muted=false, bgmTimer=null, bgmStep=0, freezeMode=false, rushMode=false, pad=null;
+  try { muted = localStorage.getItem(CONFIG.gameName+':mute') === '1'; } catch(_){}
+  function ensure(){
+    if (actx) return;
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    master = actx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(actx.destination);
+  }
+  function tone(freq, dur, type='sine', vol=0.2, when=0){
+    if (!actx) return;
+    const t = actx.currentTime + when;
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.02);
+  }
+  // a gliding tone (frequency ramps f0→f1) — used for the freeze "whoomp"
+  function sweep(f0, f1, dur, type='sine', vol=0.2, when=0){
+    if (!actx) return;
+    const t = actx.currentTime + when;
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function plink(){ tone(620+Math.random()*120, 0.09, 'triangle', 0.10); }
+  function correct(){ tone(660,0.10,'triangle',0.22); tone(990,0.14,'triangle',0.20,0.07); }
+  function wrong(){ tone(150,0.18,'sawtooth',0.14); tone(110,0.22,'sawtooth',0.12,0.04); }
+  function power(){ [523,659,784,1047].forEach((f,i)=> tone(f,0.16,'square',0.16,i*0.06)); }
+  // FREEZE: downward glide (motion stops) + descending icy crystal shimmer
+  function freeze(){
+    sweep(900, 170, 0.5, 'sine', 0.16);                                   // the "whoomp" of stopping
+    [1760, 1480, 1245, 1047].forEach((f,i)=> tone(f, 0.55, 'triangle', 0.07, 0.05 + i*0.05)); // icy bells
+    tone(2349, 0.4, 'sine', 0.05, 0.26);                                   // sparkle tail
+  }
+  // rising filtered-noise whoosh (bandpass sweeps up) — a "kick-in" transition
+  function whoosh(dur=0.45, vol=0.13, when=0){
+    if (!actx) return;
+    const t = actx.currentTime + when;
+    const len = Math.max(1, Math.floor(actx.sampleRate * dur));
+    const buf = actx.createBuffer(1, len, actx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i=0;i<len;i++) data[i] = Math.random()*2 - 1;             // white noise
+    const src = actx.createBufferSource(); src.buffer = buf;
+    const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
+    bp.frequency.setValueAtTime(280, t);
+    bp.frequency.exponentialRampToValueAtTime(3600, t + dur);          // sweep up = rising whoosh
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + dur*0.55);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(bp); bp.connect(g); g.connect(master);
+    src.start(t); src.stop(t + dur + 0.02);
+  }
+  // SPOT RUSH kick-in: rising whoosh + pitch sweep, then a bright confirming arpeggio
+  function rushStart(){
+    whoosh(0.45, 0.14);
+    sweep(196, 1175, 0.38, 'sawtooth', 0.09);
+    [523,659,784,1047].forEach((f,i)=> tone(f, 0.16, 'square', 0.15, 0.2 + i*0.05));
+  }
+  function end(){ [523,494,392].forEach((f,i)=> tone(f,0.3,'sine',0.2,i*0.16)); }
+  // BGM: a calm bouncing loop normally, a faster brighter loop during Spot Rush,
+  // sparse icy pings while frozen. Self-rescheduling so the tempo can change mid-round.
+  const BGM      = [392,523,659,523,440,587,659,587];   // calm
+  const BGM_RUSH = [523,659,784,659,587,784,880,784];   // higher, brighter, energetic
+  function bgmTick(){
+    if (!bgmTimer) return;
+    if (state.scene === 'play'){
+      if (freezeMode){
+        if (bgmStep % 4 === 0) tone(1568 + Math.random()*60, 0.5, 'triangle', 0.03);
+      } else if (rushMode){
+        const f = BGM_RUSH[bgmStep % BGM_RUSH.length];
+        tone(f, 0.11, 'square', 0.05);
+        tone(f/2, 0.13, 'triangle', 0.038);
+        if (bgmStep % 2 === 0) tone(f*2, 0.07, 'triangle', 0.022);  // sparkle
+      } else {
+        const f = BGM[bgmStep % BGM.length];
+        tone(f, 0.18, 'sine', 0.05);
+        if (bgmStep % 2 === 0) tone(f/2, 0.2, 'triangle', 0.035);
+      }
+      bgmStep++;
+    }
+    const delay = (rushMode && !freezeMode) ? 150 : 320;   // double-time during rush
+    bgmTimer = setTimeout(bgmTick, delay);
+  }
+  function startBgm(){ if (bgmTimer || !actx) return; bgmStep = 0; bgmTimer = setTimeout(bgmTick, 1); }
+  function stopBgm(){ if (bgmTimer){ clearTimeout(bgmTimer); bgmTimer = null; } rushMode = false; stopFreezePad(); }
+  function setRush(on){ rushMode = on; }
+  // sustained shimmering pad while the jar is frozen — "everything is static"
+  function startFreezePad(){
+    if (!actx || freezeMode) return;
+    freezeMode = true;
+    const g = actx.createGain(); g.gain.value = 0.0001; g.connect(master);
+    const now = actx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.07, now + 0.35);
+    const osc = [523.25, 659.25, 1046.5].map(f=>{       // airy C-major shimmer chord
+      const o = actx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+      o.connect(g); o.start(now); return o;
+    });
+    pad = { g, osc };
+  }
+  function stopFreezePad(){
+    freezeMode = false;
+    if (!pad || !actx) { pad = null; return; }
+    const now = actx.currentTime, g = pad.g, osc = pad.osc;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+    osc.forEach(o=> { try { o.stop(now + 0.45); } catch(_){} });
+    pad = null;
+  }
+  function setFrozen(on){ if (on) startFreezePad(); else stopFreezePad(); }
+  function setMuted(m){
+    muted = m;
+    try { localStorage.setItem(CONFIG.gameName+':mute', m?'1':'0'); } catch(_){}
+    if (master) master.gain.value = m ? 0 : 0.9;
+  }
+  return { ensure, plink, correct, wrong, power, freeze, rushStart, end, startBgm, stopBgm, setFrozen, setRush,
+    isMuted:()=>muted, setMuted, resume:()=>{ if(actx&&actx.state==='suspended') actx.resume(); } };
+})();
+
+/* ============================================================
+   Power-ups
+   ============================================================ */
+function spawnPower(ptype){
+  const isSettle = ptype === 'settle';
+  // freeze bubble is small + short-lived (must be earned); rush is the normal size
+  const r   = isSettle ? CONFIG.settle.bubbleR  : 30;
+  const ttl = isSettle ? CONFIG.settle.bubbleTTL : CONFIG.powerTTL;
+  const tok = spawnToken(-1, { isPower:true, ptype, ttl, r, y: 40 + Math.random()*40 });
+  // settle bubble drifts faster, making it a trickier tap
+  Body.setVelocity(tok.body, { x:(Math.random()-0.5) * (isSettle ? 4 : 2), y:0 });
+}
+function activatePower(ptype){
+  if (ptype === 'settle') AudioFX.freeze(); else AudioFX.rushStart();
+  const banner = document.getElementById('pwrBanner');
+  if (ptype === 'settle'){
+    state.settleUntil = performance.now() + CONFIG.settle.durationMs;
+    banner.textContent = COPY.settle; banner.style.background = 'rgba(40,120,255,.9)'; banner.style.color='#fff';
+  } else {
+    state.rushUntil = performance.now() + CONFIG.rush.durationMs;
+    banner.textContent = COPY.rush; banner.style.background = 'rgba(255,182,3,.95)'; banner.style.color='#3a2400';
+  }
+  banner.classList.add('show');
+  setTimeout(()=> banner.classList.remove('show'), 1400);
+}
+const settleActive = ()=> performance.now() < state.settleUntil;
+const rushActive   = ()=> performance.now() < state.rushUntil;
+
+/* ============================================================
+   Input
+   ============================================================ */
+function tapAt(clientX, clientY){
+  if (state.scene !== 'play') return;
+  const now = performance.now();
+  if (now < state.inputLockUntil) return;
+  const p = toLogical(clientX, clientY);
+  const hits = Query.point(tokens.map(t=>t.body), p);
+  if (!hits.length) return;
+  // topmost (last added roughly = on top); pick the hit with largest born
+  let tok = null;
+  for (const t of tokens){ if (hits.includes(t.body) && (!tok || t.born > tok.born)) tok = t; }
+  if (!tok) return;
+
+  if (tok.isPower){ activatePower(tok.ptype); popToken(tok, '#7fd0ff', ''); return; }
+
+  if (tok === state.answer){
+    const base = Math.round(ramp(CONFIG.spotValue));        // harder (later) spots are worth more
+    const val = base * (rushActive() ? CONFIG.rush.mult : 1);
+    state.score += val;
+    AudioFX.correct();
+    flashCardSymbol(tok.symbol);
+    pbotReact('hop');
+    popToken(tok, '#FFD633', '+'+val);
+    state.shake = Math.min(state.shake + 4, 8);
+    syncHud();
+    pickCard();          // new challenge (also tops the pile up via update)
+  } else {
+    // wrong — gentle, no penalty
+    AudioFX.wrong();
+    tok.flip = 1;
+    Body.applyForce(tok.body, tok.body.position, { x:(Math.random()-0.5)*0.04, y:-0.05 });
+    pbotReact('shake');
+    state.shake = Math.min(state.shake + 5, 9);
+    state.inputLockUntil = now + 350;
+  }
+}
+function popToken(tok, col, txt){
+  const pos = tok.body.position;
+  burst(pos.x, pos.y, col);
+  if (txt) addFloat(pos.x, pos.y - tok.body.circleRadius, txt);
+  removeToken(tok);
+}
+function pbotReact(cls){
+  const el = document.getElementById('pbot');
+  el.classList.remove('hop','shake'); void el.offsetWidth; el.classList.add(cls);
+}
+
+canvas.addEventListener('pointerdown', (e)=>{ AudioFX.ensure(); AudioFX.resume(); tapAt(e.clientX, e.clientY); }, { passive:true });
+
+/* ============================================================
+   Update loop
+   ============================================================ */
+let lastT = performance.now();
+function frame(now){
+  const dt = Math.min(50, now - lastT); lastT = now;
+  if (state.scene === 'play') update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+
+function update(dt){
+  // FREEZE aid — pause the round AND halt the jar while active
+  const frozenNow = settleActive();
+  if (frozenNow !== state.wasFrozen){ AudioFX.setFrozen(frozenNow); state.wasFrozen = frozenNow; }
+  // swap to the faster Rush soundtrack on enter, back to normal on exit
+  const rushNow = rushActive();
+  if (rushNow !== state.wasRush){ AudioFX.setRush(rushNow); state.wasRush = rushNow; }
+  if (!frozenNow){
+    state.elapsedMs += dt;                                   // clock (and difficulty ramp) only advance when not frozen
+    state.timerMs = Math.max(0, CONFIG.roundMs - state.elapsedMs);
+  }
+  engine.gravity.y = frozenNow ? 0 : 1;
+  if (frozenNow){
+    for (const t of tokens){ Body.setVelocity(t.body, { x:0, y:0 }); Body.setAngularVelocity(t.body, 0); }
+  }
+
+  Engine.update(engine, dt);
+
+  // flip animation decay
+  for (const t of tokens) if (t.flip > 0) t.flip = Math.max(0, t.flip - dt/180);
+
+  // power token TTL + arming
+  const now = performance.now();
+  for (const t of tokens.slice()){
+    if (t.isPower){
+      t.ttl -= dt;
+      if (t.ttl <= 0){   // pop if not tapped in time
+        const p = t.body.position;
+        burst(p.x, p.y, t.ptype==='settle' ? '#8ec5ff' : '#ffd633');
+        AudioFX.plink();
+        removeToken(t); continue;
+      }
+    }
+    // recycle tokens that somehow fell out
+    if (t.body.position.y > CONFIG.H + 120) removeToken(t);
+  }
+  if (now >= state.settleArmAt && !settleActive()){
+    if (!tokens.some(t=>t.isPower && t.ptype==='settle')) spawnPower('settle');
+    state.settleArmAt = now + CONFIG.settle.everyMs;
+  }
+  if (now >= state.rushArmAt && !rushActive()){
+    if (!tokens.some(t=>t.isPower && t.ptype==='rush')) spawnPower('rush');
+    state.rushArmAt = now + CONFIG.rush.everyMs;
+  }
+
+  // maintain pile size — capped so every icon in the jar stays unique
+  const cap = uniqueCap(state.plane);
+  let target = Math.round(ramp(CONFIG.pileSize)) + (rushActive() ? 4 : 0);
+  target = Math.min(target, cap);
+  const symCount = tokens.reduce((a,t)=> a + (t.isPower?0:1), 0);
+  state.spawnAcc += dt;
+  const spawnEvery = ramp(CONFIG.spawnEveryMs) / (rushActive() ? 2.4 : 1);
+  if (!frozenNow && symCount < target && state.spawnAcc >= spawnEvery){
+    const s = uniqueDistractor(state.plane, state.cardSet, jarSymbolSet());
+    if (s >= 0){ state.spawnAcc = 0; spawnToken(s); }
+  }
+
+  // periodic stir so the pile keeps jostling (anti-memorization)
+  state.stirAcc += dt;
+  if (state.stirAcc >= CONFIG.stirEveryMs && !settleActive() && !state.hintActive){
+    state.stirAcc = 0;
+    const settled = tokens.filter(t=> Math.abs(t.body.velocity.y) < 0.6);
+    for (let i=0;i<Math.min(3, settled.length); i++){
+      const t = settled[randInt(settled.length)];
+      Body.applyForce(t.body, t.body.position, { x:(Math.random()-0.5)*0.03, y:-0.045 });
+    }
+  }
+
+  // HINT: once the player stalls past the (difficulty-scaled) delay, the answer
+  // bubble vibrates. It's a DRAW-ONLY offset (see drawToken) — no physics force —
+  // so it never nudges its neighbours. Only the correct bubble moves.
+  if (!frozenNow && state.answer){
+    state.cardElapsed += dt;                                  // active time spent on this card
+    state.hintActive = state.cardElapsed >= ramp(CONFIG.hintDelayMs);
+  } else {
+    state.hintActive = false;
+  }
+
+  // effects
+  for (const p of particles){ p.life += dt/16; p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.vx *= 0.98; }
+  particles = particles.filter(p=> p.life < p.max);
+  for (const f of floats){ f.life += dt/16; f.y += f.vy; }
+  floats = floats.filter(f=> f.life < f.max);
+  if (state.shake > 0) state.shake = Math.max(0, state.shake - dt/40);
+
+  syncHud();
+  if (state.timerMs <= 0) endRun(true);
+}
+
+/* ============================================================
+   Render
+   ============================================================ */
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.translate(offX, offY); ctx.scale(scale, scale);
+  if (state.shake > 0){
+    ctx.translate((Math.random()-0.5)*state.shake, (Math.random()-0.5)*state.shake);
+  }
+  ctx.beginPath(); ctx.rect(-40,-40, CONFIG.W+80, CONFIG.H+80); ctx.clip();
+
+  drawJar();
+  // freeze frost / rush vignette
+  if (settleActive()) drawFreezeTint();
+  if (rushActive()) drawRushVignette();
+
+  // tokens
+  for (const t of tokens) drawToken(t);
+
+  // particles
+  for (const p of particles){
+    ctx.globalAlpha = Math.max(0, 1 - p.life/p.max);
+    ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // floats
+  for (const f of floats){
+    ctx.globalAlpha = Math.max(0, 1 - f.life/f.max);
+    ctx.fillStyle = '#FFD633'; ctx.font = '900 30px Poppins, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(3,16,52,.8)';
+    ctx.strokeText(f.txt, f.x, f.y); ctx.fillText(f.txt, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawJar(){
+  const w = CONFIG.W, h = CONFIG.H;
+  // glass body
+  ctx.save();
+  ctx.beginPath();
+  const x0=18, x1=w-18, top=8, bot=h-8, rad=40;
+  ctx.moveTo(x0, top);
+  ctx.lineTo(x0, bot-rad);
+  ctx.quadraticCurveTo(x0, bot, x0+rad, bot);
+  ctx.lineTo(x1-rad, bot);
+  ctx.quadraticCurveTo(x1, bot, x1, bot-rad);
+  ctx.lineTo(x1, top);
+  const g = ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'rgba(120,170,255,0.10)'); g.addColorStop(1,'rgba(40,90,200,0.18)');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(180,210,255,0.35)'; ctx.stroke();
+  // glass highlight
+  ctx.globalAlpha = 0.4; ctx.lineWidth = 6; ctx.strokeStyle='rgba(255,255,255,0.18)';
+  ctx.beginPath(); ctx.moveTo(x0+10, top+20); ctx.lineTo(x0+10, bot-rad-10); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawFreezeTint(){
+  const w=CONFIG.W,h=CONFIG.H;
+  ctx.fillStyle='rgba(150,200,255,0.10)'; ctx.fillRect(0,0,w,h);
+  const g = ctx.createRadialGradient(w/2,h/2,h*0.25, w/2,h/2,h*0.72);
+  g.addColorStop(0,'rgba(180,220,255,0)'); g.addColorStop(1,'rgba(120,180,255,0.32)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+}
+function drawRushVignette(){
+  const w=CONFIG.W,h=CONFIG.H;
+  const g = ctx.createRadialGradient(w/2,h/2,h*0.2, w/2,h/2,h*0.65);
+  g.addColorStop(0,'rgba(255,182,3,0)'); g.addColorStop(1,'rgba(255,140,0,0.28)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+}
+
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+
+// Glass-bubble look ported from gem-merge's drawGemSprite:
+//   back  = transparent radial body (white glare upper-left → clear → tinted rim)
+//   front = tinted outer rim + white inner refraction ring + specular glare arc
+function bubbleBack(r, tint, core){
+  const fill = ctx.createRadialGradient(-r*0.35, -r*0.35, r*0.1, 0, 0, r);
+  fill.addColorStop(0,   `rgba(255,255,255,${core})`);   // frosted core keeps the emoji legible
+  fill.addColorStop(0.6, 'rgba(255,255,255,0.06)');
+  fill.addColorStop(1,   tint + '33');                   // ~20% tinted rim
+  ctx.fillStyle = fill;
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+}
+function bubbleFront(r, tint){
+  ctx.strokeStyle = tint + 'CC'; ctx.lineWidth = 3;                 // border 1: tinted outer wall
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.4;  // border 2: inner refraction ring
+  ctx.beginPath(); ctx.arc(0,0,r*0.86,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2;    // specular glare (upper-left arc)
+  ctx.beginPath(); ctx.arc(0,0,r*0.78, Math.PI*1.15, Math.PI*1.40); ctx.stroke();
+}
+
+function drawToken(t){
+  const b = t.body, x = b.position.x, y = b.position.y, r0 = b.circleRadius;
+  // hint vibrate: draw-only offset on the answer bubble (neighbours are untouched)
+  let ox = 0, oy = 0;
+  if (state.hintActive && t === state.answer){
+    const n = performance.now();
+    ox = Math.sin(n / 45) * 2.6;   // fast small horizontal shake
+    oy = Math.sin(n / 37) * 1.7;   // slightly different vertical freq = lively vibrate
+  }
+  ctx.save();
+  ctx.translate(x + ox, y + oy);
+  const sx = t.flip > 0 ? Math.cos(t.flip*Math.PI) : 1; // quick coin-flip on relabel
+  ctx.scale(sx, 1);
+
+  if (t.isPower){
+    // Power-ups read as SOLID glowing orbs (not clear glass) so they stand
+    // apart from the standard bubbles: freeze = vivid blue, rush = vivid orange.
+    const isSettle = t.ptype === 'settle';
+    const tint = isSettle ? '#2E8BFF' : '#FF6A1A';
+    const glow = isSettle ? '#8FD0FF' : '#FFB347';
+    const tf = (t.ttl != null && t.ttl < 450) ? Math.max(0.35, t.ttl/450) : 1; // shrink just before it pops
+    const r = r0 * tf;
+    const pulse = 0.5 + 0.5*Math.sin(performance.now()/120);
+
+    // pulsing outer aura ring — the "this is special" signal
+    ctx.globalAlpha = 0.3 + 0.4*pulse;
+    ctx.strokeStyle = glow; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0,0, r + 5 + pulse*4, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // saturated colored-glass orb (filled, with a bright top spec)
+    ctx.shadowBlur = 16 + pulse*14; ctx.shadowColor = glow;
+    const fill = ctx.createRadialGradient(-r*0.35, -r*0.35, r*0.1, 0, 0, r);
+    fill.addColorStop(0,    'rgba(255,255,255,0.9)');
+    fill.addColorStop(0.45, tint);
+    fill.addColorStop(1,    tint);
+    ctx.fillStyle = fill;
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.font = `${Math.round(r*1.0)}px ${EMOJI_FONT}`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(isSettle ? '❄️' : '⚡', 0, 1);
+
+    // tinted inner ring + specular glare (no white outer border)
+    ctx.strokeStyle = tint; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0,0,r*0.83,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,r*0.78, Math.PI*1.15, Math.PI*1.40); ctx.stroke();
+    ctx.restore(); return;
+  }
+
+  // normal token: frosted glass bubble with a gold rim (matches the card border)
+  bubbleBack(r0, '#FFB603', 0.55);
+  ctx.save(); ctx.rotate(b.angle);                       // only the emoji tumbles; the glass stays upright
+  ctx.font = `${Math.round(r0*1.2)}px ${EMOJI_FONT}`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(EMOJI[t.symbol] || '❔', 0, 1);
+  ctx.restore();
+  bubbleFront(r0, '#FFB603');
+  ctx.restore();
+}
+
+/* ============================================================
+   HUD / lifecycle
+   ============================================================ */
+const scoreEl = document.getElementById('score');
+const timerEl = document.getElementById('timer');
+function syncHud(){
+  scoreEl.textContent = String(state.score);
+  const s = Math.max(0, Math.ceil(state.timerMs/1000));
+  timerEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  const urgent = s <= CONFIG.urgentSecs && s > 0 && state.scene==='play';
+  timerEl.classList.toggle('pulse-urgent', urgent);
+}
+
+function loadBest(){ try { return parseInt(localStorage.getItem(CONFIG.gameName+':best')||'0',10)||0; } catch(_){ return 0; } }
+function saveBest(v){ try { localStorage.setItem(CONFIG.gameName+':best', String(v)); } catch(_){} }
+
+function startGame(){
+  // clear
+  for (const t of tokens.slice()) removeToken(t);
+  tokens = []; particles = []; floats = [];
+  state.scene = 'play'; state.score = 0; state.elapsedMs = 0; state.timerMs = CONFIG.roundMs;
+  state.settleUntil = 0; state.rushUntil = 0; state.wasFrozen = false; state.wasRush = false;
+  AudioFX.setFrozen(false); AudioFX.setRush(false);
+  state.settleArmAt = performance.now() + CONFIG.settle.firstMs;
+  state.rushArmAt = performance.now() + CONFIG.rush.firstMs;
+  state.spawnAcc = 0; state.stirAcc = 0; state.shake = 0; state.inputLockUntil = 0;
+  state.plane = PLANES[2];
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('overOverlay').classList.add('hidden');
+  document.getElementById('endRunBtn').style.display = 'block';
+  // seed an initial pile of DISTINCT symbols, then pick first card
+  const seedSyms = Array.from({length: PLANES[2].n}, (_,i)=>i);
+  for (let i=seedSyms.length-1;i>0;i--){ const j=randInt(i+1); [seedSyms[i],seedSyms[j]]=[seedSyms[j],seedSyms[i]]; }
+  const seed = Math.min(Math.round(CONFIG.pileSize.start), uniqueCap(PLANES[2]));
+  for (let i=0;i<seed;i++) spawnToken(seedSyms[i], { y: -20 - i*46 });
+  pickCard();
+  syncHud();
+  AudioFX.ensure(); AudioFX.resume(); AudioFX.startBgm();
+}
+
+let claimLocked = false;
+function endRun(byTimer){
+  if (state.scene !== 'play') return;
+  state.scene = 'over';
+  AudioFX.stopBgm(); AudioFX.end();
+  document.getElementById('endRunBtn').style.display = 'none';
+  timerEl.classList.remove('pulse-urgent');
+  const isBest = state.score > state.best && state.score > 0;
+  if (state.score > state.best){ state.best = state.score; saveBest(state.best); }
+  document.getElementById('endHead').textContent = byTimer ? COPY.timeUp : COPY.gameOver;
+  document.getElementById('endScore').textContent = String(state.score);
+  document.getElementById('endScoreLbl').textContent = COPY.spots;
+  document.getElementById('bestLine').textContent = `${COPY.best}: ${state.best}`;
+  const nb = document.getElementById('newBest');
+  nb.textContent = COPY.newBest; nb.classList.toggle('show', isBest);
+  const claim = document.getElementById('claimBtn');
+  claim.textContent = state.score > 0 ? COPY.claim : COPY.retry;
+  claimLocked = false;
+  document.getElementById('overOverlay').classList.remove('hidden');
+}
+
+/* ============================================================
+   CLAIM (CLAUDE.md §6.5 / §6.6) + early end
+   ============================================================ */
+// Defensive: if claim-callback.js failed to load (e.g. the page was opened
+// without a trailing slash so the relative path 404'd), the game must still
+// run and switch language — only the claim submit is unavailable.
+const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
+if (claimContext.pageTitle){ const t = claimContext.pageTitle.trim(); if (t) document.title = t; }
+async function buildClaimUrl(){
+  if (!window.ClaimCallback){ console.warn('[spot-drop] claim-callback.js not loaded'); return null; }
+  return window.ClaimCallback.buildClaimUrl({
+    claimContext, score: Math.max(0, state.score|0),
+    gameName: CONFIG.gameName, fallbackUrl: CONFIG.claimFallbackUrl,
+  });
+}
+document.getElementById('claimBtn').addEventListener('click', async ()=>{
+  if (state.score <= 0){ startGame(); return; }   // RETRY (§6.5) — local restart for zero-score only
+  if (claimLocked) return; claimLocked = true;
+  try {
+    const url = await buildClaimUrl();
+    if (!url){ console.warn('[spot-drop] no callback configured'); claimLocked = false; return; }
+    location.href = url;
+  } catch(err){ console.warn('[spot-drop] claim failed', err); claimLocked = false; }
+});
+document.getElementById('endRunBtn').addEventListener('click', ()=> endRun(false));
+
+/* ============================================================
+   Mute button (DESIGN.md §5.11)
+   ============================================================ */
+const ICON_ON = 'M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z';
+const ICON_OFF = 'M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z';
+const muteBtn = document.getElementById('muteBtn');
+function renderMute(){
+  const m = AudioFX.isMuted();
+  muteBtn.querySelector('svg').innerHTML = `<path d="${m?ICON_OFF:ICON_ON}"/>`;
+  muteBtn.setAttribute('aria-pressed', m?'true':'false');
+  muteBtn.setAttribute('aria-label', m?'AUDIO OFF':'AUDIO ON');
+  muteBtn.title = m?'AUDIO OFF':'AUDIO ON';
+}
+muteBtn.addEventListener('click', ()=>{
+  AudioFX.ensure();
+  const m = !AudioFX.isMuted();
+  AudioFX.setMuted(m); renderMute();
+  if (!m){ AudioFX.resume(); AudioFX.plink(); }
+});
+renderMute();
+
+/* ============================================================
+   Boot
+   ============================================================ */
+document.getElementById('subtitle').textContent = COPY.subtitle;
+document.getElementById('howto').innerHTML = COPY.howto;
+document.getElementById('cardHint').textContent = COPY.cardHint;
+document.getElementById('startBtn').textContent = COPY.start;
+document.getElementById('scoreLabel').textContent = COPY.scoreLabel;
+document.getElementById('timeLabel').textContent = COPY.timeLabel;
+document.getElementById('endRunBtn').textContent = COPY.endRun;
+state.best = loadBest();
+document.getElementById('startBtn').addEventListener('click', ()=>{ AudioFX.ensure(); AudioFX.resume(); startGame(); });
+
+requestAnimationFrame(()=>{ resize(); requestAnimationFrame(frame); });
+window.addEventListener('load', resize);
+
+// Dev jump: ?scene=play starts immediately; ?n=2|3|5 forces plane floor (debug)
+(function dev(){
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('scene') === 'play') setTimeout(startGame, 60);
+})();
+</script>
+</body>
+</html>

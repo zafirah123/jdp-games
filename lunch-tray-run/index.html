@@ -127,8 +127,7 @@ const GAME_NAME = 'lunch-tray-run';
 const CONFIG = {
   roundDurationMs: 3 * 60 * 1000,
   rampCompleteAt: 0.85,
-  scoreRatePerSec: 500 / 180,          // full clean round ≈ 500
-  softCap: 500, hardenStart: 380, hardenEnd: 500, frenzyBlockedAt: 430,
+  scoreTarget: 500, hardenStart: 380, hardenEnd: 500,    // scoreTarget = points for a full base run; not a ceiling
 
   floorSplit: 0.55,                    // floor area height fraction; phone below
   horizonRatio: 0.20,                  // far end of the floor (within floor area)
@@ -159,6 +158,9 @@ const CONFIG = {
 
   stumbleMs: 1500,                     // floor trip → lose control this long (timer keeps running)
 };
+// Survive the whole round (no Focus boost) → exactly scoreTarget. Focus or longer survival
+// can push the score past it (no hard cap). 500 / 180s ≈ 2.78 points/sec.
+CONFIG.scoreRatePerSec = CONFIG.scoreTarget / (CONFIG.roundDurationMs / 1000);
 
 /* ---------- Language (URL-driven, §6.4) ---------- */
 const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
@@ -348,7 +350,7 @@ function spawnCactus(){
 }
 function spawnShield(){ if(state.shield) return; const L=layout(), s=CONFIG.shield.size;
   state.pickups.push({ kind:'shield', layer:'floor', lane:randLane(), y:L.horizonY, w:s, h:s, t:0, passed:false }); }
-function spawnFocus(){ if(state.score>=CONFIG.frenzyBlockedAt) return; const R=layout().R, s=CONFIG.focus.sizeFrac*R.rsh;
+function spawnFocus(){ const R=layout().R, s=CONFIG.focus.sizeFrac*R.rsh;
   state.pickups.push({ kind:'focus', layer:'phone', x:R.rsx+R.rsw, y:R.gy-R.dsize-R.rsh*0.32, w:s, h:s, t:0 }); }
 
 /* ---------- particles / floats ---------- */
@@ -379,7 +381,7 @@ function update(dt){
     if(state.timeRemaining<=0){ state.timeRemaining=0; return endGame('timeup'); }
 
     state.scoreFloat+=dt*CONFIG.scoreRatePerSec*(focusActive?CONFIG.focus.scoreBoost:1);
-    state.score=Math.min(CONFIG.softCap,Math.floor(state.scoreFloat));
+    state.score=Math.floor(state.scoreFloat);            // no hard cap — Focus/longer survival can exceed 500
 
     // lane highlight easing
     state.renderLane += (state.lane-state.renderLane)*Math.min(1,CONFIG.laneTween*dt);
@@ -401,8 +403,9 @@ function update(dt){
     state.scrollFloor += floorSpd*dt;
     state.scrollRunner += cactusSpd*dt;
 
-    // spawns — the dino runner starts immediately; the floor holds off for the intro (and while stopped)
-    state.cactusTimer+=dt*1000; if(state.cactusTimer>=ramp(CONFIG.cactus.spawnEveryMs)){ state.cactusTimer=0; spawnCactus(); }
+    // spawns — the dino keeps running, but new cacti pause during a stumble so a helpless
+    // dino can't get hit by a stream of them (already-spawned cacti still move & can hit once)
+    if(!stumbling){ state.cactusTimer+=dt*1000; if(state.cactusTimer>=ramp(CONFIG.cactus.spawnEveryMs)){ state.cactusTimer=0; spawnCactus(); } }
     state.focusTimer+=dt*1000; if(state.focusTimer>=CONFIG.focus.spawnEveryMs){ state.focusTimer=0; if(Math.random()<CONFIG.focus.chance) spawnFocus(); }
     if(state.elapsed>=CONFIG.floorIntroMs && !stumbling){
       state.floorTimer+=dt*1000; if(state.floorTimer>=ramp(CONFIG.floor.spawnEveryMs)){ state.floorTimer=0; spawnFloor(); }

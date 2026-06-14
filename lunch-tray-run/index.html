@@ -23,6 +23,7 @@
 
   /* HUD (DESIGN.md §5.12) */
   .hud{ width:100%; max-width:28rem; display:flex; justify-content:space-between; align-items:center; gap:8px; z-index:10; flex-shrink:0; }
+  .hud-spacer{ flex:1; }   /* holds the Score pill to its previous width now that Time is hidden */
   .jdp-pill{ flex:1; display:flex; align-items:center; height:40px; overflow:hidden; background:#fff; border:2px solid var(--darkYellow); border-radius:30px; }
   .pill-label{ background:var(--brick); color:var(--yellow); font-weight:700; font-size:10px; letter-spacing:.04em; text-transform:uppercase; padding:0 10px; height:100%; display:flex; align-items:center; }
   .pill-value{ background:var(--blue); color:#fff; font-weight:800; font-size:16px; padding:0 10px; height:100%; flex:1; display:flex; align-items:center; justify-content:center; }
@@ -82,7 +83,7 @@
 
   <div class="hud">
     <div class="jdp-pill"><span class="pill-label" id="lblScore">Score</span><span class="pill-value" id="score">0</span></div>
-    <div class="jdp-pill"><span class="pill-label" id="lblTime">Time</span><span class="pill-value mono" id="timer">03:00</span></div>
+    <div class="hud-spacer"></div>
     <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
       <svg viewBox="0 0 24 24"><path id="muteIcon" d=""/></svg>
     </button>
@@ -157,6 +158,8 @@ const CONFIG = {
             durationMs: 5000, slow: 1, scoreBoost: 2 },            // slow:1 = keep full speed, just 2× points
 
   stumbleMs: 1500,                     // floor trip → lose control this long (timer keeps running)
+  // soft round: no hard time-up — cacti escalate hard as you approach 3 min so the run ends by losing hearts
+  cactusTaper: { startMs: 150000, fullMs: 180000, minFactor: 0.35, strength: 0.55 },
 };
 // Survive the whole round (no Focus boost) → exactly scoreTarget. Focus or longer survival
 // can push the score past it (no hard cap). 500 / 180s ≈ 2.78 points/sec.
@@ -224,7 +227,7 @@ let state=null;
 function freshState(){
   return {
     scene:'start', scoreFloat:0, score:0,
-    timeRemaining:CONFIG.roundDurationMs, elapsed:0,
+    elapsed:0,
     lane:1, renderLane:1,
     dinoY:0, dinoVy:0, dinoSquash:0, dinoRun:0, airBoost:0,
     hearts:3, dinoHurtUntil:0, stumbleUntil:0,
@@ -395,9 +398,7 @@ function update(dt){
   const focusActive=now()<state.focusUntil, slow=focusActive?CONFIG.focus.slow:1;
 
   if(state.scene==='playing'){
-    state.timeRemaining-=dt*1000;
-    state.elapsed=CONFIG.roundDurationMs-state.timeRemaining;
-    if(state.timeRemaining<=0){ state.timeRemaining=0; return endGame('timeup'); }
+    state.elapsed += dt*1000;            // soft round — no hard time-up; difficulty hard-tapers near 3 min
 
     state.scoreFloat+=dt*CONFIG.scoreRatePerSec*(focusActive?CONFIG.focus.scoreBoost:1);
     state.score=Math.floor(state.scoreFloat);            // no hard cap — Focus/longer survival can exceed 500
@@ -425,9 +426,13 @@ function update(dt){
     state.scrollFloor += floorSpd*dt;
     state.scrollRunner += cactusSpd*dt;
 
-    // spawns — the dino keeps running, but new cacti pause during a stumble so a helpless
-    // dino can't get hit by a stream of them (already-spawned cacti still move & can hit once)
-    if(!stumbling){ state.cactusTimer+=dt*1000; if(state.cactusTimer>=ramp(CONFIG.cactus.spawnEveryMs)){ state.cactusTimer=0; spawnCactus(); } }
+    // spawns — cacti keep coming even during a stumble, so tripping on the floor genuinely
+    // threatens the dino's hearts (you can't jump while stumbling). That's the floor's stake.
+    { state.cactusTimer+=dt*1000;
+      const tp=CONFIG.cactusTaper;
+      const taper=clamp((state.elapsed-tp.startMs)/(tp.fullMs-tp.startMs),0,1)+Math.max(0,(state.elapsed-tp.fullMs)/40000);   // 0 at 150s → 1 at 180s, more after
+      const interval=ramp(CONFIG.cactus.spawnEveryMs)*Math.max(tp.minFactor,1-tp.strength*Math.min(taper,1.6));
+      if(state.cactusTimer>=interval){ state.cactusTimer=0; spawnCactus(); } }
     state.focusTimer+=dt*1000; if(state.focusTimer>=CONFIG.focus.spawnEveryMs){ state.focusTimer=0; if(Math.random()<CONFIG.focus.chance) spawnFocus(); }
     if(state.elapsed>=CONFIG.floorIntroMs && !stumbling){
       state.floorTimer+=dt*1000; if(state.floorTimer>=ramp(CONFIG.floor.spawnEveryMs)){ state.floorTimer=0; spawnFloor(); }
@@ -820,13 +825,8 @@ function rstroke(x,y,w,h,r){ roundPath(x,y,w,h,r); ctx.stroke(); }
 /* ============================================================
    HUD sync
    ============================================================ */
-const elScore=document.getElementById('score'), elTimer=document.getElementById('timer');
-function syncHUD(){
-  elScore.textContent=state.score;
-  const s=Math.max(0,Math.ceil(state.timeRemaining/1000));
-  elTimer.textContent=String((s/60|0)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-  elTimer.classList.toggle('pulse-urgent', state.timeRemaining<=10000 && state.scene==='playing');
-}
+const elScore=document.getElementById('score');
+function syncHUD(){ elScore.textContent=state.score; }   // timer is hidden — soft round
 
 /* ============================================================
    SCENE / FLOW
@@ -893,7 +893,6 @@ document.getElementById('claimBtn').addEventListener('click',function(){ Audio_.
 /* ---------- Copy ---------- */
 function applyCopy(){
   document.getElementById('lblScore').textContent=COPY.score;
-  document.getElementById('lblTime').textContent=COPY.time;
   document.getElementById('lblFinal').textContent=COPY.score;
   document.getElementById('lblBest').textContent=COPY.best;
   document.getElementById('startBtn').textContent=COPY.start;
@@ -912,7 +911,7 @@ function boot(){
   applyCopy(); resize(); state=freshState();
   const sc=new URLSearchParams(location.search).get('scene');
   if(sc==='playing') startGame();
-  else if(sc==='over'){ state.score=137; state.elapsed=60000; endGame('timeup'); }
+  else if(sc==='over'){ state.score=137; state.elapsed=60000; endGame('over'); }
   else { state.scene='start'; showOverlay('startOverlay'); }
   last=now(); requestAnimationFrame(frame);
 }

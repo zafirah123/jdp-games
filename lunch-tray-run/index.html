@@ -145,10 +145,12 @@ const CONFIG = {
   // floor — 3-lane road, switch LEFT / RIGHT
   lanes: 3,
   laneTween: 16,                       // how fast the lane highlight slides
+  floorIntroMs: 12000,                 // road stays empty at first — learn the dino jump first
   player: { row: 0.86 },               // collision row as perspective progress (0=far, 1=near)
   floor:  {
     speed:        { start: 250, end: 460 },
-    spawnEveryMs: { start: 1100, end: 600 },
+    spawnEveryMs: { start: 2600, end: 650 },   // sparse at first, builds up over the round
+    doubleChance: { start: 0.04, end: 0.32 },  // two-lane waves get common only later
     baseW: 58, baseH: 52,
   },
 
@@ -337,14 +339,14 @@ function spawnFloor(){
   const L=layout(), c=CONFIG.floor, lane=randLane();
   state.floorObs.push({ lane, y:L.horizonY, baseW:c.baseW, baseH:c.baseH, type:randType(), passed:false });
   // sometimes a second obstacle in a different lane — always leaves one lane open
-  if(Math.random()<0.22){
+  if(Math.random()<ramp(c.doubleChance)){
     const l2=(lane+1+((Math.random()*(CONFIG.lanes-1))|0))%CONFIG.lanes;
     state.floorObs.push({ lane:l2, y:L.horizonY-rand(20,70), baseW:c.baseW, baseH:c.baseH, type:randType(), passed:false });
   }
 }
 function spawnCactus(){
   const R=layout().R;
-  const h=rand(0.16,0.32)*R.rsh, w=rand(0.05,0.085)*R.rsw, dbl=Math.random()<0.3;
+  const h=rand(0.12,0.22)*R.rsh, w=rand(0.05,0.085)*R.rsw, dbl=Math.random()<0.3;
   state.cacti.push({ x:R.rsx+R.rsw, w:dbl?w*2.1:w, h, fly:0, type:'cactus' });
 }
 function spawnShield(){ if(state.shield) return; const L=layout(), s=CONFIG.shield.size;
@@ -396,11 +398,13 @@ function update(dt){
     const floorSpd=ramp(CONFIG.floor.speed)*slow, cactusSpd=ramp(CONFIG.cactus.speed)*R.rsw*slow;
     state.scrollFloor+=floorSpd*dt;
 
-    // spawns
-    state.floorTimer+=dt*1000; if(state.floorTimer>=ramp(CONFIG.floor.spawnEveryMs)){ state.floorTimer=0; spawnFloor(); }
+    // spawns — the dino runner starts immediately; the floor holds off for the intro
     state.cactusTimer+=dt*1000; if(state.cactusTimer>=ramp(CONFIG.cactus.spawnEveryMs)){ state.cactusTimer=0; spawnCactus(); }
-    state.shieldTimer+=dt*1000; if(state.shieldTimer>=CONFIG.shield.spawnEveryMs){ state.shieldTimer=0; if(Math.random()<CONFIG.shield.chance) spawnShield(); }
     state.focusTimer+=dt*1000; if(state.focusTimer>=CONFIG.focus.spawnEveryMs){ state.focusTimer=0; if(Math.random()<CONFIG.focus.chance) spawnFocus(); }
+    if(state.elapsed>=CONFIG.floorIntroMs){
+      state.floorTimer+=dt*1000; if(state.floorTimer>=ramp(CONFIG.floor.spawnEveryMs)){ state.floorTimer=0; spawnFloor(); }
+      state.shieldTimer+=dt*1000; if(state.shieldTimer>=CONFIG.shield.spawnEveryMs){ state.shieldTimer=0; if(Math.random()<CONFIG.shield.chance) spawnShield(); }
+    }
 
     // move
     for(const o of state.floorObs) o.y+=floorSpd*dt;
@@ -490,31 +494,33 @@ function draw(){
 }
 
 function drawFloor(L){
-  const W=L.W, hY=L.horizonY, bY=L.floorBottom;
+  const W=L.W, H=L.H, hY=L.horizonY, bY=L.floorBottom;
   // back wall + canteen windows
   const wall=ctx.createLinearGradient(0,0,0,hY); wall.addColorStop(0,'#bfe0ec'); wall.addColorStop(1,'#d9ead0');
   ctx.fillStyle=wall; ctx.fillRect(0,0,W,hY);
   ctx.fillStyle='rgba(255,255,255,.5)'; for(let x=10;x<W-20;x+=46) ctx.fillRect(x,4,30,hY-10);
   ctx.strokeStyle='rgba(80,110,120,.4)'; ctx.lineWidth=2; for(let x=10;x<W-20;x+=46) ctx.strokeRect(x,4,30,hY-10);
-  // ground either side of the road
-  ctx.fillStyle='#cdb78c'; ctx.fillRect(0,hY,W,bY-hY);
-  // the road (wide trapezoid, gentle convergence)
-  const eF=roadEdges(L,0), eN=roadEdges(L,1);
-  const road=ctx.createLinearGradient(0,hY,0,bY); road.addColorStop(0,'#ece0c4'); road.addColorStop(1,'#dccb9f');
+  // ground fills everything below the horizon (covers behind the phone too)
+  ctx.fillStyle='#cdb78c'; ctx.fillRect(0,hY,W,H-hY);
+  // the road continues past the playfield all the way to the canvas bottom — so the
+  // floor animation flows on behind the phone instead of stopping at a hard edge
+  const span=bY-hY, pBot=(H-hY)/span;            // perspective progress at the very bottom (>1)
+  const eF=roadEdges(L,0), eB=roadEdges(L,pBot);
+  const road=ctx.createLinearGradient(0,hY,0,H); road.addColorStop(0,'#ece0c4'); road.addColorStop(1,'#dccb9f');
   ctx.fillStyle=road; ctx.beginPath();
-  ctx.moveTo(eF.l,hY); ctx.lineTo(eF.r,hY); ctx.lineTo(eN.r,bY); ctx.lineTo(eN.l,bY); ctx.closePath(); ctx.fill();
-  // scrolling cross-tiles (only on the road) for motion
+  ctx.moveTo(eF.l,hY); ctx.lineTo(eF.r,hY); ctx.lineTo(eB.r,H); ctx.lineTo(eB.l,H); ctx.closePath(); ctx.fill();
+  // scrolling cross-tiles (perspective) continuing to the bottom for motion
   ctx.strokeStyle='rgba(140,110,60,.30)'; ctx.lineWidth=2;
-  for(let k=0;k<7;k++){ let t=((k+(state.scrollFloor/150)%1)/7); t=t*t; const y=lerp(hY,bY,t), e=roadEdges(L,t);
+  for(let k=0;k<20;k++){ let t=((k+(state.scrollFloor/150)%1)/7); t=t*t; const y=hY+span*t; if(y>H) break; const e=roadEdges(L,t);
     ctx.globalAlpha=clamp(t*1.6,0,1); ctx.beginPath(); ctx.moveTo(e.l,y); ctx.lineTo(e.r,y); ctx.stroke(); }
   ctx.globalAlpha=1;
-  // lane divider lines (dashed, scrolling)
+  // lane divider lines (dashed, scrolling) continuing to the bottom
   ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=3; ctx.setLineDash([14,12]); ctx.lineDashOffset=-(state.scrollFloor*0.5)%26;
-  for(let i=1;i<CONFIG.lanes;i++){ const f=i/CONFIG.lanes; ctx.beginPath(); ctx.moveTo(laneEdgeX(L,f,0),hY); ctx.lineTo(laneEdgeX(L,f,1),bY); ctx.stroke(); }
+  for(let i=1;i<CONFIG.lanes;i++){ const f=i/CONFIG.lanes; ctx.beginPath(); ctx.moveTo(laneEdgeX(L,f,0),hY); ctx.lineTo(laneEdgeX(L,f,pBot),H); ctx.stroke(); }
   ctx.setLineDash([]);
-  // road edge kerbs
+  // road edge kerbs continuing to the bottom
   ctx.strokeStyle='rgba(120,90,50,.55)'; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.moveTo(eF.l,hY); ctx.lineTo(eN.l,bY); ctx.moveTo(eF.r,hY); ctx.lineTo(eN.r,bY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(eF.l,hY); ctx.lineTo(eB.l,H); ctx.moveTo(eF.r,hY); ctx.lineTo(eB.r,H); ctx.stroke();
 }
 
 function drawLaneMarker(L){
@@ -587,9 +593,9 @@ function drawRunner(L,R){
   ctx.setLineDash([6,7]); ctx.lineDashOffset=-(state.scrollFloor*0.6)% 13; ctx.globalAlpha=0.6;
   ctx.beginPath(); ctx.moveTo(R.rsx,R.gy+5); ctx.lineTo(R.rsx+R.rsw,R.gy+5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
   // drifting clouds
-  ctx.fillStyle='#dfe2e6';
+  ctx.fillStyle='#bcdcf2';
   for(let i=0;i<2;i++){ const cx=R.rsx+((i*0.55*R.rsw - state.scrollFloor*0.25)%(R.rsw+40)+R.rsw+40)%(R.rsw+40)-20; const cy=R.rsy+R.rsh*(0.22+i*0.12);
-    rrect(cx,cy,26,8,4,'#dfe2e6'); rrect(cx+7,cy-5,14,8,4,'#dfe2e6'); }
+    rrect(cx,cy,26,8,4,'#bcdcf2'); rrect(cx+7,cy-5,14,8,4,'#bcdcf2'); }
 
   // focus star pickups
   for(const p of state.pickups) if(p.layer==='phone') drawPhonePickup(p);
@@ -610,14 +616,14 @@ function drawDino(L,R){
   const sc=clamp(1-state.dinoY/(R.rsh*0.45),0.4,1);
   ctx.fillStyle=`rgba(0,0,0,${0.22*sc})`; ctx.beginPath(); ctx.ellipse(x+sz*0.4,R.gy+2,sz*0.42*sc,3*sc,0,0,Math.PI*2); ctx.fill();
   const sq=state.dinoSquash*0.16, w=sz*0.82*(1+sq), h=sz*(1-sq);
-  ctx.fillStyle='#535353';
+  ctx.fillStyle='#e2541d';
   // body + tail + head (blocky T-rex silhouette)
-  rrect(x,y+h*0.32,w*0.7,h*0.5,3,'#535353');                 // body
+  rrect(x,y+h*0.32,w*0.7,h*0.5,3,'#e2541d');                 // body
   ctx.fillRect(x-w*0.28,y+h*0.42,w*0.32,h*0.16);             // tail
-  rrect(x+w*0.42,y,w*0.5,h*0.42,3,'#535353');                // head
+  rrect(x+w*0.42,y,w*0.5,h*0.42,3,'#e2541d');                // head
   ctx.fillRect(x+w*0.86,y+h*0.26,w*0.12,h*0.1);              // snout
   ctx.fillStyle='#f7f7f7'; ctx.fillRect(x+w*0.74,y+h*0.12,4,4); // eye
-  ctx.fillStyle='#535353'; ctx.fillRect(x+w*0.5,y+h*0.5,w*0.12,h*0.14); // arm
+  ctx.fillStyle='#e2541d'; ctx.fillRect(x+w*0.5,y+h*0.5,w*0.12,h*0.14); // arm
   // legs (run cycle when grounded)
   const stride=state.dinoY<=0.5?Math.sin(state.dinoRun)*0.5:0;
   ctx.fillRect(x+w*0.2,y+h*0.78,w*0.14,h*0.22*(1+stride*0.3));
@@ -627,14 +633,23 @@ function drawDino(L,R){
 }
 
 function drawCactus(R,c){
-  const x=c.x, gy=R.gy;
-  ctx.fillStyle='#3f7d4f';
-  const cw=c.w*0.42;
-  ctx.fillRect(x+c.w/2-cw/2, gy-c.h, cw, c.h);                  // trunk
-  ctx.fillRect(x, gy-c.h*0.7, c.w*0.3, c.h*0.12);              // left arm
-  ctx.fillRect(x+c.w/2-cw/2-2, gy-c.h*0.72, c.w*0.16, c.h*0.3);
-  ctx.fillRect(x+c.w*0.7, gy-c.h*0.8, c.w*0.3, c.h*0.12);      // right arm
-  ctx.fillRect(x+c.w*0.84, gy-c.h*0.82, c.w*0.16, c.h*0.35);
+  const x=c.x, gy=R.gy, w=c.w, h=c.h;
+  ctx.fillStyle='#41611c';                                        // dark saguaro green
+  const tw=Math.max(4,w*0.32), tx=x+w*0.34, aw=Math.max(3,w*0.16);
+  ctx.fillRect(tx, gy-h, tw, h);                                  // trunk
+  // left arm — out, then UP (lower, rises a little)
+  const lx=x+w*0.10;
+  ctx.fillRect(lx, gy-h*0.42, tx-lx+1, aw);                       // horizontal
+  ctx.fillRect(lx, gy-h*0.60, aw, h*0.18+aw);                     // vertical (up)
+  // right arm — out, then UP (higher, rises more)
+  const rx=x+w*0.90-aw;
+  ctx.fillRect(tx+tw-1, gy-h*0.55, (rx+aw)-(tx+tw)+1, aw);        // horizontal
+  ctx.fillRect(rx, gy-h*0.78, aw, h*0.23+aw);                     // vertical (up)
+  // orange speckles
+  ctx.fillStyle='#d99a3c';
+  const sp=Math.max(2,w*0.11), dot=(fx,fy)=>ctx.fillRect(x+w*fx-sp/2, gy-h*fy-sp/2, sp, sp);
+  dot(0.50,0.16); dot(0.50,0.38); dot(0.50,0.60); dot(0.50,0.84); // trunk
+  dot(0.18,0.50); dot(0.82,0.66);                                 // arms
 }
 
 function drawShieldIcon(cx,cy,s){

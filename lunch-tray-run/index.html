@@ -164,7 +164,7 @@ const CONFIG = {
   // power-ups (one aid, one frenzy)
   shield: { spawnEveryMs: 15000, chance: 0.7, size: 38 },           // aid — on the floor
   focus:  { spawnEveryMs: 21000, chance: 0.6, sizeFrac: 0.15,       // frenzy — in the runner
-            durationMs: 5000, slow: 0.6, scoreBoost: 1.7 },
+            durationMs: 5000, slow: 1, scoreBoost: 2 },            // slow:1 = keep full speed, just 2× points
 
   continueInvulnMs: 1300,
 };
@@ -240,6 +240,7 @@ function freshState(){
     timeRemaining:CONFIG.roundDurationMs, elapsed:0,
     lane:1, renderLane:1,
     dinoY:0, dinoVy:0, dinoSquash:0, dinoRun:0,
+    thumbTap:0, tapSide:1,
     floorObs:[], cacti:[], pickups:[], particles:[], floats:[],
     floorTimer:0, cactusTimer:0, shieldTimer:0, focusTimer:0,
     scrollFloor:0,
@@ -308,7 +309,8 @@ renderMute();
 function moveLane(dir){ if(state.scene!=='playing') return;
   const n=clamp(state.lane+dir,0,CONFIG.lanes-1); if(n!==state.lane){ state.lane=n; Audio_.sfx.step(); } }
 function doJump(){ if(state.scene!=='playing') return;
-  if(state.dinoY<=0.5){ const R=layout().R; state.dinoVy=CONFIG.dino.jumpK*R.rsh; state.dinoSquash=1; Audio_.sfx.jump(); } }
+  if(state.dinoY<=0.5){ const R=layout().R; state.dinoVy=CONFIG.dino.jumpK*R.rsh; state.dinoSquash=1;
+    state.thumbTap=1; state.tapSide=-state.tapSide; Audio_.sfx.jump(); } }
 addEventListener('keydown',e=>{
   if(['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
   if(e.repeat) return;
@@ -392,6 +394,7 @@ function update(dt){
     state.dinoVy-=grav*dt; state.dinoY+=state.dinoVy*dt;
     if(state.dinoY<=0){ state.dinoY=0; state.dinoVy=0; }
     state.dinoSquash=Math.max(0,state.dinoSquash-dt*4);
+    state.thumbTap=Math.max(0,state.thumbTap-dt*6);          // quick tap-press decay
     state.dinoRun+=dt*12*slow;
 
     // scroll
@@ -576,14 +579,35 @@ function drawPhone(L){
   drawRunner(L,R);
   ctx.restore();
 
-  // hands holding the phone
-  const handR=p.pw*0.16;
-  ctx.fillStyle='#e8b88f';
-  ctx.beginPath(); ctx.ellipse(p.px+p.pw*0.04,p.py+p.ph*0.62,handR,handR*1.25,-0.3,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(p.px+p.pw*0.96,p.py+p.ph*0.62,handR,handR*1.25,0.3,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#d9a577';
-  for(const sgn of [-1,1]){ const hx=sgn<0?p.px+p.pw*0.07:p.px+p.pw*0.93;
-    for(let i=0;i<3;i++) rrect(hx-6,p.py+p.ph*0.34+i*9,12,7,3,'#e8b88f'); }
+  // hands gripping the phone — palm at each side, thumb resting on the screen edge
+  const skin='#e8918a', crease='rgba(35,28,30,.45)';
+  const drawHand=(sgn)=>{
+    const edge = sgn<0 ? p.px : p.px+p.pw;        // phone side edge
+    const cx = edge - sgn*p.pw*0.02;              // grip line, just inside the edge
+    // palm / back of hand: rounded mass at the lower side, reaching below the phone
+    ctx.fillStyle=skin;
+    ctx.beginPath();
+    ctx.ellipse(edge + sgn*p.pw*0.06, p.py+p.ph*0.74, p.pw*0.145, p.ph*0.50, sgn*0.14, 0, Math.PI*2);
+    ctx.fill();
+    // thumb: capsule angled inward, tip resting on the screen.
+    // On a jump the matching thumb dips toward the glass — looks like tapping.
+    const tap = (sgn===state.tapSide) ? Math.sin(state.thumbTap*Math.PI) : 0;
+    const tipX = cx - sgn*p.pw*0.115 - sgn*tap*p.pw*0.02;     // press inward a touch
+    const tipY = p.py+p.ph*0.44 + tap*p.ph*0.07;              // press down toward the glass
+    ctx.strokeStyle=skin; ctx.lineWidth=p.pw*0.082; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(cx + sgn*p.pw*0.015, p.py+p.ph*0.56);
+    ctx.lineTo(tipX, tipY);
+    ctx.stroke();
+    if(tap>0.15){ ctx.strokeStyle=`rgba(255,255,255,${0.5*tap})`; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(tipX,tipY,p.pw*0.05*tap+4,0,Math.PI*2); ctx.stroke(); }
+    // crease lines (thumb fold, knuckle, lower hand)
+    ctx.strokeStyle=crease; ctx.lineWidth=2; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(cx - sgn*p.pw*0.05, p.py+p.ph*0.41); ctx.lineTo(cx + sgn*p.pw*0.015, p.py+p.ph*0.47); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - sgn*p.pw*0.075, p.py+p.ph*0.33); ctx.lineTo(cx - sgn*p.pw*0.005, p.py+p.ph*0.31); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(edge + sgn*p.pw*0.13, p.py+p.ph*0.88); ctx.quadraticCurveTo(edge + sgn*p.pw*0.03, p.py+p.ph*0.95, edge - sgn*p.pw*0.02, p.py+p.ph*1.02); ctx.stroke();
+  };
+  drawHand(-1); drawHand(1);
+  ctx.lineCap='butt';
 }
 
 function drawRunner(L,R){

@@ -547,14 +547,26 @@ function drawLaneMarker(L){
   ctx.fillStyle = stumbling ? 'rgba(226,59,58,.20)' : 'rgba(255,214,51,.16)'; ctx.beginPath();
   ctx.moveTo(laneEdgeX(L,fL,0),hY); ctx.lineTo(laneEdgeX(L,fR,0),hY);
   ctx.lineTo(laneEdgeX(L,fR,1),bY); ctx.lineTo(laneEdgeX(L,fL,1),bY); ctx.closePath(); ctx.fill();
-  // "you are here" pad + chevrons at the player row
-  const ROW=CONFIG.player.row, x=laneCenterX(L,lane,ROW), y=lerp(hY,bY,ROW), s=floorScale(L,y), pulse=0.5+0.5*Math.sin(now()/200);
-  ctx.fillStyle='rgba(21,53,168,.30)'; ctx.beginPath(); ctx.ellipse(x,y,46*s,15*s,0,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle = stumbling ? `rgba(226,59,58,${0.6+0.3*pulse})` : `rgba(255,214,51,${0.55+0.35*pulse})`;
-  ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(x,y,46*s,15*s,0,0,Math.PI*2); ctx.stroke();
-  ctx.fillStyle = stumbling ? '#e23b3b' : '#FFD633';
-  for(let i=0;i<2;i++){ const yy=y-4*s-i*9*s; ctx.beginPath(); ctx.moveTo(x,yy-5*s); ctx.lineTo(x+7*s,yy+2*s); ctx.lineTo(x-7*s,yy+2*s); ctx.closePath(); ctx.fill(); }
-  if(state.shield) drawAura(x,y,42*s,'#7fd4ff');
+  // the walker's shadow — head + sloped shoulders + torso, as one connected silhouette
+  // (its lower body is hidden behind the phone). Sways gently left/right while walking.
+  const u=L.W, sway=Math.sin(state.scrollFloor/70)*u*0.02;
+  const cx=laneCenterX(L,lane,1)+sway, py=L.phone.py;
+  const shW=u*0.18, twW=u*0.16, neckW=u*0.055, headR=u*0.07;
+  const shoulderY=py-u*0.02, neckY=shoulderY-u*0.05, headCy=neckY-headR*0.55, bottomY=L.H;   // body runs straight down off-screen
+  ctx.fillStyle = stumbling ? 'rgba(150,30,30,.34)' : 'rgba(0,0,0,.30)';
+  ctx.beginPath();
+  // body: torso sides (narrower) rise to wider sloped shoulders and a neck; bottom hidden behind phone
+  ctx.moveTo(cx-twW, bottomY);
+  ctx.lineTo(cx-shW, shoulderY+u*0.05);
+  ctx.quadraticCurveTo(cx-shW, shoulderY, cx-neckW, neckY);
+  ctx.lineTo(cx+neckW, neckY);
+  ctx.quadraticCurveTo(cx+shW, shoulderY, cx+shW, shoulderY+u*0.05);
+  ctx.lineTo(cx+twW, bottomY);
+  ctx.closePath();
+  // head — unioned in the same fill so it connects cleanly at the neck (no two-bubble look)
+  ctx.moveTo(cx+headR, headCy); ctx.arc(cx, headCy, headR, 0, Math.PI*2);
+  ctx.fill();
+  if(state.shield) drawAura(cx, shoulderY, shW, '#7fd4ff');
 }
 
 function drawFloorObstacle(L,o){

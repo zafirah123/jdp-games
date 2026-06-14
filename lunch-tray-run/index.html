@@ -228,6 +228,7 @@ function freshState(){
     lane:1, renderLane:1,
     dinoY:0, dinoVy:0, dinoSquash:0, dinoRun:0, airBoost:0,
     hearts:3, dinoHurtUntil:0, stumbleUntil:0,
+    heartTrigger: 100 + Math.floor(Math.random()*51), heartSpawned:false,   // one-time extra-heart rescue (score 100–150)
     thumbTap:0, tapSide:1,
     floorObs:[], cacti:[], pickups:[], particles:[], floats:[],
     floorTimer:0, cactusTimer:0, shieldTimer:0, focusTimer:0,
@@ -266,6 +267,7 @@ const Audio_=(()=>{
     step(){ tone(180,0.05,'square',0.05); },
     shield(){ tone(523,0.10,'triangle',0.18); tone(784,0.16,'triangle',0.18,null,0.07); },
     focus(){ [659,880,1175].forEach((f,i)=>tone(f,0.16,'sine',0.16,null,i*0.08)); },
+    life(){ [523,659,784,1047,1319].forEach((f,i)=>tone(f,0.18,'sine',0.17,null,i*0.07)); },
     block(){ tone(180,0.18,'sawtooth',0.16,90); },
     hurt(){ tone(330,0.12,'square',0.16,170); tone(220,0.16,'square',0.12,130,null,0.05); },
     stumble(){ tone(150,0.22,'sawtooth',0.18,70); noise(0.2,0.2); tone(240,0.12,'square',0.10,120,0.07); },
@@ -352,6 +354,8 @@ function spawnShield(){ if(state.shield) return; const L=layout(), s=CONFIG.shie
   state.pickups.push({ kind:'shield', layer:'floor', lane:randLane(), y:L.horizonY, w:s, h:s, t:0, passed:false }); }
 function spawnFocus(){ const R=layout().R, s=CONFIG.focus.sizeFrac*R.rsh;
   state.pickups.push({ kind:'focus', layer:'phone', x:R.rsx+R.rsw, y:R.gy-R.dsize-R.rsh*0.32, w:s, h:s, t:0 }); }
+function spawnHeart(){ const R=layout().R, s=CONFIG.focus.sizeFrac*R.rsh*1.15;     // extra-heart pickup, in the runner
+  state.pickups.push({ kind:'heart', layer:'phone', x:R.rsx+R.rsw, y:R.gy-R.dsize-R.rsh*0.30, w:s, h:s, t:0 }); }
 
 /* ---------- particles / floats ---------- */
 function burst(x,y,color,n=12,spd=180){ for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, v=rand(spd*0.3,spd);
@@ -382,6 +386,9 @@ function update(dt){
 
     state.scoreFloat+=dt*CONFIG.scoreRatePerSec*(focusActive?CONFIG.focus.scoreBoost:1);
     state.score=Math.floor(state.scoreFloat);            // no hard cap — Focus/longer survival can exceed 500
+
+    // one-time extra-heart rescue: appears once, only while at 1 heart, at a random score in 100–150
+    if(!state.heartSpawned && state.hearts===1 && state.score>=state.heartTrigger && state.score<=150){ state.heartSpawned=true; spawnHeart(); }
 
     // lane highlight easing
     state.renderLane += (state.lane-state.renderLane)*Math.min(1,CONFIG.laneTween*dt);
@@ -433,7 +440,8 @@ function update(dt){
       else hit=aabb(dino,p);
       if(hit){ p.dead=true;
         if(p.kind==='shield'){ const a=rowXY(); state.shield=true; Audio_.sfx.shield(); floatText(a.x,a.y,'SHIELD','#7fd4ff'); burst(a.x,a.y,'#7fd4ff'); }
-        else { state.focusUntil=now()+CONFIG.focus.durationMs; Audio_.sfx.focus(); floatText(p.x+p.w/2,p.y+p.h/2,'FOCUS!','#FFD633'); burst(p.x+p.w/2,p.y+p.h/2,'#FFD633',16); }
+        else if(p.kind==='heart'){ state.hearts=Math.min(3,state.hearts+1); Audio_.sfx.life(); floatText(p.x+p.w/2,p.y+p.h/2,'+1 ♥','#e23b3b'); burst(p.x+p.w/2,p.y+p.h/2,'#e23b3b',18); }
+        else { state.focusUntil=now()+CONFIG.focus.durationMs; Audio_.sfx.focus(); floatText(p.x+p.w/2,p.y+p.h/2,'2× SCORE!','#FFD633'); burst(p.x+p.w/2,p.y+p.h/2,'#FFD633',16); }
       }
     }
     state.pickups=state.pickups.filter(p=>!p.dead);
@@ -688,6 +696,17 @@ function drawRunner(L,R){
   // hearts (dino lives) top-left
   const hs=R.rsh*0.085;
   for(let i=0;i<3;i++) drawHeart(R.rsx+10+hs/2+i*(hs+6), R.rsy+10+hs/2, hs, i<state.hearts);
+  // 2× badge while the Focus score boost is active, with a shrinking timer bar
+  if(now()<state.focusUntil){
+    const f=clamp((state.focusUntil-now())/CONFIG.focus.durationMs,0,1), pulse=0.7+0.3*Math.sin(now()/90);
+    const bx=R.rsx+R.rsw/2, by=R.rsy+R.rsh*0.20, fs=Math.round(R.rsh*0.15);
+    ctx.globalAlpha=pulse; ctx.fillStyle='#FFB603';
+    ctx.font=`800 ${fs}px Poppins`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('2×', bx, by); ctx.globalAlpha=1;
+    const bw=fs*1.5;
+    ctx.fillStyle='rgba(0,0,0,.12)'; ctx.fillRect(bx-bw/2, by+fs*0.5, bw, 3);
+    ctx.fillStyle='#FFB603'; ctx.fillRect(bx-bw/2, by+fs*0.5, bw*f, 3);
+  }
 }
 
 function drawDino(L,R){
@@ -770,7 +789,10 @@ function drawFocusIcon(cx,cy,s){
   ctx.closePath(); ctx.fill();
 }
 function drawFloorPickup(L,p){ const prog=floorProgress(L,p.y), cx=laneCenterX(L,p.lane,prog), s=p.w*floorScale(L,p.y); drawShieldIcon(cx,p.y,s); }
-function drawPhonePickup(p){ drawFocusIcon(p.x+p.w/2,p.y+p.h/2,p.w); }
+function drawPhonePickup(p){
+  if(p.kind==='heart'){ const cx=p.x+p.w/2, cy=p.y+p.h/2; drawAura(cx,cy,p.w*0.65,'#e23b3b'); drawHeart(cx,cy,p.w,true); }
+  else drawFocusIcon(p.x+p.w/2,p.y+p.h/2,p.w);
+}
 function drawAura(cx,cy,r,color){ const pulse=0.5+0.5*Math.sin(now()/120);
   ctx.strokeStyle=color; ctx.globalAlpha=0.4+0.4*pulse; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(cx,cy,r*(0.9+0.12*pulse),0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1; }
 function drawParticle(p){ ctx.globalAlpha=clamp(1-p.t/p.life,0,1); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }

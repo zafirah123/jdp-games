@@ -1,4 +1,4 @@
-# Lunch Tray Run: Game Mechanics
+# Heads Up!: Game Mechanics
 
 ## The two layers
 
@@ -89,7 +89,7 @@ best to beat.
 ## Design intent
 
 The whole game is built around divided attention. A normal dodger trains one
-channel of focus. Lunch Tray Run deliberately overloads you with two, using one
+channel of focus. Heads Up! deliberately overloads you with two, using one
 shared control set so the two channels interfere. The comedy of walking into a
 bin because you couldn't put your phone down is a small, friendly joke about
 paying attention to where you're going — which suits a school audience without

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>Lunch Tray Run</title>
+<title>Heads Up!</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@600&display=swap" rel="stylesheet">
@@ -94,7 +94,7 @@
     <button class="endrun" id="endRunBtn">END RUN</button>
 
     <div class="overlay show" id="startOverlay">
-      <div class="title" id="gameTitle">LUNCH<br>TRAY RUN</div>
+      <div class="title" id="gameTitle">HEADS UP!</div>
       <div class="subtitle" id="startSub"></div>
       <div class="hint" id="startHint"></div>
       <button class="btn" id="startBtn">START GAME</button>
@@ -124,7 +124,7 @@
    ============================================================ */
 
 /* ---------- CONFIG (all tuning lives here) ---------- */
-const GAME_NAME = 'lunch-tray-run';
+const GAME_NAME = 'heads-up';
 const CONFIG = {
   roundDurationMs: 3 * 60 * 1000,
   rampCompleteAt: 0.85,
@@ -172,7 +172,7 @@ const COPY = {
     score:'Score', time:'Time', best:'Best', start:'START GAME',
     timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
     claim:'CLAIM SCORE', retry:'RETRY', endRun:'END RUN',
-    sub:'Cross the canteen without tripping — while playing the dino game on your phone. Both at once.',
+    sub:'Watch the road without tripping — while playing the dino game on your phone. Both at once.',
     hint:'◀ ▶ switch lane · TAP phone / Space to jump',
     claiming:'Sending your score…', claimed:'Score claimed! 🎉', claimFail:'Saved. (offline)',
   },
@@ -180,7 +180,7 @@ const COPY = {
     score:'Skor', time:'Masa', best:'Terbaik', start:'MULA MAIN',
     timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
     claim:'TUNTUT SKOR', retry:'RETRY', endRun:'TAMAT',
-    sub:'Rentas kantin tanpa tersadung — sambil main permainan dino di telefon. Serentak.',
+    sub:'Rentas jalan tanpa tersadung — sambil main permainan dino di telefon. Serentak.',
     hint:'◀ ▶ tukar lorong · KETIK telefon / Space untuk lompat',
     claiming:'Menghantar skor…', claimed:'Skor dituntut! 🎉', claimFail:'Disimpan. (luar talian)',
   },

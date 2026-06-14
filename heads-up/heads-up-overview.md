@@ -1,8 +1,8 @@
-# Lunch Tray Run
+# Heads Up!
 
 ## What it is
 
-Lunch Tray Run is a multitasking arcade game. You are a student crossing a
+Heads Up! is a multitasking arcade game. You are a student crossing a
 packed school canteen — and at the very same time you are playing the offline
 "no internet" dino runner on your phone. You control both at once. Lose focus
 on either one and the run ends. The hook is in the name and the situation: you
@@ -14,7 +14,7 @@ over something on the floor.
 
 ## The core idea
 
-Most dodging games ask you to focus on one lane of danger. Lunch Tray Run splits
+Most dodging games ask you to focus on one lane of danger. Heads Up! splits
 your attention on purpose, the way *Double Dodgers* does — not as two boxed-off
 screens, but as one scene with two depths:
 

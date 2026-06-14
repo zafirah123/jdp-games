@@ -1,4 +1,4 @@
-# Lunch Tray Run: Game Plan
+# Heads Up!: Game Plan
 
 This is a play guide for getting a higher score. The game has no levels or
 quests, so the plan is about how to survive longer.

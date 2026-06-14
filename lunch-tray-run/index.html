@@ -514,42 +514,45 @@ function draw(){
 
 function drawFloor(L){
   const W=L.W, H=L.H, hY=L.horizonY, bY=L.floorBottom;
-  // back wall + canteen windows
-  const wall=ctx.createLinearGradient(0,0,0,hY); wall.addColorStop(0,'#bfe0ec'); wall.addColorStop(1,'#d9ead0');
-  ctx.fillStyle=wall; ctx.fillRect(0,0,W,hY);
-  ctx.fillStyle='rgba(255,255,255,.5)'; for(let x=10;x<W-20;x+=46) ctx.fillRect(x,4,30,hY-10);
-  ctx.strokeStyle='rgba(80,110,120,.4)'; ctx.lineWidth=2; for(let x=10;x<W-20;x+=46) ctx.strokeRect(x,4,30,hY-10);
-  // ground fills everything below the horizon (covers behind the phone too)
-  ctx.fillStyle='#cdb78c'; ctx.fillRect(0,hY,W,H-hY);
-  // the road continues past the playfield all the way to the canvas bottom — so the
-  // floor animation flows on behind the phone instead of stopping at a hard edge
-  const span=bY-hY, pBot=(H-hY)/span;            // perspective progress at the very bottom (>1)
-  const eF=roadEdges(L,0), eB=roadEdges(L,pBot);
-  const road=ctx.createLinearGradient(0,hY,0,H); road.addColorStop(0,'#ece0c4'); road.addColorStop(1,'#dccb9f');
+  // perspective progress at the top & bottom of the canvas (top is < 0 → far distance)
+  const span=bY-hY, pTop=(0-hY)/span, pBot=(H-hY)/span;
+  const eT=roadEdges(L,pTop), eB=roadEdges(L,pBot);
+  // ground everywhere, fading lighter toward the far distance (top) — open horizon, no wall
+  const grd=ctx.createLinearGradient(0,0,0,bY);
+  grd.addColorStop(0,'#e9eae6'); grd.addColorStop(0.45,'#d6c79e'); grd.addColorStop(1,'#cdb78c');
+  ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+  // the road converges upward toward a vanishing point above the screen → looks endless
+  const road=ctx.createLinearGradient(0,0,0,H);
+  road.addColorStop(0,'#efe9da'); road.addColorStop(0.5,'#ece0c4'); road.addColorStop(1,'#dccb9f');
   ctx.fillStyle=road; ctx.beginPath();
-  ctx.moveTo(eF.l,hY); ctx.lineTo(eF.r,hY); ctx.lineTo(eB.r,H); ctx.lineTo(eB.l,H); ctx.closePath(); ctx.fill();
-  // scrolling cross-tiles (perspective) continuing to the bottom for motion
+  ctx.moveTo(eT.l,0); ctx.lineTo(eT.r,0); ctx.lineTo(eB.r,H); ctx.lineTo(eB.l,H); ctx.closePath(); ctx.fill();
+  // distance haze at the very top so the road melts into the horizon
+  const haze=ctx.createLinearGradient(0,0,0,H*0.20);
+  haze.addColorStop(0,'rgba(233,234,230,.92)'); haze.addColorStop(1,'rgba(233,234,230,0)');
+  ctx.fillStyle=haze; ctx.fillRect(0,0,W,Math.ceil(H*0.20));
+  // scrolling cross-tiles (perspective) for motion
   ctx.strokeStyle='rgba(140,110,60,.30)'; ctx.lineWidth=2;
   for(let k=0;k<20;k++){ let t=((k+(state.scrollFloor/150)%1)/7); t=t*t; const y=hY+span*t; if(y>H) break; const e=roadEdges(L,t);
     ctx.globalAlpha=clamp(t*1.6,0,1); ctx.beginPath(); ctx.moveTo(e.l,y); ctx.lineTo(e.r,y); ctx.stroke(); }
   ctx.globalAlpha=1;
-  // lane divider lines (dashed, scrolling) continuing to the bottom
+  // lane divider lines (dashed, scrolling) from the far distance to the bottom
   ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=3; ctx.setLineDash([14,12]); ctx.lineDashOffset=-(state.scrollFloor*0.5)%26;
-  for(let i=1;i<CONFIG.lanes;i++){ const f=i/CONFIG.lanes; ctx.beginPath(); ctx.moveTo(laneEdgeX(L,f,0),hY); ctx.lineTo(laneEdgeX(L,f,pBot),H); ctx.stroke(); }
+  for(let i=1;i<CONFIG.lanes;i++){ const f=i/CONFIG.lanes; ctx.beginPath(); ctx.moveTo(laneEdgeX(L,f,pTop),0); ctx.lineTo(laneEdgeX(L,f,pBot),H); ctx.stroke(); }
   ctx.setLineDash([]);
-  // road edge kerbs continuing to the bottom
+  // road edge kerbs
   ctx.strokeStyle='rgba(120,90,50,.55)'; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.moveTo(eF.l,hY); ctx.lineTo(eB.l,H); ctx.moveTo(eF.r,hY); ctx.lineTo(eB.r,H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(eT.l,0); ctx.lineTo(eB.l,H); ctx.moveTo(eT.r,0); ctx.lineTo(eB.r,H); ctx.stroke();
 }
 
 function drawLaneMarker(L){
-  const lane=state.renderLane, hY=L.horizonY, bY=L.floorBottom, n=CONFIG.lanes;
+  const lane=state.renderLane, hY=L.horizonY, bY=L.floorBottom, H=L.H, n=CONFIG.lanes;
   const stumbling = now()<state.stumbleUntil;          // red, uncontrollable while stumbling
-  // highlight the current lane slice
+  // highlight the current lane the FULL length of the road (far distance at top → bottom of screen)
+  const span=bY-hY, pTop=(0-hY)/span, pBot=(H-hY)/span;
   const fL=lane/n, fR=(lane+1)/n;
   ctx.fillStyle = stumbling ? 'rgba(226,59,58,.20)' : 'rgba(255,214,51,.16)'; ctx.beginPath();
-  ctx.moveTo(laneEdgeX(L,fL,0),hY); ctx.lineTo(laneEdgeX(L,fR,0),hY);
-  ctx.lineTo(laneEdgeX(L,fR,1),bY); ctx.lineTo(laneEdgeX(L,fL,1),bY); ctx.closePath(); ctx.fill();
+  ctx.moveTo(laneEdgeX(L,fL,pTop),0); ctx.lineTo(laneEdgeX(L,fR,pTop),0);
+  ctx.lineTo(laneEdgeX(L,fR,pBot),H); ctx.lineTo(laneEdgeX(L,fL,pBot),H); ctx.closePath(); ctx.fill();
   // the walker's shadow — head + sloped shoulders + torso, as one connected silhouette
   // (its lower body is hidden behind the phone). Sways gently left/right while walking.
   const u=L.W, sway=Math.sin(state.scrollFloor/70)*u*0.02;

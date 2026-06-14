@@ -331,7 +331,7 @@ function ramp(range){ const t=rampT(), s=hardness(); let v=lerp(range.start,rang
 /* ============================================================
    SPAWNING
    ============================================================ */
-const FLOOR_TYPES=['backpack','sign','puddle','crate','bin'];
+const FLOOR_TYPES=['sign','crate','barrier','cone','brick'];
 const randLane=()=>(Math.random()*CONFIG.lanes)|0;
 const randType=()=>FLOOR_TYPES[(Math.random()*FLOOR_TYPES.length)|0];
 function spawnFloor(){
@@ -465,10 +465,11 @@ function update(dt){
 function cactusRect(R,c){ const inset=c.w*0.18; return { x:c.x+inset, y:R.gy-c.h-c.fly, w:c.w-inset*2, h:c.h }; }
 
 function hitObstacle(layer,o,fx,fy){
-  if(state.shield){ state.shield=false; o.passed=true;
-    if(layer==='floor') state.floorObs=state.floorObs.filter(x=>x!==o); else state.cacti=state.cacti.filter(x=>x!==o);
-    state.invulnUntil=now()+600; Audio_.sfx.block(); burst(fx,fy,'#7fd4ff',14); floatText(fx,fy,'BLOCKED!','#7fd4ff'); return; }
   if(layer==='floor'){
+    if(state.shield){                     // floor Shield blocks ONE floor obstacle — floor-only
+      state.shield=false; o.passed=true; state.floorObs=state.floorObs.filter(x=>x!==o);
+      Audio_.sfx.block(); burst(fx,fy,'#7fd4ff',14); floatText(fx,fy,'BLOCKED!','#7fd4ff'); return;
+    }
     // floor trip → stumble: lose control for a beat (timer keeps running, no Continue).
     // While stumbling the player can't jump, so the dino is exposed to cacti.
     state.floorObs=state.floorObs.filter(x=>x!==o);
@@ -580,19 +581,37 @@ function drawFloorObstacle(L,o){
   const w=o.baseW*s, h=o.baseH*s, x=cx-w/2, y=o.y-h;
   ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(cx,o.y,w*0.5,5*s,0,0,Math.PI*2); ctx.fill();
   switch(o.type){
-    case 'sign':
+    case 'sign':                                   // yellow wet-floor triangle with a !
       ctx.fillStyle='#f5c518'; ctx.beginPath(); ctx.moveTo(cx,y); ctx.lineTo(x+w,o.y); ctx.lineTo(x,o.y); ctx.closePath(); ctx.fill();
       ctx.fillStyle='#3a2c00'; ctx.font=`bold ${16*s}px Poppins`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('!',cx,y+h*0.6); break;
-    case 'puddle':
-      ctx.fillStyle='rgba(90,160,210,.85)'; ctx.beginPath(); ctx.ellipse(cx,o.y-h*0.2,w*0.55,h*0.32,0,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='rgba(255,255,255,.4)'; ctx.beginPath(); ctx.ellipse(cx-w*0.15,o.y-h*0.3,w*0.14,h*0.08,0,0,Math.PI*2); ctx.fill(); break;
-    case 'bin':
-      rrect(x+w*0.1,y,w*0.8,h,5,'#3f7d4f'); ctx.fillStyle='#2c5c39'; ctx.fillRect(x+w*0.05,y,w*0.9,h*0.16); break;
-    case 'crate':
+    case 'crate':                                  // wooden box with an inner border
       rrect(x,y,w,h,4,'#b07b3a'); ctx.strokeStyle='#7c5223'; ctx.lineWidth=2; ctx.strokeRect(x+3,y+3,w-6,h-6); break;
-    default:
-      rrect(x,y,w,h,8,'#c0392b'); rrect(x+w*0.2,y+h*0.15,w*0.6,h*0.42,5,'#e05545');
-      ctx.strokeStyle='#7c1d12'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,y+h*0.55); ctx.lineTo(cx,y+h*0.9); ctx.stroke();
+    case 'barrier': {                              // red/white striped board on two wooden legs
+      const bh=h*0.42, lw=w*0.12, lx1=x+w*0.16, lx2=x+w*0.72;
+      ctx.fillStyle='#9b6b3a'; ctx.fillRect(lx1,y+bh*0.7,lw,h-bh*0.7); ctx.fillRect(lx2,y+bh*0.7,lw,h-bh*0.7);
+      ctx.fillStyle='#d23b2e'; ctx.fillRect(x,y,w,bh);
+      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,bh); ctx.clip();
+      ctx.fillStyle='#f4f1ea'; const sw=w*0.2;
+      for(let sx=x-bh; sx<x+w; sx+=sw*2){ ctx.beginPath(); ctx.moveTo(sx,y+bh); ctx.lineTo(sx+sw,y+bh); ctx.lineTo(sx+sw+bh,y); ctx.lineTo(sx+bh,y); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
+      ctx.strokeStyle='#2c2c2c'; ctx.lineWidth=2; ctx.strokeRect(x,y,w,bh); break;
+    }
+    case 'cone': {                                 // orange traffic cone with white bands + dark base
+      const top=y, coneH=(o.y-h*0.06)-top, halfAt=f=>0.34*w*f, yAt=f=>top+coneH*f;
+      ctx.fillStyle='#5e3f22'; ctx.beginPath(); ctx.ellipse(cx,o.y,w*0.46,h*0.09,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#e8731f'; ctx.beginPath(); ctx.moveTo(cx,top); ctx.lineTo(cx+halfAt(1),yAt(1)); ctx.lineTo(cx-halfAt(1),yAt(1)); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#f4f1ea';
+      [[0.40,0.56],[0.74,0.92]].forEach(([a,b])=>{ ctx.beginPath(); ctx.moveTo(cx-halfAt(a),yAt(a)); ctx.lineTo(cx+halfAt(a),yAt(a)); ctx.lineTo(cx+halfAt(b),yAt(b)); ctx.lineTo(cx-halfAt(b),yAt(b)); ctx.closePath(); ctx.fill(); }); break;
+    }
+    default: {                                     // brick — pile of 4 red/brown bricks
+      const bw=w*0.52, bh=h*0.26;
+      ctx.strokeStyle='#7a3318'; ctx.lineWidth=1.5;
+      const brick=(bx,by,c)=>{ rrect(bx,by,bw,bh,2,c); rstroke(bx,by,bw,bh,2); };
+      brick(x,            o.y-bh,        '#b5532e');   // bottom-left
+      brick(x+w-bw,       o.y-bh,        '#a8492a');   // bottom-right
+      brick(x+w*0.24,     o.y-bh*1.95,   '#bd5a33');   // middle
+      brick(x+w*0.08,     o.y-bh*2.9,    '#a8492a');   // top
+    }
   }
 }
 
@@ -690,8 +709,7 @@ function drawDino(L,R){
   ctx.fillRect(x+w*0.2,y+h*0.78,w*0.14,h*0.22*(1+stride*0.3));
   ctx.fillRect(x+w*0.46,y+h*0.78,w*0.14,h*0.22*(1-stride*0.3));
   ctx.globalAlpha=1;
-  if(now()<state.focusUntil) drawAura(x+sz*0.4,y+sz*0.5,sz*0.7,'#FFD633');
-  if(state.shield) drawAura(x+sz*0.4,y+sz*0.5,sz*0.7,'#7fd4ff');
+  if(now()<state.focusUntil) drawAura(x+sz*0.4,y+sz*0.5,sz*0.7,'#FFD633');   // Focus is the dino-side power-up
 }
 // pixel-art heart bitmap: o=dark outline, r=red fill, w=white highlight, .=empty
 const HEART_ART=[

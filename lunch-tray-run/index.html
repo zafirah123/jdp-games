@@ -31,10 +31,10 @@
   .pulse-urgent{ animation:pulse-urgent .8s infinite; }
 
   .mute{
-    position:fixed; top:max(12px,env(safe-area-inset-top)); right:max(12px,env(safe-area-inset-right));
+    flex-shrink:0;
     width:44px; height:44px; border-radius:22px; border:2px solid var(--darkYellow); background:var(--brick);
     color:var(--yellow); display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;
-    z-index:30; transition:transform 80ms ease;
+    transition:transform 80ms ease;
   }
   .mute:active{ transform:scale(.92); }
   .mute svg{ width:22px; height:22px; fill:currentColor; }
@@ -83,10 +83,10 @@
   <div class="hud">
     <div class="jdp-pill"><span class="pill-label" id="lblScore">Score</span><span class="pill-value" id="score">0</span></div>
     <div class="jdp-pill"><span class="pill-label" id="lblTime">Time</span><span class="pill-value mono" id="timer">03:00</span></div>
+    <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path id="muteIcon" d=""/></svg>
+    </button>
   </div>
-  <button id="muteBtn" class="mute" aria-label="AUDIO ON" aria-pressed="false">
-    <svg viewBox="0 0 24 24"><path id="muteIcon" d=""/></svg>
-  </button>
 
   <div class="stage" id="stage">
     <canvas id="cv"></canvas>

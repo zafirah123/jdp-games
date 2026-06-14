@@ -37,6 +37,9 @@ body{
   display:flex; flex-direction:column; align-items:center;
   padding:8px; gap:8px; box-sizing:border-box;
   padding-top:max(8px, env(safe-area-inset-top));
+  /* Reserve a clear strip below the jar for the floating End Run pill so it
+     never overlaps the jar's bottom (it's position:fixed, outside the flow). */
+  padding-bottom:calc(52px + max(8px, env(safe-area-inset-bottom)));
 }
 
 /* HUD pills — DESIGN.md §5.2 / §5.12 */

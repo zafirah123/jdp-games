@@ -239,7 +239,8 @@ function freshState(){
     scene:'start', scoreFloat:0, score:0,
     timeRemaining:CONFIG.roundDurationMs, elapsed:0,
     lane:1, renderLane:1,
-    dinoY:0, dinoVy:0, dinoSquash:0, dinoRun:0,
+    dinoY:0, dinoVy:0, dinoSquash:0, dinoRun:0, airBoost:0,
+    hearts:3, dinoHurtUntil:0,
     thumbTap:0, tapSide:1,
     floorObs:[], cacti:[], pickups:[], particles:[], floats:[],
     floorTimer:0, cactusTimer:0, shieldTimer:0, focusTimer:0,
@@ -279,6 +280,7 @@ const Audio_=(()=>{
     shield(){ tone(523,0.10,'triangle',0.18); tone(784,0.16,'triangle',0.18,null,0.07); },
     focus(){ [659,880,1175].forEach((f,i)=>tone(f,0.16,'sine',0.16,null,i*0.08)); },
     block(){ tone(180,0.18,'sawtooth',0.16,90); },
+    hurt(){ tone(330,0.12,'square',0.16,170); tone(220,0.16,'square',0.12,130,null,0.05); },
     crash(){ noise(0.5,0.34); tone(300,0.5,'sawtooth',0.18,70); },
     timeup(){ [660,520,390].forEach((f,i)=>tone(f,0.2,'sine',0.2,null,i*0.18)); },
     best(){ [523,659,784,1047].forEach((f,i)=>tone(f,0.18,'triangle',0.18,null,i*0.09)); },
@@ -309,8 +311,14 @@ renderMute();
 function moveLane(dir){ if(state.scene!=='playing') return;
   const n=clamp(state.lane+dir,0,CONFIG.lanes-1); if(n!==state.lane){ state.lane=n; Audio_.sfx.step(); } }
 function doJump(){ if(state.scene!=='playing') return;
-  if(state.dinoY<=0.5){ const R=layout().R; state.dinoVy=CONFIG.dino.jumpK*R.rsh; state.dinoSquash=1;
-    state.thumbTap=1; state.tapSide=-state.tapSide; Audio_.sfx.jump(); } }
+  const full=CONFIG.dino.jumpK*layout().R.rsh;
+  if(state.dinoY<=0.5){                                    // ground jump
+    state.dinoVy=full; state.dinoSquash=1; state.airBoost=1;
+    state.thumbTap=1; state.tapSide=-state.tapSide; Audio_.sfx.jump();
+  } else if(state.airBoost>0){                             // mid-air tap → boost higher (once)
+    state.airBoost--; state.dinoVy=Math.min(state.dinoVy+full*0.6, full*1.2);
+    state.thumbTap=1; state.tapSide=-state.tapSide; Audio_.sfx.jump();
+  } }
 addEventListener('keydown',e=>{
   if(['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
   if(e.repeat) return;
@@ -390,9 +398,10 @@ function update(dt){
     state.renderLane += (state.lane-state.renderLane)*Math.min(1,CONFIG.laneTween*dt);
 
     // dino physics
-    const grav=CONFIG.dino.gravK*R.rsh;
+    const grav=CONFIG.dino.gravK*R.rsh, maxJ=R.rsh-R.dsize-4;
     state.dinoVy-=grav*dt; state.dinoY+=state.dinoVy*dt;
     if(state.dinoY<=0){ state.dinoY=0; state.dinoVy=0; }
+    else if(state.dinoY>maxJ){ state.dinoY=maxJ; if(state.dinoVy>0) state.dinoVy=0; }   // keep it on-screen
     state.dinoSquash=Math.max(0,state.dinoSquash-dt*4);
     state.thumbTap=Math.max(0,state.thumbTap-dt*6);          // quick tap-press decay
     state.dinoRun+=dt*12*slow;
@@ -443,14 +452,16 @@ function update(dt){
         else o.passed=true;
       }
     }
-    if(!invuln && state.scene==='playing')
+    if(!invuln && now()>=state.dinoHurtUntil && state.scene==='playing')
       for(const c of state.cacti){ if(aabb(dino,cactusRect(R,c))){ hitObstacle('phone',c,dino.x+dino.w/2,dino.y+dino.h/2); break; } }
   }
 
   if(state.scene==='crashing'){
     state.crashTimer+=dt*1000; state.shake=Math.max(0,state.shake-dt*60);
     if(state.crashTimer>900){
-      if(state.timeRemaining>0){ state.scene='continue'; showContinue(); } else endGame('timeup');
+      if(state.crashLane==='phone') endGame('over');                 // dino out of hearts → Game Over, no Continue
+      else if(state.timeRemaining>0){ state.scene='continue'; showContinue(); }
+      else endGame('timeup');
     }
   }
 
@@ -466,6 +477,13 @@ function hitObstacle(layer,o,fx,fy){
   if(state.shield){ state.shield=false; o.passed=true;
     if(layer==='floor') state.floorObs=state.floorObs.filter(x=>x!==o); else state.cacti=state.cacti.filter(x=>x!==o);
     state.invulnUntil=now()+600; Audio_.sfx.block(); burst(fx,fy,'#7fd4ff',14); floatText(fx,fy,'BLOCKED!','#7fd4ff'); return; }
+  // dino runner has 3 hearts: a cactus costs a heart, with a brief grace; only 0 hearts crashes
+  if(layer==='phone'){
+    state.cacti=state.cacti.filter(x=>x!==o);
+    state.hearts--; state.dinoHurtUntil=now()+1000; state.shake=8;
+    Audio_.sfx.hurt(); burst(fx,fy,'#e2541d',16,200); floatText(fx,fy,'-1 ♥','#e23b3b');
+    if(state.hearts>0) return;            // still alive — keep playing
+  }
   state.scene='crashing'; state.crashTimer=0; state.crashLane=layer; state.shake=14;
   Audio_.sfx.crash(); Audio_.stopBgm();
   burst(fx,fy, layer==='floor'?'#ffd27f':'#8a8a8a', 22, 260);
@@ -633,6 +651,9 @@ function drawRunner(L,R){
   // tiny score in the phone corner (homage to the offline game)
   ctx.fillStyle='#9aa0a6'; ctx.font=`600 ${Math.round(R.rsh*0.07)}px 'Roboto Mono',monospace`; ctx.textAlign='right'; ctx.textBaseline='top';
   ctx.fillText(String(state.score).padStart(5,'0'), R.rsx+R.rsw-6, R.rsy+6);
+  // hearts (dino lives) top-left
+  const hs=R.rsh*0.085;
+  for(let i=0;i<3;i++) drawHeart(R.rsx+10+hs/2+i*(hs+6), R.rsy+10+hs/2, hs, i<state.hearts);
 }
 
 function drawDino(L,R){
@@ -640,6 +661,7 @@ function drawDino(L,R){
   const sc=clamp(1-state.dinoY/(R.rsh*0.45),0.4,1);
   ctx.fillStyle=`rgba(0,0,0,${0.22*sc})`; ctx.beginPath(); ctx.ellipse(x+sz*0.4,R.gy+2,sz*0.42*sc,3*sc,0,0,Math.PI*2); ctx.fill();
   const sq=state.dinoSquash*0.16, w=sz*0.82*(1+sq), h=sz*(1-sq);
+  if(now()<state.dinoHurtUntil && Math.floor(now()/90)%2===0) ctx.globalAlpha=0.4;   // blink after a hit
   ctx.fillStyle='#e2541d';
   // body + tail + head (blocky T-rex silhouette)
   rrect(x,y+h*0.32,w*0.7,h*0.5,3,'#e2541d');                 // body
@@ -652,8 +674,35 @@ function drawDino(L,R){
   const stride=state.dinoY<=0.5?Math.sin(state.dinoRun)*0.5:0;
   ctx.fillRect(x+w*0.2,y+h*0.78,w*0.14,h*0.22*(1+stride*0.3));
   ctx.fillRect(x+w*0.46,y+h*0.78,w*0.14,h*0.22*(1-stride*0.3));
+  ctx.globalAlpha=1;
   if(now()<state.focusUntil) drawAura(x+sz*0.4,y+sz*0.5,sz*0.7,'#FFD633');
   if(state.shield) drawAura(x+sz*0.4,y+sz*0.5,sz*0.7,'#7fd4ff');
+}
+// pixel-art heart bitmap: o=dark outline, r=red fill, w=white highlight, .=empty
+const HEART_ART=[
+  "...oo...oo...",
+  "..orro.orro..",
+  ".orrrrorrrro.",
+  "orrwwrrrrrrro",
+  "orrwwrrrrrrro",
+  "orrrrrrrrrrro",
+  ".orrrrrrrrro.",
+  "..orrrrrrro..",
+  "...orrrrro...",
+  "....orrro....",
+  ".....oro.....",
+  "......o......",
+];
+function drawHeart(cx,cy,size,filled){
+  const rows=HEART_ART, R=rows.length, C=rows[0].length, px=size/R;
+  const x0=cx-C*px/2, y0=cy-R*px/2;
+  const col = filled ? {o:'#a8261d',r:'#e2493a',w:'#ffffff'} : {o:'#b6a7a7',r:'#d9cdcd',w:'#ece5e5'};
+  for(let r=0;r<R;r++){ const row=rows[r];
+    for(let c=0;c<C;c++){ const ch=row[c]; if(ch==='.') continue;
+      ctx.fillStyle = ch==='o'?col.o : ch==='w'?col.w : col.r;
+      ctx.fillRect(Math.floor(x0+c*px), Math.floor(y0+r*px), Math.ceil(px), Math.ceil(px));
+    }
+  }
 }
 
 function drawCactus(R,c){
@@ -730,6 +779,7 @@ function continueRun(){
   const L=layout(), R=L.R, span=L.floorBottom-L.horizonY;
   state.floorObs=state.floorObs.filter(o=>o.y < L.horizonY+span*0.35);
   state.cacti=state.cacti.filter(c=>c.x > R.rsx+R.rsw*0.55);
+  state.hearts=3; state.dinoHurtUntil=0;
   state.invulnUntil=now()+CONFIG.continueInvulnMs; state.shake=0; state.scene='playing';
   showOverlay(null); document.getElementById('endRunBtn').style.display='block';
   if(!Audio_.isMuted()) Audio_.startBgm();

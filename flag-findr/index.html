@@ -202,6 +202,9 @@ const CONFIG = {
   settle: { firstMs: 16000, everyMs: 26000, durationMs: 3200, bubbleR: 19, bubbleTTL: 2200 }, // aid: pauses time — small, fleeting bubble
   rush:   { firstMs: 30000, everyMs: 34000, durationMs: 7000, mult: 2 }, // frenzy: rain + double
   powerTTL: 7000,                 // a floating power token despawns if untapped
+  // points lost on a wrong tap (score never drops below 0) — deters random tapping.
+  // Scales with difficulty: gentle early so beginners aren't punished, harsher late.
+  wrongPenalty: { start: 1, end: 5 },
 };
 
 // Country flags (31 = enough for PG(2,5)). First 7 (ASEAN) show on the easy
@@ -452,7 +455,7 @@ function burst(x,y,col){
     particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 1, life:0, max:28+Math.random()*16, col, r:2+Math.random()*3 });
   }
 }
-function addFloat(x,y,txt){ floats.push({ x, y, vy:-1.1, life:0, max:55, txt }); }
+function addFloat(x,y,txt,col){ floats.push({ x, y, vy:-1.1, life:0, max:55, txt, col: col || '#FFD633' }); }
 
 /* ============================================================
    AUDIO — Web Audio synthesis (zero bytes)
@@ -642,7 +645,14 @@ function tapAt(clientX, clientY){
     syncHud();
     pickCard();          // new challenge (also tops the pile up via update)
   } else {
-    // wrong — gentle, no penalty
+    // wrong — small score penalty so random tapping is discouraged (never below 0)
+    const pen = Math.min(state.score, Math.round(ramp(CONFIG.wrongPenalty)));
+    if (pen > 0){
+      state.score -= pen;
+      const pos = tok.body.position;
+      addFloat(pos.x, pos.y - tok.body.circleRadius, '-'+pen, '#FF6B7A');
+      syncHud();
+    }
     AudioFX.wrong();
     tok.flip = 1;
     Body.applyForce(tok.body, tok.body.position, { x:(Math.random()-0.5)*0.04, y:-0.05 });
@@ -789,7 +799,7 @@ function render(){
   // floats
   for (const f of floats){
     ctx.globalAlpha = Math.max(0, 1 - f.life/f.max);
-    ctx.fillStyle = '#FFD633'; ctx.font = '900 30px Poppins, sans-serif';
+    ctx.fillStyle = f.col; ctx.font = '900 30px Poppins, sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(3,16,52,.8)';
     ctx.strokeText(f.txt, f.x, f.y); ctx.fillText(f.txt, f.x, f.y);

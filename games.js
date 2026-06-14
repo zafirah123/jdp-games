@@ -21,6 +21,7 @@ window.GAMES = [
   { name: 'Gem Merge', path: './gem-merge/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
   { name: 'Kataku', path: './kataku/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
   { name: 'Liquid Sort', path: './liquid-sort/liquid-sort.html', status: 'pending', author: 'zafirah123' },
+  { name: 'Lunch Tray Run', path: './lunch-tray-run/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Number Run', path: './number-run/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Number Snap', path: './number-snap/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
   { name: 'Puzzle', path: './puzzle/puzzle.html', status: 'pending', author: 'iklil' },

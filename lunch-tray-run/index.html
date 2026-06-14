@@ -337,11 +337,17 @@ const FLOOR_TYPES=['sign','crate','barrier','cone','brick'];
 const randLane=()=>(Math.random()*CONFIG.lanes)|0;
 const randType=()=>FLOOR_TYPES[(Math.random()*FLOOR_TYPES.length)|0];
 function spawnFloor(){
-  const L=layout(), c=CONFIG.floor, lane=randLane();
+  const L=layout(), c=CONFIG.floor, span=L.floorBottom-L.horizonY;
+  // don't drop an obstacle onto a shield that's still near the top (keep the diamond grabbable)
+  const avoid=new Set();
+  for(const p of state.pickups) if(p.layer==='floor' && p.y < L.horizonY+span*0.55) avoid.add(p.lane);
+  let lanes=[]; for(let i=0;i<CONFIG.lanes;i++) if(!avoid.has(i)) lanes.push(i);
+  if(!lanes.length) lanes=[randLane()];
+  const lane=lanes.splice((Math.random()*lanes.length)|0,1)[0];
   state.floorObs.push({ lane, y:L.horizonY, baseW:c.baseW, baseH:c.baseH, type:randType(), passed:false });
-  // sometimes a second obstacle in a different lane — always leaves one lane open
-  if(Math.random()<ramp(c.doubleChance)){
-    const l2=(lane+1+((Math.random()*(CONFIG.lanes-1))|0))%CONFIG.lanes;
+  // sometimes a second obstacle in a different lane — always leaves a lane open
+  if(lanes.length && Math.random()<ramp(c.doubleChance)){
+    const l2=lanes[(Math.random()*lanes.length)|0];
     state.floorObs.push({ lane:l2, y:L.horizonY-rand(20,70), baseW:c.baseW, baseH:c.baseH, type:randType(), passed:false });
   }
 }
@@ -350,8 +356,17 @@ function spawnCactus(){
   const h=rand(0.12,0.22)*R.rsh, w=rand(0.05,0.085)*R.rsw, dbl=Math.random()<0.3;
   state.cacti.push({ x:R.rsx+R.rsw, w:dbl?w*2.1:w, h, fly:0, type:'cactus' });
 }
-function spawnShield(){ if(state.shield) return; const L=layout(), s=CONFIG.shield.size;
-  state.pickups.push({ kind:'shield', layer:'floor', lane:randLane(), y:L.horizonY, w:s, h:s, t:0, passed:false }); }
+function spawnShield(){
+  if(state.shield) return;
+  const L=layout(), s=CONFIG.shield.size, span=L.floorBottom-L.horizonY;
+  // pick a lane with no obstacle near the top, so the diamond isn't stacked on an obstacle
+  const blocked=new Set();
+  for(const o of state.floorObs) if(o.y < L.horizonY+span*0.55) blocked.add(o.lane);
+  const free=[]; for(let i=0;i<CONFIG.lanes;i++) if(!blocked.has(i)) free.push(i);
+  if(!free.length) return;            // no clear lane right now — skip this attempt
+  const lane=free[(Math.random()*free.length)|0];
+  state.pickups.push({ kind:'shield', layer:'floor', lane, y:L.horizonY, w:s, h:s, t:0, passed:false });
+}
 function spawnFocus(){ const R=layout().R, s=CONFIG.focus.sizeFrac*R.rsh;
   state.pickups.push({ kind:'focus', layer:'phone', x:R.rsx+R.rsw, y:R.gy-R.dsize-R.rsh*0.32, w:s, h:s, t:0 }); }
 function spawnHeart(){ const R=layout().R, s=CONFIG.focus.sizeFrac*R.rsh*1.15;     // extra-heart pickup, in the runner
@@ -526,9 +541,9 @@ function drawFloor(L){
   // perspective progress at the top & bottom of the canvas (top is < 0 → far distance)
   const span=bY-hY, pTop=(0-hY)/span, pBot=(H-hY)/span;
   const eT=roadEdges(L,pTop), eB=roadEdges(L,pBot);
-  // ground everywhere, fading lighter toward the far distance (top) — open horizon, no wall
+  // grass at the sides of the road, fading lighter toward the far distance (top) — open horizon, no wall
   const grd=ctx.createLinearGradient(0,0,0,bY);
-  grd.addColorStop(0,'#e9eae6'); grd.addColorStop(0.45,'#d6c79e'); grd.addColorStop(1,'#cdb78c');
+  grd.addColorStop(0,'#bcd6a6'); grd.addColorStop(0.45,'#8fb85f'); grd.addColorStop(1,'#6fa247');
   ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
   // the road converges upward toward a vanishing point above the screen → looks endless
   const road=ctx.createLinearGradient(0,0,0,H);

@@ -16,7 +16,7 @@ window.GAMES = [
   { name: 'Ball Rush', path: './ball-rush/', status: 'pending', author: 'akmalakhpah' },
   { name: 'Bubble Shooter', path: './bubble-shooter/', status: 'approved-dev', author: 'Koplo3' },
   { name: 'Dadu Didik', path: './dadu-didik/', status: 'approved-dev', author: 'akmalakhpah' },
-  { name: 'FlagFindr', path: './flag-findr/', status: 'pending', author: 'akmalakhpah' },
+  { name: 'FlagFindr', path: './flag-findr/', status: 'approved-dev', author: 'akmalakhpah' },
   { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-dev', author: 'pandaipixel', staging: true, production: true },
   { name: 'Gem Merge', path: './gem-merge/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
   { name: 'Kataku', path: './kataku/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },

@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#020d26">
 <title>Kataku</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&family=Roboto+Mono:wght@700&display=swap');
+
   :root {
     --navy: #020d26;
     --royal: #1535a8;
@@ -28,7 +30,7 @@
   html, body {
     margin: 0; padding: 0; height: 100%;
     background: var(--navy); color: var(--text);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     overflow: hidden; user-select: none;
   }
   body {
@@ -440,7 +442,7 @@ const CONFIG = {
 const lang = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en: {
-    start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'MISSED',
+    start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     skip: 'SKIP (−15)',
@@ -462,7 +464,7 @@ const COPY = {
     wordWas: 'The word was',
   },
   ms: {
-    start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'TERLEPAS',
+    start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     skip: 'LANGKAU (−15)',
@@ -1235,6 +1237,8 @@ dom.claimBtn.addEventListener('click', async () => {
     location.href = claimUrl;
   } catch (e) {
     console.warn('[kataku] claim submit failed:', e);
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.disabled = true;
     claimLocked = false;
   }
 });

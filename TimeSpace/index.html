@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
+<title>Pbot TimeSpace — Laser Edition</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#e03030;--red2:#ff4444;--neon:#ff2255;
+  --gold:#ffd700;--gold2:#ffec6e;
+  --navy:#080c14;--navy2:#0a1020;--navy3:#111827;
+  --laser:#00ffe0;--laser2:#7fffef;
+  --font-head:'Orbitron',monospace;--font-body:'Rajdhani',sans-serif;
+}
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600;700&display=swap');
+html,body{width:100%;height:100%;overflow:hidden;background:var(--navy2);font-family:var(--font-body);color:#fff;touch-action:manipulation}
+.screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center}
+.screen.active{display:flex}
+
+/* ──── TITLE ──── */
+#screen-title{background:radial-gradient(ellipse at 50% 30%,#1a2540 0%,#080c14 70%)}
+#title-logo{font-family:var(--font-head);font-size:clamp(32px,9vw,72px);font-weight:900;letter-spacing:4px;
+  background:linear-gradient(135deg,var(--gold),var(--red2),var(--gold2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-shadow:none;filter:drop-shadow(0 0 18px rgba(255,68,68,.45));margin-bottom:4px}
+#title-sub{font-family:var(--font-head);font-size:13px;letter-spacing:6px;color:var(--laser);opacity:.7;text-transform:uppercase;margin-bottom:24px}
+.pbot-wrap {
+    display: flex;
+    justify-content: center; /* Centers horizontally */
+    align-items: center;     /* Centers vertically */
+    width: 100%;             /* Ensures the wrapper spans the full width */
+    margin-top: 20px;        /* Optional: adds space below the title */
+}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.pbot-svg{width:100%;height:100%;filter:drop-shadow(0 6px 20px rgba(255,34,85,.55))}
+
+.laser-eyes{animation:glow-eyes 1.8s ease-in-out infinite alternate}
+@keyframes glow-eyes{from{opacity:.5;filter:none}to{opacity:1;filter:drop-shadow(0 0 6px var(--laser))}}
+
+.btn{background:linear-gradient(135deg,var(--red),#a00);color:#fff;font-family:var(--font-head);font-weight:700;font-size:15px;letter-spacing:2px;border:none;border-radius:50px;padding:0 36px;height:52px;min-width:160px;cursor:pointer;transition:transform .1s,filter .1s,box-shadow .15s;box-shadow:0 4px 16px rgba(224,48,48,.4),0 0 0 1px rgba(255,68,68,.3)}
+.btn:active{transform:scale(.95) translateY(2px)}
+.btn:hover:not(:active){filter:brightness(1.12);box-shadow:0 6px 24px rgba(224,48,48,.6),0 0 0 2px rgba(255,68,68,.5)}
+.btn.ghost{background:transparent;border:2px solid rgba(0,255,224,.3);color:var(--laser);box-shadow:0 0 12px rgba(0,255,224,.15)}
+.btn.ghost:hover:not(:active){background:rgba(0,255,224,.08);box-shadow:0 0 20px rgba(0,255,224,.3)}
+
+/* ──── GAME ──── */
+#screen-game{background:#000;justify-content:flex-start;padding:0}
+#game-canvas{display:block;touch-action:none;cursor:none}
+
+/* HUD */
+#hud{position:fixed;top:8px;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:0 14px;pointer-events:none;z-index:50;gap:8px}
+.hud-pill{background:rgba(8,12,20,.75);border:1px solid rgba(255,68,68,.3);border-radius:100px;padding:6px 14px;font-family:var(--font-head);font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px)}
+.hud-label{font-size:9px;letter-spacing:2px;opacity:.6;color:var(--gold)}
+#hud-score-val{color:var(--gold);font-size:16px}
+#hud-timer-val{font-size:16px}
+#hud-timer-pill.urgent{border-color:var(--red2);animation:pulse .5s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:1}to{opacity:.5}}
+
+/* LASER METER */
+#laser-meter-wrap{position:fixed;top:52px;left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:50}
+#laser-meter-outer{background:rgba(8,12,20,.7);border:1px solid rgba(0,255,224,.25);border-radius:100px;padding:3px;width:min(260px,60vw);backdrop-filter:blur(6px)}
+#laser-meter-bar{height:8px;border-radius:100px;background:linear-gradient(90deg,#007a70,var(--laser));width:0%;transition:width .12s ease;box-shadow:0 0 8px rgba(0,255,224,.5)}
+#laser-meter-label{font-family:var(--font-head);font-size:8px;letter-spacing:2px;color:var(--laser);opacity:.7;text-align:center;margin-top:2px}
+#laser-meter-wrap.full #laser-meter-bar{animation:meter-pulse .5s ease-in-out infinite alternate;box-shadow:0 0 16px rgba(0,255,224,.9)}
+@keyframes meter-pulse{from{opacity:.7}to{opacity:1}}
+
+/* MULTIPLIER */
+#multiplier-badge{position:fixed;top:90px;left:50%;transform:translateX(-50%);font-family:var(--font-head);font-size:22px;font-weight:900;color:var(--gold2);text-shadow:0 0 12px rgba(255,215,0,.6);opacity:0;pointer-events:none;z-index:60;transition:opacity .2s}
+#multiplier-badge.show{opacity:1}
+
+/* LASER ACTIVE */
+#laser-hud{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:rgba(0,255,224,.1);border:1px solid var(--laser);border-radius:100px;padding:6px 20px;font-family:var(--font-head);font-size:12px;letter-spacing:2px;color:var(--laser);display:none;pointer-events:none;z-index:50;box-shadow:0 0 20px rgba(0,255,224,.3)}
+#laser-hud.active{display:block;animation:laser-hud-pulse .4s ease-in-out infinite alternate}
+@keyframes laser-hud-pulse{from{box-shadow:0 0 12px rgba(0,255,224,.3)}to{box-shadow:0 0 28px rgba(0,255,224,.7)}}
+
+/* FLOATERS */
+.float-text{position:fixed;font-family:var(--font-head);font-size:16px;font-weight:700;pointer-events:none;z-index:80;animation:float-up .7s ease-out forwards}
+@keyframes float-up{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-50px)}}
+
+/* OVERLAYS */
+.overlay{position:fixed;inset:0;background:rgba(8,12,20,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:200;backdrop-filter:blur(6px)}
+.overlay.active{display:flex}
+.overlay-box{background:linear-gradient(160deg,#111827,#0a1020);border:1px solid rgba(255,68,68,.3);border-radius:24px;padding:36px 44px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;max-width:330px;width:92%;box-shadow:0 0 40px rgba(224,48,48,.2),inset 0 1px 0 rgba(255,255,255,.06)}
+.overlay-title{font-family:var(--font-head);font-size:24px;font-weight:900;letter-spacing:2px;color:var(--red2)}
+.overlay-score{font-family:var(--font-head);font-size:56px;font-weight:900;color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,.4)}
+.overlay-best{font-family:var(--font-head);font-size:11px;letter-spacing:2px;color:var(--gold2);background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);border-radius:100px;padding:4px 16px}
+.overlay-btns{display:flex;flex-direction:column;gap:10px;width:100%}
+#flash-overlay{position:fixed;inset:0;background:#fff;pointer-events:none;opacity:0;z-index:300}
+#urgency-overlay{position:fixed;inset:0;border:4px solid var(--red2);pointer-events:none;opacity:0;z-index:90}
+#urgency-overlay.active{animation:edge-pulse .5s ease-in-out infinite alternate}
+@keyframes edge-pulse{from{opacity:0}to{opacity:.7}}
+
+/* GAMEOVER */
+#screen-gameover{background:radial-gradient(ellipse at 50% 40%,#1a0818 0%,#080c14 70%)}
+</style>
+</head>
+<body>
+<div id="urgency-overlay"></div>
+<div id="flash-overlay"></div>
+
+<!-- TITLE -->
+<div id="screen-title" class="screen active">
+  <img src="logo-badge.png" alt="Logo" / style="width:150px;height:200px;filter:drop-shadow(0 4px 12px rgba(180,28,38,0.5));margin-bottom:-52px;">
+  <div id="title-logo">SPACE PBOT</div>
+  <div id="title-sub">⚡ Laser Edition</div>
+  <div class="pbot-wrap">
+    <img src="PBOT SPACE.png" class="pbot-svg" alt="Pbot Sprite" style="width:220px; height:250px; margin-top: -90px; margin-bottom: -60px;">
+      <defs>
+        <radialGradient id="bg-g" cx="50%" cy="60%"><stop offset="0%" stop-color="#2a4a8a"/><stop offset="100%" stop-color="#1a2a5a"/></radialGradient>
+        <radialGradient id="visor-g" cx="50%" cy="40%"><stop offset="0%" stop-color="#0a1e30"/><stop offset="100%" stop-color="#05101a"/></radialGradient>
+      </defs>
+      <ellipse cx="50" cy="100" rx="30" ry="8" fill="rgba(224,48,48,.2)"/>
+      <rect x="10" y="30" width="80" height="80" rx="20" fill="url(#bg-g)"/>
+      <rect x="18" y="40" width="64" height="52" rx="12" fill="url(#visor-g)"/>
+      <ellipse cx="34" cy="66" rx="9" ry="8" fill="#0a1e30"/>
+      <ellipse cx="66" cy="66" rx="9" ry="8" fill="#0a1e30"/>
+      <ellipse class="laser-eyes" cx="34" cy="66" rx="5" ry="4" fill="#00ffe0" opacity=".9"/>
+      <ellipse class="laser-eyes" cx="66" cy="66" rx="5" ry="4" fill="#00ffe0" opacity=".9"/>
+      <ellipse cx="50" cy="88" rx="8" ry="4" fill="#e03030" opacity=".8"/>
+      <rect x="24" y="18" width="6" height="16" rx="3" fill="#2a4a8a"/>
+      <rect x="70" y="18" width="6" height="16" rx="3" fill="#2a4a8a"/>
+      <circle cx="24" cy="15" r="5" fill="#e03030"/>
+      <circle cx="76" cy="15" r="5" fill="#e03030"/>
+      <rect x="0" y="60" width="14" height="28" rx="6" fill="#1a3a6a"/>
+      <rect x="86" y="60" width="14" height="28" rx="6" fill="#1a3a6a"/>
+    </svg>
+  </div>
+  <p style="font-size:13px;opacity:.45;letter-spacing:1px;margin-bottom:16px">Tap / Space to flap • Collect rubies • Laser meteors</p>
+  <button class="btn" id="btn-start">START GAME</button>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen">
+  <canvas id="game-canvas"></canvas>
+  <div id="hud">
+    <div class="hud-pill"><span class="hud-label">SCORE</span><span id="hud-score-val">0</span></div>
+    <div class="hud-pill" id="hud-timer-pill"><span class="hud-label">TIME</span><span id="hud-timer-val">3:00</span></div>
+  </div>
+  <div id="laser-meter-wrap">
+    <div id="laser-meter-outer"><div id="laser-meter-bar"></div></div>
+    <div id="laser-meter-label">⚡ LASER CHARGE</div>
+  </div>
+  <div id="multiplier-badge">✕<span id="mult-val">1</span></div>
+  <div id="laser-hud">⚡ LASER ACTIVE — <span id="laser-timer-txt">5s</span></div>
+  <div class="overlay" id="overlay-continue">
+    <div class="overlay-box">
+      <div class="overlay-title">💥 CRASHED!</div>
+      <p style="font-size:13px;opacity:.6;letter-spacing:1px">Time remains — keep going?</p>
+      <div class="overlay-btns">
+        <button class="btn" id="btn-continue">CONTINUE</button>
+        <button class="btn ghost" id="btn-give-up">GIVE UP</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="screen-gameover" class="screen">
+  <div class="overlay-box" style="max-width:350px;width:92%">
+    <div class="overlay-title" id="go-title">TIME'S UP!</div>
+    <div style="font-size:11px;opacity:.45;letter-spacing:3px">FINAL SCORE</div>
+    <div class="overlay-score" id="go-score">0</div>
+    <div class="overlay-best" id="go-best" style="display:none">🏆 NEW BEST!</div>
+    <div class="overlay-btns">
+      <button class="btn" id="btn-retry">PLAY AGAIN</button>
+      <button class="btn ghost" id="btn-to-title">MAIN MENU</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────
+const CFG={
+  round:180000, // 3 min
+  gravity:1900, jumpForce:-560,
+  laserDuration:5000, laserMeterMax:100,
+  rubyMeterFill:12,    // per ruby collected
+  powerUpMeterFill:100,
+  multiplierWindow:1200, // ms between rubies to keep streak
+  diff:[
+    {t:0,    speed:260,spawnMs:1800},
+    {t:30000, speed:310,spawnMs:1500},
+    {t:60000, speed:370,spawnMs:1200},
+    {t:90000, speed:440,spawnMs:1000},
+    {t:120000,speed:520,spawnMs:820},
+    {t:150000,speed:600,spawnMs:680},
+  ]
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────
+let G={};
+function resetState(){
+  G={
+    running:false,paused:false,lastTs:0,raf:0,
+    W:0,H:0,
+    py:0,vy:0,
+    hazards:[],collectibles:[],particles:[],
+    score:0,timeLeft:CFG.round,elapsed:0,
+    laserMeter:0,laserActive:false,laserTimer:0,
+    multiplier:1,lastRubyTs:0,streakTimer:null,
+    nextHazardMs:800,nextPowerUpMs:12000,
+    bestScore:+(localStorage.getItem('rr-best')||0),
+  };
+}
+
+// ─── DOM REFS ─────────────────────────────────────────────────────────────
+const canvas=document.getElementById('game-canvas');
+const ctx=canvas.getContext('2d');
+const screenTitle=document.getElementById('screen-title');
+const screenGame=document.getElementById('screen-game');
+const screenGO=document.getElementById('screen-gameover');
+const hudScore=document.getElementById('hud-score-val');
+const hudTimer=document.getElementById('hud-timer-val');
+const hudTimerPill=document.getElementById('hud-timer-pill');
+const laserBar=document.getElementById('laser-meter-bar');
+const laserWrap=document.getElementById('laser-meter-wrap');
+const laserHud=document.getElementById('laser-hud');
+const laserTimerTxt=document.getElementById('laser-timer-txt');
+const multBadge=document.getElementById('multiplier-badge');
+const multVal=document.getElementById('mult-val');
+const urgencyOverlay=document.getElementById('urgency-overlay');
+const flashOverlay=document.getElementById('flash-overlay');
+const overlayContinue=document.getElementById('overlay-continue');
+const goTitle=document.getElementById('go-title');
+const goScore=document.getElementById('go-score');
+const goBest=document.getElementById('go-best');
+
+// ─── SHOW SCREEN ─────────────────────────────────────────────────────────
+function showScreen(id){
+  [screenTitle,screenGame,screenGO].forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+
+// ─── RESIZE ──────────────────────────────────────────────────────────────
+function resizeCanvas(){
+  G.W=canvas.width=window.innerWidth;
+  G.H=canvas.height=window.innerHeight;
+}
+
+// ─── DIFFICULTY ──────────────────────────────────────────────────────────
+function getDiff(elapsed){
+  const steps=CFG.diff;
+  let d=steps[0];
+  for(let s of steps){if(elapsed>=s.t)d=s;}
+  return d;
+}
+
+// ─── PBOT DRAWING ────────────────────────────────────────────────────────
+const pbotSprite = new Image();
+pbotSprite.src = 'PBOT SPACE.png'; 
+
+const PW = 160, PH = 160; // Adjusted size to be more square for your Pbot image
+
+function drawPbot(x, y, laser) {
+    ctx.save();
+    
+    // 1. Move to Pbot's position
+    ctx.translate(x, y);
+
+    // 2. Add a glow effect if the laser is active
+    if (laser) {
+        ctx.shadowColor = '#00ffe0';
+        ctx.shadowBlur = 15;
+    }
+
+    // 3. DRAW THE IMAGE (This replaces all the body/visor/eyes code)
+    // We draw at (0,0) because we already used ctx.translate(x,y)
+    ctx.drawImage(pbotSprite, 0, 0, PW, PH);
+
+    ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+// ─── SPAWN HAZARD (METEOR) ────────────────────────────────────────────────
+function spawnHazard(elapsed){
+  const d=getDiff(elapsed);
+  const minY=40,maxY=G.H-60;
+  G.hazards.push({
+    x:G.W+60,y:minY+Math.random()*(maxY-minY),
+    vx:-d.speed*(0.85+Math.random()*.3),
+    r:20+Math.random()*16,
+    rot:Math.random()*Math.PI*2,
+    rotV:(Math.random()-.5)*.06,
+    destroyed:false,destroyAge:0,
+  });
+}
+
+// ─── SPAWN RUBY ───────────────────────────────────────────────────────────
+function spawnRuby(elapsed){
+  const d=getDiff(elapsed);
+  // wave pattern
+  const baseY=80+Math.random()*(G.H-160);
+  const count=1+Math.floor(Math.random()*2);
+  for(let i=0;i<count;i++){
+    G.collectibles.push({
+      x:G.W+80+i*70,y:baseY+(i%2===0?-25:25),
+      vx:-d.speed*.7,
+      r:10,type:'ruby',collected:false,
+      floatT:Math.random()*Math.PI*2,
+    });
+  }
+}
+
+// ─── SPAWN POWER-UP ───────────────────────────────────────────────────────
+function spawnPowerUp(elapsed){
+  const d=getDiff(elapsed);
+  G.collectibles.push({
+    x:G.W+60,y:80+Math.random()*(G.H-160),
+    vx:-d.speed*.6,r:14,type:'powerup',collected:false,
+    floatT:0,
+  });
+}
+
+// ─── DRAW METEOR ─────────────────────────────────────────────────────────
+function drawMeteor(m){
+  ctx.save();
+  ctx.translate(m.x,m.y);
+  ctx.rotate(m.rot);
+  if(m.destroyed){
+    ctx.globalAlpha=Math.max(0,1-m.destroyAge/300);
+  }
+  // glow
+  const grd=ctx.createRadialGradient(0,0,2,0,0,m.r*1.6);
+  grd.addColorStop(0,'rgba(255,120,40,.9)');
+  grd.addColorStop(.5,'rgba(180,60,20,.4)');
+  grd.addColorStop(1,'rgba(255,80,0,0)');
+  ctx.fillStyle=grd;
+  ctx.beginPath();ctx.arc(0,0,m.r*1.6,0,Math.PI*2);ctx.fill();
+  // rock
+  ctx.fillStyle='#5a3010';
+  ctx.beginPath();
+  ctx.moveTo(-m.r*.8,-m.r);
+  ctx.lineTo(m.r*.5,-m.r*.7);
+  ctx.lineTo(m.r,0);
+  ctx.lineTo(m.r*.6,m.r*.9);
+  ctx.lineTo(-m.r*.4,m.r);
+  ctx.lineTo(-m.r,m.r*.3);
+  ctx.lineTo(-m.r*.9,-m.r*0.5);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#7a4820';
+  ctx.beginPath();ctx.arc(-m.r*.2,-m.r*.2,m.r*.4,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+// ─── DRAW RUBY ────────────────────────────────────────────────────────────
+function drawRuby(c,t){
+  if(c.collected)return;
+  const fy=Math.sin(c.floatT+t*.002)*4;
+  ctx.save();
+  ctx.translate(c.x,c.y+fy);
+  if(c.type==='ruby'){
+    // gem glow
+    ctx.shadowColor='#ff2255';ctx.shadowBlur=18;
+    ctx.fillStyle='#e01040';
+    ctx.beginPath();
+    ctx.moveTo(0,-c.r*1.2);ctx.lineTo(c.r*.8,0);ctx.lineTo(0,c.r*1.2);ctx.lineTo(-c.r*.8,0);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,200,200,.5)';
+    ctx.beginPath();ctx.moveTo(0,-c.r*.8);ctx.lineTo(c.r*.3,-c.r*.1);ctx.lineTo(0,0);ctx.lineTo(-c.r*.3,-c.r*.1);ctx.closePath();ctx.fill();
+    ctx.shadowBlur=0;
+  }else{
+    // power-up: pbot icon
+    ctx.shadowColor='#ffec6e';ctx.shadowBlur=20;
+    ctx.fillStyle='#ffd700';
+    ctx.beginPath();ctx.arc(0,0,c.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#00ffe0';
+    ctx.font=`bold ${c.r*1.2}px sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('⚡',0,1);
+    ctx.shadowBlur=0;
+  }
+  ctx.restore();
+}
+
+// ─── DRAW LASER BEAM ─────────────────────────────────────────────────────
+function drawLaserBeam(px,py){
+  ctx.save();
+  // beam
+  const grd=ctx.createLinearGradient(px+PW,py+PH/2,G.W,py+PH/2);
+  grd.addColorStop(0,'rgba(0,255,224,1)');
+  grd.addColorStop(.3,'rgba(0,255,224,.7)');
+  grd.addColorStop(1,'rgba(0,255,224,0)');
+  ctx.shadowColor='#00ffe0';ctx.shadowBlur=24;
+  ctx.fillStyle=grd;
+  ctx.fillRect(px+PW,py+PH/2-3,G.W,6);
+  // core
+  ctx.fillStyle='rgba(255,255,255,.9)';
+  ctx.fillRect(px+PW,py+PH/2-1.5,G.W*.4,3);
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+// ─── PARTICLES ────────────────────────────────────────────────────────────
+function spawnExplosion(x,y,color){
+  for(let i=0;i<16;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=80+Math.random()*200;
+    G.particles.push({
+      x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
+      r:2+Math.random()*4,life:1,color,
+    });
+  }
+}
+
+function updateParticles(dt){
+  const s=dt/1000;
+  G.particles=G.particles.filter(p=>{
+    p.x+=p.vx*s;p.y+=p.vy*s;p.vy+=600*s;p.life-=s*2;
+    return p.life>0;
+  });
+}
+
+function drawParticles(){
+  G.particles.forEach(p=>{
+    ctx.save();
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  });
+}
+
+// ─── BACKGROUND ──────────────────────────────────────────────────────────
+let stars=[];
+function initStars(){
+  stars=[];
+  for(let i=0;i<120;i++){
+    stars.push({x:Math.random()*2000,y:Math.random()*800,r:.5+Math.random()*1.5,speed:.3+Math.random()*1.2,a:Math.random()});
+  }
+}
+function drawBG(elapsed){
+  ctx.fillStyle='#080c14';
+  ctx.fillRect(0,0,G.W,G.H);
+  // nebula
+  const ng=ctx.createRadialGradient(G.W*.3,G.H*.4,0,G.W*.3,G.H*.4,G.W*.5);
+  ng.addColorStop(0,'rgba(80,20,40,.15)');ng.addColorStop(1,'transparent');
+  ctx.fillStyle=ng;ctx.fillRect(0,0,G.W,G.H);
+  // stars (parallax)
+  stars.forEach(s=>{
+    const x=(s.x-elapsed*s.speed*.05)%G.W;
+    const blink=.4+.6*Math.abs(Math.sin(elapsed*.001+s.a*10));
+    ctx.globalAlpha=blink*.8;
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(x<0?x+G.W:x,s.y%G.H,s.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+// ─── MULTIPLIER ────────────────────────────────────────────────────────────
+function updateMultiplier(now){
+  if(now-G.lastRubyTs>CFG.multiplierWindow){
+    if(G.multiplier>1){G.multiplier=1;updateMultUI();}
+  }
+}
+
+function updateMultUI(){
+  if(G.multiplier>1){
+    multBadge.classList.add('show');
+    multVal.textContent=G.multiplier;
+  }else{
+    multBadge.classList.remove('show');
+  }
+}
+
+// ─── COLLECT RUBY ─────────────────────────────────────────────────────────
+function collectItem(c,now){
+  c.collected=true;
+  if(c.type==='ruby'){
+    // multiplier streak
+    if(now-G.lastRubyTs<CFG.multiplierWindow){
+      G.multiplier=Math.min(5,G.multiplier+1);
+    }else{G.multiplier=1;}
+    G.lastRubyTs=now;
+    updateMultUI();
+    const pts=10*G.multiplier;
+    G.score+=pts;
+    // meter fill
+    G.laserMeter=Math.min(CFG.laserMeterMax,G.laserMeter+CFG.rubyMeterFill);
+    if(G.laserMeter>=CFG.laserMeterMax&&!G.laserActive){activateLaser();}
+    floatText('+'+pts,c.x,c.y,'#ffd700');
+    spawnExplosion(c.x,c.y,'#ff2255');
+    sfxRuby();
+  }else{
+    G.laserMeter=CFG.laserMeterMax;
+    activateLaser();
+    floatText('⚡ LASER!',c.x,c.y,'#00ffe0');
+    sfxPowerUp();
+  }
+  updateHUD();
+}
+
+// ─── LASER ────────────────────────────────────────────────────────────────
+function activateLaser(){
+  G.laserActive=true;
+  G.laserTimer=CFG.laserDuration;
+  G.laserMeter=0;
+  laserHud.classList.add('active');
+  updateLaserUI();
+}
+
+function deactivateLaser(){
+  G.laserActive=false;
+  G.laserTimer=0;
+  laserHud.classList.remove('active');
+  laserWrap.classList.remove('full');
+  updateLaserUI();
+}
+
+function updateLaserUI(){
+  laserBar.style.width=(G.laserMeter/CFG.laserMeterMax*100)+'%';
+  if(G.laserMeter>=CFG.laserMeterMax&&!G.laserActive){laserWrap.classList.add('full');}
+  else{laserWrap.classList.remove('full');}
+}
+
+// ─── COLLISIONS ──────────────────────────────────────────────────────────
+const PX=80; // pbot x fixed
+function pbotRect(){return{x:PX,y:G.py,w:PW,h:PH};}
+
+function checkCollisions(now){
+  const pr=pbotRect();
+  // rubies / power-ups
+  G.collectibles.forEach(c=>{
+    if(c.collected)return;
+    const dx=c.x-(pr.x+PW/2),dy=c.y-(pr.y+PH/2);
+    if(Math.sqrt(dx*dx+dy*dy)<c.r+20)collectItem(c,now);
+  });
+  // laser vs meteors
+  if(G.laserActive){
+    const laserY=G.py+PH/2;
+    G.hazards.forEach(m=>{
+      if(m.destroyed)return;
+      if(m.x>PX+PW&&Math.abs(m.y-laserY)<m.r+4){
+        m.destroyed=true;
+        spawnExplosion(m.x,m.y,'#ff8040');
+        spawnExplosion(m.x,m.y,'#ffd700');
+        floatText('💥',m.x,m.y,'#ff8040');
+        sfxExplode();
+      }
+    });
+    return false; // no damage when laser active (invincible)
+  }
+  // hazard collision
+  for(const m of G.hazards){
+    if(m.destroyed)return;
+    const dx=(pr.x+PW/2)-m.x,dy=(pr.y+PH/2)-m.y;
+    if(Math.sqrt(dx*dx+dy*dy)<m.r+18){return true;}
+  }
+  return false;
+}
+
+// ─── UPDATE HUD ───────────────────────────────────────────────────────────
+function updateHUD(){
+  hudScore.textContent=G.score;
+  const s=Math.max(0,Math.ceil(G.timeLeft/1000));
+  const min=Math.floor(s/60),sec=s%60;
+  hudTimer.textContent=`${min}:${sec.toString().padStart(2,'0')}`;
+  hudTimerPill.classList.toggle('urgent',s<=10);
+  urgencyOverlay.classList.toggle('active',s<=5);
+}
+
+// ─── FLOAT TEXT ───────────────────────────────────────────────────────────
+function floatText(txt,x,y,color='#ffd700'){
+  const el=document.createElement('div');
+  el.className='float-text';
+  el.textContent=txt;
+  el.style.cssText=`left:${x}px;top:${y-20}px;color:${color};font-family:var(--font-head);`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),700);
+}
+
+// ─── SFX (Web Audio) ──────────────────────────────────────────────────────
+let AC;
+function getAC(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
+function beep(freq,type,dur,gain=0.18,decay=.5){
+  try{
+    const ac=getAC();
+    const o=ac.createOscillator();const g=ac.createGain();
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(gain,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+dur);
+    o.connect(g);g.connect(ac.destination);
+    o.start();o.stop(ac.currentTime+dur);
+  }catch(e){}
+}
+function sfxFlap(){beep(440,'triangle',.08,.1)}
+function sfxRuby(){beep(880,'sine',.12,.15);setTimeout(()=>beep(1100,'sine',.1,.12),60)}
+function sfxPowerUp(){[800,1000,1200,1500].forEach((f,i)=>setTimeout(()=>beep(f,'sine',.15,.15),i*60))}
+function sfxExplode(){beep(120,'sawtooth',.25,.25);beep(80,'square',.2,.2)}
+function sfxCrash(){beep(220,'sawtooth',.3,.3);beep(160,'sawtooth',.25,.25)}
+
+// ─── MAIN LOOP ────────────────────────────────────────────────────────────
+function gameLoop(ts){
+  if(!G.running||G.paused)return;
+  const dt=Math.min(ts-G.lastTs,50);G.lastTs=ts;
+
+  // time
+  G.elapsed+=dt;
+  G.timeLeft-=dt;
+  if(G.timeLeft<=0){G.timeLeft=0;updateHUD();endGame('timeup');return;}
+  updateHUD();
+
+  // physics
+  G.vy+=CFG.gravity*dt/1000;
+  G.py+=G.vy*dt/1000;
+  if(G.py<0){G.py=0;G.vy=0;}
+  if(G.py>G.H-PH){G.py=G.H-PH;G.vy=0;}
+
+  // spawn hazard
+  G.nextHazardMs-=dt;
+  if(G.nextHazardMs<=0){
+    const d=getDiff(G.elapsed);
+    spawnHazard(G.elapsed);
+    // sometimes spawn ruby in gaps
+    if(Math.random()<.55)spawnRuby(G.elapsed);
+    G.nextHazardMs=d.spawnMs+(Math.random()*300-150);
+  }
+
+  // spawn powerup
+  G.nextPowerUpMs-=dt;
+  if(G.nextPowerUpMs<=0){
+    spawnPowerUp(G.elapsed);
+    G.nextPowerUpMs=18000+Math.random()*8000;
+  }
+
+  // move objects
+  const d=getDiff(G.elapsed);
+  G.hazards.forEach(m=>{
+    m.x+=m.vx*dt/1000;
+    m.rot+=m.rotV;
+    if(m.destroyed){m.destroyAge+=dt;}
+  });
+  G.collectibles.forEach(c=>{c.x+=c.vx*dt/1000;c.floatT+=dt*.002;});
+  // cull
+  G.hazards=G.hazards.filter(m=>m.x>-100&&!(m.destroyed&&m.destroyAge>350));
+  G.collectibles=G.collectibles.filter(c=>c.x>-60&&!c.collected);
+
+  // laser
+  if(G.laserActive){
+    G.laserTimer-=dt;
+    if(G.laserTimer<=0){deactivateLaser();}
+    else{laserTimerTxt.textContent=Math.ceil(G.laserTimer/1000)+'s';}
+  }
+
+  // multiplier decay
+  updateMultiplier(ts);
+
+  // laser meter UI
+  updateLaserUI();
+
+  // particles
+  updateParticles(dt);
+
+  // collisions
+  const hit=checkCollisions(ts);
+
+  // ─── RENDER ───
+  drawBG(G.elapsed);
+  // laser beam
+  if(G.laserActive)drawLaserBeam(PX,G.py);
+  // meteors
+  G.hazards.forEach(m=>drawMeteor(m));
+  // collectibles
+  G.collectibles.forEach(c=>drawRuby(c,G.elapsed));
+  // pbot
+  drawPbot(PX,G.py,G.laserActive);
+  // particles
+  drawParticles();
+
+  if(hit){crashPbot();return;}
+
+  G.raf=requestAnimationFrame(gameLoop);
+}
+
+// ─── CRASH ────────────────────────────────────────────────────────────────
+function crashPbot(){
+  G.running=false;
+  sfxCrash();
+  spawnExplosion(PX+PW/2,G.py+PH/2,'#ffd700');
+  spawnExplosion(PX+PW/2,G.py+PH/2,'#ff4444');
+  flashOverlay.style.opacity='1';
+  setTimeout(()=>{
+    flashOverlay.style.transition='opacity .25s';
+    flashOverlay.style.opacity='0';
+    setTimeout(()=>flashOverlay.style.transition='',300);
+    if(G.timeLeft>0){overlayContinue.classList.add('active');G.paused=true;}
+    else endGame('crash');
+  },120);
+}
+
+// ─── END GAME ─────────────────────────────────────────────────────────────
+function endGame(reason){
+  G.running=false;cancelAnimationFrame(G.raf);
+  const best=G.score>G.bestScore;
+  if(best){G.bestScore=G.score;localStorage.setItem('rr-best',G.score);}
+  goTitle.textContent=reason==='timeup'?"TIME'S UP!":'GAME OVER';
+  goScore.textContent=G.score;
+  goBest.style.display=best?'block':'none';
+  showScreen('gameover');
+}
+
+// ─── FLAP ─────────────────────────────────────────────────────────────────
+function flap(){
+  if(!G.running||G.paused)return;
+  G.vy=CFG.jumpForce;
+  sfxFlap();
+}
+canvas.addEventListener('pointerdown',flap,{passive:true});
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();flap();}
+});
+
+// ─── START GAME ───────────────────────────────────────────────────────────
+function startGame(){
+  resetState();
+  resizeCanvas();
+  initStars();
+  G.py=G.H/2-PH/2;
+  G.running=true;G.paused=false;G.lastTs=performance.now();
+  deactivateLaser();
+  multBadge.classList.remove('show');
+  urgencyOverlay.classList.remove('active');
+  overlayContinue.classList.remove('active');
+  flashOverlay.style.opacity='0';
+  updateHUD();updateLaserUI();
+  showScreen('game');
+  G.raf=requestAnimationFrame(ts=>{G.lastTs=ts;requestAnimationFrame(gameLoop);});
+}
+
+// ─── BUTTON HANDLERS ──────────────────────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click',startGame);
+document.getElementById('btn-continue').addEventListener('click',()=>{
+  overlayContinue.classList.remove('active');
+  G.running=true;G.paused=false;G.vy=0;G.py=G.H/2-PH/2;G.lastTs=performance.now();
+  G.raf=requestAnimationFrame(gameLoop);
+});
+document.getElementById('btn-give-up').addEventListener('click',()=>{
+  overlayContinue.classList.remove('active');endGame('crash');
+});
+document.getElementById('btn-retry').addEventListener('click',startGame);
+document.getElementById('btn-to-title').addEventListener('click',()=>showScreen('title'));
+
+window.addEventListener('resize',()=>{if(G.running)resizeCanvas();});
+</script>
+</body>
+</html>
+

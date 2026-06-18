@@ -245,6 +245,12 @@
     transition: transform 80ms ease;
   }
   .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--orange); }
+  .cta:disabled {
+    opacity: 0.7;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+  }
   .skip-btn {
     margin-top: 8px;
     padding: 8px 14px;
@@ -361,7 +367,7 @@
     <h1 id="menuTitle">KATAKU</h1>
     <p id="menuSub"></p>
     <p class="best" id="bestText">&nbsp;</p>
-    <button id="startBtn" class="cta"></button>
+    <button id="startBtn" class="cta" type="button"></button>
     <p id="menuHint" style="font-size:12px;margin-top:14px;"></p>
   </div>
 </div>
@@ -379,7 +385,7 @@
       <div class="final-score-value" id="goFinalValue">0</div>
     </div>
     <div id="finalStats" class="stats"></div>
-    <button id="claimBtn" class="cta"></button>
+    <button id="claimBtn" class="cta" type="button"></button>
   </div>
 </div>
 
@@ -780,6 +786,8 @@ function fmtTime(ms) {
 // Run lifecycle
 // =============================================================================
 function startRun() {
+  claimLocked = false;
+  updateEndCta();
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
   dom.hud.classList.remove('hidden');
@@ -1237,8 +1245,6 @@ dom.claimBtn.addEventListener('click', async () => {
     location.href = claimUrl;
   } catch (e) {
     console.warn('[kataku] claim submit failed:', e);
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
     claimLocked = false;
   }
 });

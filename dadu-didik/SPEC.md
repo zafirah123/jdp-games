@@ -490,6 +490,9 @@ die to the board", "Merge three to grow!", "COMBO ×N!", "RUBY BURST!",
 - **Callback resolution:** `callback_url` query param (must be `https:`) →
   else platform fallback `window.__JDP_CALLBACK_URL__` → else null. Never
   hardcode a public callback URL.
+- **WebView handoff:** prefer a redirect-built claim URL over `fetch`-first
+  submission. The Pandai app WebView is more reliable when CLAIM SCORE uses
+  navigation-based handoff.
 - **Payload (min):** `{ game: 'dadu-didik', score: int, token: uuid }`.
   Optional: `suspicious`, `suspicious_reason`, `log` (compact, no PII) — e.g.
   `{ duration_ms, placements, max_chain, merges, rubies, bursts }`.

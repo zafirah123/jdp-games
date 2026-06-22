@@ -843,25 +843,27 @@ function buildClaimPayload(finalScore){
     log:{ duration_ms:Math.round(performance.now()-st.startWall), placements:st.placements,
           merges:st.merges, rubies:st.rubies, bursts:st.bursts, max_chain:st.maxChain } };
 }
+function buildClaimUrl(payload){
+  const base=resolveCallbackUrl();
+  if(!base) return null;
+  const u=new URL(base);
+  Object.entries(payload).forEach(([k,v])=>{
+    if(v===undefined || v===null) return;
+    u.searchParams.set(k, typeof v==='object' ? JSON.stringify(v) : String(v));
+  });
+  return u.toString();
+}
 async function submitScore(){
   if(STATE.submitted) return; STATE.submitted=true;
   const payload=buildClaimPayload(STATE.score);
-  const url=resolveCallbackUrl();
+  const url=buildClaimUrl(payload);
   const note=document.getElementById('claimNote');
   if(!url){
     note.textContent = COPY.claimUnavailable;
     note.classList.remove('hidden');
     return;
   }
-  let ok=false;
-  try{ const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); ok=res.ok; }
-  catch(_){ ok=false; }
-  if(!ok){ // GET redirect fallback
-    try{ const u=new URL(url); Object.entries(payload).forEach(([k,v])=>u.searchParams.set(k, typeof v==='object'?JSON.stringify(v):v));
-      location.href=u.toString(); return; }catch(_){}
-  }
-  note.textContent = ok?COPY.claimed:COPY.claimFail;
-  note.classList.remove('hidden');
+  location.href=url;
 }
 
 /* CTA handler */

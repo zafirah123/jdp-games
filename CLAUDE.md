@@ -524,6 +524,11 @@ function buildClaimPayload(finalScore, extra = {}) {
 }
 ```
 
+For the final handoff, prefer building a callback URL and redirecting with
+`window.location.href` / `location.href`. In-app WebViews are less reliable
+with `fetch`-first score submission, especially when the host app expects a
+navigation-based callback.
+
 **Early end is required.** In addition to the final end-of-game modal, every
 game must provide a player-accessible way to end the run early and submit the
 current score through the same callback contract.

@@ -1,7 +1,7 @@
 import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
 import { addMuteButton, pointerHitsMuteButton } from '../muteButton.js';
 import { addPauseButton } from '../pauseButton.js';
-import { claimScore } from '../claimScore.js';
+import { canClaimScore, claimScore } from '../claimScore.js';
 import { COPY } from '../copy.js';
 
 const FLOOR_HEIGHT       = 80;
@@ -412,7 +412,7 @@ export class GameScene extends Phaser.Scene {
     // End run — outlined secondary
     const endBtn = this._modalButton(cx, cy + 92, 200, 48,
       COPY.endRunBtn, PALETTE.navy, PALETTE_CSS.yellow, PALETTE.yellow,
-      () => {
+      async () => {
         const timeUsedMs = this.carriedTimeMs + this.elapsedMs;
         if (this.score <= 0) {
           this.scene.start('GameOverScene', {
@@ -422,13 +422,38 @@ export class GameScene extends Phaser.Scene {
           });
           return;
         }
-        claimScore(this.score, {
+        this._setPauseButtonDisabled(endBtn, true);
+        this._setPauseStatus(COPY.claimSubmitting);
+        const result = await claimScore(this.score, {
           timeUsedMs,
           cause: 'early',
         });
+        if (result?.status === 'redirecting') return;
+        if (result?.status === 'missing_callback') {
+          this._setPauseStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+        } else if (result?.status === 'locked') {
+          this._setPauseStatus(COPY.claimSubmitting);
+        } else {
+          this._setPauseStatus(COPY.claimFailed, PALETTE_CSS.ruby);
+        }
+        this._setPauseButtonDisabled(endBtn, this.score > 0 && !canClaimScore());
       },
       /* outlined */ true);
     this.pauseOverlay.add(endBtn);
+
+    this.pauseStatus = this.add.text(cx, cy + 132, '', {
+      fontFamily: FONTS.ui,
+      fontSize:   '12px',
+      color:      PALETTE_CSS.white,
+      wordWrap:   { width: cw - 40 },
+      align:      'center',
+    }).setOrigin(0.5).setAlpha(0.85);
+    this.pauseOverlay.add(this.pauseStatus);
+
+    if (this.score > 0 && !canClaimScore()) {
+      this._setPauseButtonDisabled(endBtn, true);
+      this._setPauseStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+    }
 
     // entrance pop — tweens keep running while physics/time are paused
     this.pauseOverlay.setAlpha(0);
@@ -442,6 +467,19 @@ export class GameScene extends Phaser.Scene {
     if (!this.pauseOverlay) return;
     this.pauseOverlay.destroy();
     this.pauseOverlay = null;
+    this.pauseStatus = null;
+  }
+
+  _setPauseStatus(message, color = PALETTE_CSS.white) {
+    if (!this.pauseStatus) return;
+    this.pauseStatus.setText(message || '');
+    this.pauseStatus.setColor(color);
+  }
+
+  _setPauseButtonDisabled(btn, disabled) {
+    if (!btn) return;
+    btn.isDisabled = disabled;
+    btn.setAlpha(disabled ? 0.55 : 1);
   }
 
   // Single-purpose modal button factory for the pause overlay. Kept inline
@@ -473,9 +511,13 @@ export class GameScene extends Phaser.Scene {
       new Phaser.Geom.Rectangle(-w / 2 - PAD_X, -h / 2 - PAD_Y, w + PAD_X * 2, h + PAD_Y * 2),
       Phaser.Geom.Rectangle.Contains,
     );
-    btn.on('pointerover', () => this.input.setDefaultCursor('pointer'));
+    btn.on('pointerover', () => {
+      if (btn.isDisabled) return;
+      this.input.setDefaultCursor('pointer');
+    });
     btn.on('pointerout',  () => this.input.setDefaultCursor('default'));
     btn.on('pointerdown', () => {
+      if (btn.isDisabled) return;
       this.tweens.add({
         targets: btn, scale: 0.94, duration: 80, yoyo: true,
         onComplete: onClick,

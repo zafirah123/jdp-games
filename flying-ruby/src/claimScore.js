@@ -78,6 +78,10 @@ export function resolveCallbackUrl() {
   return null;
 }
 
+export function canClaimScore() {
+  return !!resolveCallbackUrl();
+}
+
 export function buildClaimUrl(callbackUrl, payload) {
   const u = new URL(callbackUrl);
   Object.entries(payload).forEach(([k, v]) => {
@@ -96,7 +100,7 @@ function recordClaim(payload) {
 }
 
 export async function claimScore(score, { timeUsedMs, cause } = {}) {
-  if (claimLocked) return null;
+  if (claimLocked) return { status: 'locked', payload: null };
   claimLocked = true;
 
   const token = newToken();
@@ -115,7 +119,7 @@ export async function claimScore(score, { timeUsedMs, cause } = {}) {
     if (!callbackUrl) {
       console.info('[flying-ruby] claimScore (no callback_url configured):', payload);
       claimLocked = false;
-      return payload;
+      return { status: 'missing_callback', payload };
     }
 
     if (claimContext.launchToken && claimContext.resKey && claimContext.tokenCallbackUrl) {
@@ -133,15 +137,15 @@ export async function claimScore(score, { timeUsedMs, cause } = {}) {
       target.searchParams.set('dd', encrypted.dd);
       target.searchParams.set('dv', encrypted.dv);
       window.location.href = target.toString();
-      return payload;
+      return { status: 'redirecting', payload };
     }
 
     window.location.href = buildClaimUrl(callbackUrl, payload);
-    return payload;
+    return { status: 'redirecting', payload };
   } catch (e) {
     console.warn('[flying-ruby] claim submit failed:', e);
     claimLocked = false;
-    return payload;
+    return { status: 'failed', payload, error: e };
   }
 }
 

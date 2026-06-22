@@ -355,6 +355,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
+    claimUnavailable: 'CLAIM UNAVAILABLE',
     retry: 'RETRY',
     next: 'Next',
     score: 'Score',
@@ -379,6 +380,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
+    claimUnavailable: 'TUNTUTAN TIDAK TERSEDIA',
     retry: 'RETRY',
     next: 'Seterusnya',
     score: 'Skor',
@@ -1387,7 +1389,7 @@ function endGame(reason) {
 }
 
 // =============================================================================
-// CLAIM SCORE callback flow — supports default callback flow (§6.5) and Genet encrypted flow (§6.6)
+// CLAIM SCORE callback flow - supports default callback flow (sec 6.5) and Genet encrypted flow (sec 6.6)
 // =============================================================================
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
@@ -1420,7 +1422,7 @@ async function submitClaim() {
     window.location.href = url;
   } else {
     console.log('[gem-merge] CLAIM SCORE (no callback configured)', extra);
-    dom.claimBtn.textContent = `${COPY.score}: ${state.score}`;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
     dom.claimBtn.disabled = true;
     claimLocked = false;
   }

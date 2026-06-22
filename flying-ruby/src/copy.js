@@ -19,6 +19,9 @@ export const COPY = {
     audioOff:   'AUDIO OFF',
     claimScore: 'CLAIM SCORE',
     retry:      'RETRY',
+    claimUnavailable: 'CLAIM UNAVAILABLE',
+    claimSubmitting:  'Sending your score...',
+    claimFailed:      'Unable to open the score claim. Please try again.',
     // --- StartScene -----------------------------------------------------
     tagline:  'Tap to fly  •  Collect rubies  •  Beat 3:00',
     // --- GameScene ------------------------------------------------------
@@ -49,6 +52,9 @@ export const COPY = {
     audioOff:   'AUDIO OFF',
     claimScore: 'TUNTUT SKOR',
     retry:      'RETRY',
+    claimUnavailable: 'TUNTUTAN TIDAK TERSEDIA',
+    claimSubmitting:  'Menghantar skor anda...',
+    claimFailed:      'Tidak dapat membuka tuntutan skor. Sila cuba lagi.',
     // --- StartScene -----------------------------------------------------
     tagline:  'Ketuk untuk terbang  •  Kutip delima  •  Tewaskan 3:00',
     // --- GameScene ------------------------------------------------------

@@ -292,6 +292,7 @@
                 statPopped: 'Bubbles Popped',
                 statCombos: 'Combos Achieved',
                 claimScore: 'CLAIM SCORE',
+                claimUnavailable: 'CLAIM UNAVAILABLE',
                 retry: 'RETRY',
                 lineBreached: 'LINE BREACHED!',
                 lineBreachedDesc: 'The bubbles descended past the danger line. Clear them faster next time!',
@@ -328,6 +329,7 @@
                 statPopped: 'Buih Diletupkan',
                 statCombos: 'Kombo Dicapai',
                 claimScore: 'TUNTUT SKOR',
+                claimUnavailable: 'TUNTUTAN TIDAK TERSEDIA',
                 retry: 'RETRY',
                 lineBreached: 'GARISAN DILANGGAR!',
                 lineBreachedDesc: 'Buih telah melepasi garisan bahaya. Bersihkan lebih pantas pada cubaan seterusnya!',
@@ -341,6 +343,30 @@
         }[LANG];
         function isZeroScore() { return (Game.score | 0) <= 0; }
         function endCtaLabel() { return isZeroScore() ? COPY.retry : COPY.claimScore; }
+        function resolveCallbackUrl() {
+            try {
+                const candidate = new URLSearchParams(location.search).get('callback_url');
+                if (candidate) {
+                    const u = new URL(candidate);
+                    if (u.protocol === 'https:') return u.toString();
+                }
+            } catch (_) {}
+            return (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__)
+                ? window.__JDP_CALLBACK_URL__
+                : null;
+        }
+        function buildClaimUrl(score) {
+            const base = resolveCallbackUrl();
+            if (!base) return null;
+            const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
+                ? crypto.randomUUID()
+                : Math.random().toString(36).slice(2) + Date.now().toString(36);
+            const url = new URL(base);
+            url.searchParams.set('game', 'bubble-shooter');
+            url.searchParams.set('score', String(Math.max(0, score | 0)));
+            url.searchParams.set('token', token);
+            return url.toString();
+        }
 
         // Apply COPY to static DOM strings before game boot
         function applyCopyToDOM() {
@@ -793,13 +819,13 @@
                         return;
                     }
                     // CLAUDE.md §6.5: CLAIM SCORE redirect — no in-game retry
-                    const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-                        ? crypto.randomUUID()
-                        : Math.random().toString(36).slice(2) + Date.now().toString(36);
-                    location.href = 'https://app.pandai.org/app/game'
-                        + '?game=' + encodeURIComponent('bubble-shooter')
-                        + '&score=' + this.score
-                        + '&token=' + encodeURIComponent(token);
+                    const claimUrl = buildClaimUrl(this.score);
+                    if (!claimUrl) {
+                        document.getElementById('restart-btn').textContent = COPY.claimUnavailable;
+                        document.getElementById('restart-btn').disabled = true;
+                        return;
+                    }
+                    location.href = claimUrl;
                 });
 
                 // Toggle Audio — DESIGN.md §5.11
@@ -1747,6 +1773,7 @@
                 // when score > 0, RETRY only when score = 0. (Initial load runs
                 // applyCopyToDOM() while score is still 0, so re-evaluate here.)
                 document.getElementById('restart-btn').textContent = endCtaLabel();
+                document.getElementById('restart-btn').disabled = false;
 
                 SoundSystem.playGameOver(victory);
 

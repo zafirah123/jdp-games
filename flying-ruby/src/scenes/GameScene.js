@@ -1,8 +1,8 @@
-import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
-import { addMuteButton, pointerHitsMuteButton } from '../muteButton.js';
-import { addPauseButton } from '../pauseButton.js';
-import { canClaimScore, claimScore } from '../claimScore.js';
-import { COPY } from '../copy.js';
+import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260624.2';
+import { addMuteButton, pointerHitsMuteButton } from '../muteButton.js?v=20260624.2';
+import { addPauseButton } from '../pauseButton.js?v=20260624.2';
+import { canClaimScore, claimScore } from '../claimScore.js?v=20260624.2';
+import { COPY } from '../copy.js?v=20260624.2';
 
 const FLOOR_HEIGHT       = 80;
 const HUD_HEIGHT         = 70;

@@ -529,6 +529,18 @@ For the final handoff, prefer building a callback URL and redirecting with
 with `fetch`-first score submission, especially when the host app expects a
 navigation-based callback.
 
+Claim CTAs must be single-submit safe. Disable the CTA on the first tap
+before resolving or navigating to the callback URL, keep it disabled while
+the handoff is in progress, and only re-enable it on a recoverable local
+failure. If callback resolution fails, show an explicit unavailable/error
+state instead of leaving the CTA apparently tappable.
+
+When shipping claim-flow changes, bump the versioned script or module URL
+used by the game (for example `claim-callback.js?v=...` or `main.js?v=...`,
+plus any ES-module imports behind it). Some in-app WebViews cache old JS
+aggressively, so a version bump is the safest way to ensure the updated
+claim behavior is actually what runs.
+
 **Early end is required.** In addition to the final end-of-game modal, every
 game must provide a player-accessible way to end the run early and submit the
 current score through the same callback contract.
@@ -692,6 +704,8 @@ A game is shippable when it satisfies **all** of:
 - [ ] End-of-game modal follows §6.5 — score `> 0` uses `CLAIM SCORE` callback CTA (payload includes `game`, `score`, random `token`); score `= 0` uses local `RETRY`
 - [ ] Game supports `callback_url` query param and platform fallback callback target
 - [ ] Game supports player-triggered early-end callback (same payload contract)
+- [ ] Claim CTA disables on first tap, stays disabled during redirect/unavailable states, and only re-enables on recoverable local failure
+- [ ] Claim-flow script/module URLs are version-bumped when shipping callback changes, especially for in-app WebView launches
 - [ ] If using Genet launcher integration (§6.6), callback submit uses encrypted `token` + `dd` + `dv`, includes duplicate-submit guard, and never submits score `0`
 - [ ] Optional suspicious-score check (if present) runs locally pre-submit and flags payload
 - [ ] Optional `log` payload (if present) is lightweight and excludes PII/tracking

@@ -859,7 +859,7 @@ function endRound(titleKey) {
 dom.startBtn.addEventListener('click', () => { startRound(); ensureAudio(); });
 
 // ===========================================================================
-// CLAIM SCORE — supports default callback flow (§6.5) and Genet encrypted flow (§6.6)
+// CLAIM SCORE ï¿½ supports default callback flow (ï¿½6.5) and Genet encrypted flow (ï¿½6.6)
 // ===========================================================================
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
@@ -881,6 +881,7 @@ dom.claimBtn.addEventListener('click', async () => {
   }
   if (claimLocked) return;
   claimLocked = true;
+  dom.claimBtn.disabled = true;
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
@@ -893,6 +894,7 @@ dom.claimBtn.addEventListener('click', async () => {
     location.href = claimUrl;
   } catch (e) {
     console.warn('[number-snap] claim submit failed:', e);
+    dom.claimBtn.disabled = false;
     claimLocked = false;
   }
 });

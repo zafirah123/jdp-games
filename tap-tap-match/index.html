@@ -576,7 +576,7 @@ function syncGameOverUi() {
     goBest.textContent = '';
     goBest.classList.remove('is-new');
   }
-  claimBtn.disabled = false;
+  claimBtn.disabled = state.claimUnavailable;
   claimBtn.textContent = label;
   claimBtn.setAttribute('aria-label', label);
   gameOverOverlay.classList.remove('hidden');
@@ -1065,6 +1065,7 @@ async function handleClaimTap() {
   }
   if (claimLocked) return;
   claimLocked = true;
+  claimBtn.disabled = true;
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
@@ -1077,6 +1078,7 @@ async function handleClaimTap() {
     location.href = claimUrl;
   } catch (err) {
     console.warn('[tap-tap-match] claim submit failed:', err);
+    claimBtn.disabled = false;
     claimLocked = false;
   }
 }

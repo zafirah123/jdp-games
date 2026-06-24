@@ -818,7 +818,8 @@
                         this.start();
                         return;
                     }
-                    // CLAUDE.md §6.5: CLAIM SCORE redirect — no in-game retry
+                    // CLAUDE.md ?6.5: CLAIM SCORE redirect ? no in-game retry
+                    document.getElementById('restart-btn').disabled = true;
                     const claimUrl = buildClaimUrl(this.score);
                     if (!claimUrl) {
                         document.getElementById('restart-btn').textContent = COPY.claimUnavailable;

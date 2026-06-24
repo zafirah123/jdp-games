@@ -1233,6 +1233,7 @@ dom.claimBtn.addEventListener('click', async () => {
   }
   if (claimLocked) return;
   claimLocked = true;
+  dom.claimBtn.disabled = true;
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
@@ -1245,6 +1246,7 @@ dom.claimBtn.addEventListener('click', async () => {
     location.href = claimUrl;
   } catch (e) {
     console.warn('[kataku] claim submit failed:', e);
+    dom.claimBtn.disabled = false;
     claimLocked = false;
   }
 });

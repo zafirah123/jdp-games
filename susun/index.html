@@ -968,6 +968,7 @@ dom.claimBtn.addEventListener('click', async () => {
   }
   if (claimLocked) return;
   claimLocked = true;
+  dom.claimBtn.disabled = true;
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
@@ -980,12 +981,13 @@ dom.claimBtn.addEventListener('click', async () => {
     location.href = claimUrl;
   } catch (e) {
     console.warn('[susun] claim submit failed:', e);
+    dom.claimBtn.disabled = false;
     claimLocked = false;
   }
 });
 
 // =============================================================================
-// SUBMIT SCORE — supports default callback flow (§6.5) and Genet encrypted flow (§6.6)
+// SUBMIT SCORE ï¿½ supports default callback flow (ï¿½6.5) and Genet encrypted flow (ï¿½6.6)
 // =============================================================================
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();

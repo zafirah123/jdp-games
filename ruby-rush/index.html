@@ -1648,6 +1648,7 @@ function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.claimBtn.addEventListener('click', () => {
   if ((state.score | 0) <= 0) { startGame(); return; }
+  dom.claimBtn.disabled = true;
   const claimUrl = buildClaimUrl();
   if (!claimUrl) {
     dom.claimBtn.textContent = COPY.claimUnavailable;

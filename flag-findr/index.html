@@ -1025,6 +1025,7 @@ async function buildClaimUrl(){
 document.getElementById('claimBtn').addEventListener('click', async ()=>{
   if (state.score <= 0){ startGame(); return; }   // RETRY (§6.5) — local restart for zero-score only
   if (claimLocked) return; claimLocked = true;
+  document.getElementById('claimBtn').disabled = true;
   try {
     const url = await buildClaimUrl();
     if (!url){
@@ -1039,8 +1040,7 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
   } catch(err){
     console.warn('[flag-findr] claim failed', err);
     const claimBtn = document.getElementById('claimBtn');
-    claimBtn.textContent = COPY.claimUnavailable;
-    claimBtn.disabled = true;
+    claimBtn.disabled = false;
     claimLocked = false;
   }
 });

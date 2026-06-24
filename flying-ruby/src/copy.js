@@ -1,8 +1,8 @@
-// Resolves UI copy based on the URL `lang` parameter — see CLAUDE.md §6.4.
+// Resolves UI copy based on the URL `lang` parameter - see CLAUDE.md section 6.4.
 //
 // Default is English. `?lang=ms` switches the whole game to Bahasa Melayu.
 // Any unrecognized `lang` value falls back to English. The choice is *not*
-// persisted across visits — the URL is the source of truth so links shared
+// persisted across visits - the URL is the source of truth so links shared
 // between players carry the intended language.
 //
 // The five canonical keys (start, timeUp, gameOver, audioOn, audioOff) MUST
@@ -11,7 +11,7 @@ const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 
 
 export const COPY = {
   en: {
-    // --- canonical (§6.4) ----------------------------------------------
+    // --- canonical (section 6.4) ---------------------------------------
     start:      'START GAME',
     timeUp:     "TIME'S UP!",
     gameOver:   'GAME OVER',
@@ -23,10 +23,10 @@ export const COPY = {
     claimSubmitting:  'Sending your score...',
     claimFailed:      'Unable to open the score claim. Please try again.',
     // --- StartScene -----------------------------------------------------
-    tagline:  'Tap to fly  •  Collect rubies  •  Beat 3:00',
+    tagline:  'Tap to fly - Collect rubies - Beat 3:00',
     // --- GameScene ------------------------------------------------------
     tapToFly:    'TAP TO FLY',
-    tapSub:      'avoid obstacles  •  grab rubies',
+    tapSub:      'avoid obstacles - grab rubies',
     hudTime:     'TIME',
     magnetLabel: 'MAGNET!',
     rushLabel:   'POWER RUSH!',
@@ -34,7 +34,7 @@ export const COPY = {
     pauseSub:    'End the run now and submit your score?',
     resumeBtn:   'RESUME',
     // --- GameOverScene --------------------------------------------------
-    fullRoundDone: 'Your full 3:00 is up — nice flying!',
+    fullRoundDone: 'Your full 3:00 is up - nice flying!',
     timeLeft:      (mmss) => `${mmss} left of your 3:00`,
     rubiesCollected: 'RUBIES COLLECTED',
     best:    'BEST',
@@ -44,7 +44,7 @@ export const COPY = {
     endRunBtn:   'END RUN',
   },
   ms: {
-    // --- canonical (§6.4) ----------------------------------------------
+    // --- canonical (section 6.4) ---------------------------------------
     start:      'MULA MAIN',
     timeUp:     'MASA TAMAT!',
     gameOver:   'PERMAINAN TAMAT',
@@ -56,10 +56,10 @@ export const COPY = {
     claimSubmitting:  'Menghantar skor anda...',
     claimFailed:      'Tidak dapat membuka tuntutan skor. Sila cuba lagi.',
     // --- StartScene -----------------------------------------------------
-    tagline:  'Ketuk untuk terbang  •  Kutip delima  •  Tewaskan 3:00',
+    tagline:  'Ketuk untuk terbang - Kutip delima - Tewaskan 3:00',
     // --- GameScene ------------------------------------------------------
     tapToFly:    'KETUK UNTUK TERBANG',
-    tapSub:      'elak halangan  •  kutip delima',
+    tapSub:      'elak halangan - kutip delima',
     hudTime:     'MASA',
     magnetLabel: 'MAGNET!',
     rushLabel:   'KUASA RUSH!',
@@ -67,7 +67,7 @@ export const COPY = {
     pauseSub:    'Tamatkan pusingan dan hantar skor anda?',
     resumeBtn:   'SAMBUNG',
     // --- GameOverScene --------------------------------------------------
-    fullRoundDone: 'Masa 3:00 anda habis — terbangan yang hebat!',
+    fullRoundDone: 'Masa 3:00 anda habis - terbangan yang hebat!',
     timeLeft:      (mmss) => `${mmss} berbaki daripada 3:00 anda`,
     rubiesCollected: 'DELIMA DIKUTIP',
     best:    'TERBAIK',

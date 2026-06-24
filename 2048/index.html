@@ -1147,7 +1147,7 @@ canvas.addEventListener('mouseup', (e) => {
   else attemptMove(dy > 0 ? 'down' : 'up');
 });
 
-// CLAIM SCORE � supports both default callback flow (�6.5) and Genet encrypted flow (�6.6).
+// CLAIM SCORE - supports both default callback flow (section 6.5) and Genet encrypted flow (section 6.6).
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');

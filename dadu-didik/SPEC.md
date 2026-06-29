@@ -476,6 +476,7 @@ Headline `TIME'S UP!` or `GAME OVER` · final **Score** (alone, no `/500`) ·
 | Audio muted | `AUDIO OFF` | `AUDIO OFF` |
 | End CTA, score > 0 | `CLAIM SCORE` | `TUNTUT SKOR` |
 | End CTA, score = 0 | `RETRY` | `RETRY` |
+| Claim unavailable state | `CALLBACK UNAVAILABLE` | `PANGGIL BALIK TIADA` |
 
 `?lang=ms` switches **all** copy (subtitles, combo text, hints) to BM;
 unknown values fall back to English; the choice is **not** persisted (URL is
@@ -490,13 +491,23 @@ die to the board", "Merge three to grow!", "COMBO ×N!", "RUBY BURST!",
 - **Callback resolution:** `callback_url` query param (must be `https:`) →
   else platform fallback `window.__JDP_CALLBACK_URL__` → else null. Never
   hardcode a public callback URL.
+- **Fail closed:** claim preparation should return `null` / unavailable
+  instead of throwing where possible. Invalid, malformed, expired, or missing
+  callback context must not produce a dead clickable CTA.
 - **WebView handoff:** prefer a redirect-built claim URL over `fetch`-first
   submission. The Pandai app WebView is more reliable when CLAIM SCORE uses
   navigation-based handoff.
+- **CTA state:** on tap, disable the claim CTA immediately and keep it
+  disabled while preparing/submitting. If redirect succeeds, the page leaves.
+  If preparation fails, keep the CTA disabled and show
+  **`CALLBACK UNAVAILABLE`** / **`PANGGIL BALIK TIADA`**.
 - **Payload (min):** `{ game: 'dadu-didik', score: int, token: uuid }`.
   Optional: `suspicious`, `suspicious_reason`, `log` (compact, no PII) — e.g.
   `{ duration_ms, placements, max_chain, merges, rubies, bursts }`.
 - **Early-end** (§6.4) submits through the **same** contract.
+- **Timeout case:** if the timer expires and the player taps `CLAIM SCORE`,
+  either redirect successfully or transition into the unavailable state above;
+  never leave the button tappable but inert.
 - **Continue ≠ Claim:** the Continue prompt is unchanged; CLAIM SCORE appears
   only on the **final** modal.
 - If integrating under the **Genet launcher**, switch to the §6.6 encrypted
@@ -561,7 +572,7 @@ Get **1–4 playable before anything else.** That core loop is the whole game.
 7. 3-minute timer + `TIME'S UP!` / `GAME OVER` cards + Continue (mercy 3×3).
 8. Spawn weighting + ramps, merge/burst animations, Web Audio SFX (no BGM),
    mute toggle, HUD pills, pbot on the title.
-9. CLAIM SCORE/RETRY + callback + early-end; `?lang=ms`; **tune** weights,
+9. CLAIM SCORE/RETRY + callback + disabled/unavailable CTA states + early-end; `?lang=ms`; **tune** weights,
    scoring, and cap escalation until a strong run ≈ 500 and it *feels* right.
 
 ---
@@ -584,6 +595,8 @@ Get **1–4 playable before anything else.** That core loop is the whole game.
 - [ ] Mute + best-score persistence (try/catch).
 - [ ] §6.4 copy + `?lang=ms`; §6.5 CLAIM SCORE/RETRY + `callback_url` +
       fallback; early-end submits same payload.
+- [ ] Claim CTA disables on tap and, on callback-preparation failure, stays
+      disabled with `CALLBACK UNAVAILABLE` / `PANGGIL BALIK TIADA`.
 - [ ] `?scene=` dev jump from day one.
 - [ ] Listed in [`games.js`](../games.js): `{ name: 'Dadu Didik', path:
       './dadu-didik/', status: 'pending', author: 'akmalakhpah' }`.

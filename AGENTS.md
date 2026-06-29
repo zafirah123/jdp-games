@@ -81,21 +81,27 @@ single-file games alike.
    implementation.
 6. **End-of-game CTA policy (CLAIM SCORE with zero-score retry exception).** The final
    end-of-game modal (after `TIME'S UP!` or `GAME OVER`) must have
-   **exactly one** CTA: `CLAIM SCORE` (en) / `TUNTUT SKOR` (ms). Tapping
-   it sends results to a callback endpoint:
+   **exactly one** CTA with score-dependent behavior:
 
-   - Exception: if final score is exactly `0`, show `RETRY` instead of
-     `CLAIM SCORE` / `TUNTUT SKOR`, and restart locally (no callback).
-     For any score `> 0`, keep normal claim callback behavior.
+   - Score `> 0`: `CLAIM SCORE` (en) / `TUNTUT SKOR` (ms). Tapping it
+     attempts callback submission.
+   - Score `= 0`: `RETRY`. Restart locally and **do not** submit a callback.
 
    - Read `callback_url` from URL query params when present.
    - If `callback_url` is missing/invalid, use the platform callback
      fallback configured by product. Do not hardcode a public callback URL
      in game code.
-   - Guard the submit handler when building the callback URL. If no valid
-     callback target can be resolved, do not redirect to a null/empty URL
-     or leave the CTA appearing dead; show an explicit disabled/error state
-     or another clear local fallback.
+   - Callback preparation must fail closed. Validate callback URLs and only
+     allow valid `https` targets. If callback preparation cannot be completed,
+     helper functions should return `null` / unavailable instead of throwing
+     where possible.
+   - Guard the submit handler when building the callback URL. On tap, disable
+     the claim CTA immediately and keep it disabled while preparation /
+     submission is in progress. If redirect succeeds, the page navigates away.
+   - If claim preparation fails because callback context is missing, expired,
+     malformed, or invalid, leave the CTA disabled and show an explicit
+     unavailable/error state instead of making it clickable again. Standard
+     copy: `CALLBACK UNAVAILABLE` (en) / `PANGGIL BALIK TIADA` (ms).
    - Every game must allow the player to end early and trigger the same
      callback flow (with current score), not only at the final timeout.
    - Optional: run a game-local suspicious-score check before callback.
@@ -274,6 +280,10 @@ for the design-side checklist; the items below cover the harness/repo side.
 - [ ] Claim-submit path is guarded when callback resolution fails: no
       `location.href = null` / dead-click state, and the player gets an
       explicit disabled/error outcome instead.
+- [ ] Claim CTA disables on first tap, stays disabled during preparation /
+      redirect, and remains disabled with `CALLBACK UNAVAILABLE` /
+      `PANGGIL BALIK TIADA` if callback context is missing, expired,
+      malformed, or invalid.
 - [ ] Game supports early-end callback (player can finish early and submit
       score through the same callback contract).
 - [ ] If a suspicious-score check is implemented, it runs locally before

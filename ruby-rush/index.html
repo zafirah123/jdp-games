@@ -1644,7 +1644,7 @@ dom.claimBtn.addEventListener('click', async () => {
   const claimUrl = await buildClaimUrl();
   if (!claimUrl) {
     dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = false;
+    dom.claimBtn.disabled = true;
     return;
   }
   location.href = claimUrl;

@@ -813,7 +813,7 @@
                     const claimUrl = await buildClaimUrl(this.score);
                     if (!claimUrl) {
                         document.getElementById('restart-btn').textContent = COPY.claimUnavailable;
-                        document.getElementById('restart-btn').disabled = false;
+                        document.getElementById('restart-btn').disabled = true;
                         return;
                     }
                     location.href = claimUrl;

@@ -76,39 +76,44 @@
   }
 
   async function buildClaimUrl(options) {
-    const ctx = options.claimContext || getClaimContext();
-    const score = Math.max(0, options.score | 0);
-    const extraData = options.extraData || null;
+    try {
+      const ctx = options.claimContext || getClaimContext();
+      const score = Math.max(0, options.score | 0);
+      const extraData = options.extraData || null;
 
-    if (ctx.launchToken && ctx.resKey && ctx.tokenCallbackUrl) {
-      const encrypted = await encryptGenetPayload(ctx.resKey, {
-        score,
-        is_suspicious: false,
-        ...(extraData ? { data: extraData } : {}),
-      });
-      const target = new URL(ctx.tokenCallbackUrl);
-      target.searchParams.set('token', ctx.launchToken);
-      target.searchParams.set('dd', encrypted.dd);
-      target.searchParams.set('dv', encrypted.dv);
+      if (ctx.launchToken && ctx.resKey && ctx.tokenCallbackUrl) {
+        const encrypted = await encryptGenetPayload(ctx.resKey, {
+          score,
+          is_suspicious: false,
+          ...(extraData ? { data: extraData } : {}),
+        });
+        const target = new URL(ctx.tokenCallbackUrl);
+        target.searchParams.set('token', ctx.launchToken);
+        target.searchParams.set('dd', encrypted.dd);
+        target.searchParams.set('dv', encrypted.dv);
+        return target.toString();
+      }
+
+      const callbackUrl = resolveCallbackUrl(ctx, options.fallbackUrl);
+      if (!callbackUrl) return null;
+
+      const target = new URL(callbackUrl);
+      target.searchParams.set('game', String(options.gameName || 'unknown-game'));
+      target.searchParams.set('score', String(score));
+      target.searchParams.set('token', newToken());
+
+      const extraQuery = options.extraQuery || null;
+      if (extraQuery && typeof extraQuery === 'object') {
+        Object.entries(extraQuery).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) target.searchParams.set(k, String(v));
+        });
+      }
+
       return target.toString();
+    } catch (err) {
+      console.warn('[flag-findr] buildClaimUrl failed', err);
+      return null;
     }
-
-    const callbackUrl = resolveCallbackUrl(ctx, options.fallbackUrl);
-    if (!callbackUrl) return null;
-
-    const target = new URL(callbackUrl);
-    target.searchParams.set('game', String(options.gameName || 'unknown-game'));
-    target.searchParams.set('score', String(score));
-    target.searchParams.set('token', newToken());
-
-    const extraQuery = options.extraQuery || null;
-    if (extraQuery && typeof extraQuery === 'object') {
-      Object.entries(extraQuery).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) target.searchParams.set(k, String(v));
-      });
-    }
-
-    return target.toString();
   }
 
   window.ClaimCallback = {

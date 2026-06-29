@@ -175,7 +175,7 @@
 
             <!-- Start Game / Instructions Overlay -->
             <div id="start-overlay" class="absolute inset-0 bg-[#031034]/95 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300">
-                <h1 class="text-4xl title-font mb-3 animate-bounce text-[#FFD633]" style="text-shadow: 0 2px 0 #DE9D00, 0 4px 8px rgba(0,0,0,0.5);">
+                <h1 id="menuTitle" class="text-4xl title-font mb-3 animate-bounce text-[#FFD633]" style="text-shadow: 0 2px 0 #DE9D00, 0 4px 8px rgba(0,0,0,0.5);">
                     Bubble Shooter
                 </h1>
                 <p class="text-white text-sm mb-6 max-w-xs">
@@ -211,9 +211,6 @@
 
             <!-- Game Over / Results Overlay -->
             <div id="gameover-overlay" class="absolute inset-0 bg-[#031034]/95 flex flex-col items-center justify-center p-6 text-center z-20 hidden transition-all duration-300">
-                <!-- Sad PBot character! -->
-                <img src="PBot - Sad.png" alt="Sad Robot" onerror="this.style.display='none'" class="w-24 h-24 md:w-28 md:h-28 mx-auto mb-2 object-contain animate-pulse">
-
                 <h2 id="result-title" class="text-4xl font-extrabold title-font mb-2 text-[#FFD633]" style="text-shadow: 0 2px 0 #DE9D00;"></h2>
                 <p id="result-desc" class="text-white text-sm mb-4">
                     Awesome effort! Here is how you did:
@@ -260,6 +257,8 @@
             </svg>
         </button>
     </div>
+
+    <script src="./claim-callback.js?v=20260629.1"></script>
 
     <!-- Web Audio & Core Game Engine Code -->
     <script>
@@ -343,29 +342,20 @@
         }[LANG];
         function isZeroScore() { return (Game.score | 0) <= 0; }
         function endCtaLabel() { return isZeroScore() ? COPY.retry : COPY.claimScore; }
-        function resolveCallbackUrl() {
-            try {
-                const candidate = new URLSearchParams(location.search).get('callback_url');
-                if (candidate) {
-                    const u = new URL(candidate);
-                    if (u.protocol === 'https:') return u.toString();
-                }
-            } catch (_) {}
-            return (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__)
-                ? window.__JDP_CALLBACK_URL__
-                : null;
-        }
-        function buildClaimUrl(score) {
-            const base = resolveCallbackUrl();
-            if (!base) return null;
-            const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-                ? crypto.randomUUID()
-                : Math.random().toString(36).slice(2) + Date.now().toString(36);
-            const url = new URL(base);
-            url.searchParams.set('game', 'bubble-shooter');
-            url.searchParams.set('score', String(Math.max(0, score | 0)));
-            url.searchParams.set('token', token);
-            return url.toString();
+        const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
+        async function buildClaimUrl(score) {
+            if (!window.ClaimCallback) {
+                return null;
+            }
+            return window.ClaimCallback.buildClaimUrl({
+                claimContext,
+                score: Math.max(0, score | 0),
+                gameName: 'bubble-shooter',
+                extraData: {
+                    bubbles_popped: Game.totalBubblesPopped || 0,
+                    combos_achieved: Game.totalCombos || 0,
+                },
+            });
         }
 
         // Apply COPY to static DOM strings before game boot
@@ -810,7 +800,7 @@
                     this.start();
                 });
 
-                document.getElementById('restart-btn').addEventListener('click', () => {
+                document.getElementById('restart-btn').addEventListener('click', async () => {
                     SoundSystem.init();
                     SoundSystem.playClick();
                     if (isZeroScore()) {
@@ -820,10 +810,10 @@
                     }
                     // CLAUDE.md ?6.5: CLAIM SCORE redirect ? no in-game retry
                     document.getElementById('restart-btn').disabled = true;
-                    const claimUrl = buildClaimUrl(this.score);
+                    const claimUrl = await buildClaimUrl(this.score);
                     if (!claimUrl) {
                         document.getElementById('restart-btn').textContent = COPY.claimUnavailable;
-                        document.getElementById('restart-btn').disabled = true;
+                        document.getElementById('restart-btn').disabled = false;
                         return;
                     }
                     location.href = claimUrl;
@@ -1785,6 +1775,9 @@
         // Fire engine initializers
         window.addEventListener('load', () => {
             applyCopyToDOM();
+            if (window.ClaimCallback) {
+                window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+            }
             Game.init();
         });
     </script>

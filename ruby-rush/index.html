@@ -354,6 +354,7 @@
   </div>
 </div>
 
+<script src="./claim-callback.js?v=20260629.1"></script>
 <script>
 'use strict';
 
@@ -406,6 +407,8 @@ const COPY = {
     statScore: 'Delima', statBest: 'Terbaik', statDodged: 'Halangan dilepasi', statTime: 'Masa dimainkan',
   },
 }[LANG];
+
+const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
 
 // =============================================================================
 // CONFIG — all tunables live here (CLAUDE.md pattern #1)
@@ -1584,32 +1587,21 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
 // =============================================================================
 // CLAIM SCORE — §6.5 callback contract (game, score, token + suspicious)
 // =============================================================================
-function resolveCallbackUrl() {
-  const qs = new URLSearchParams(location.search);
-  const candidate = qs.get('callback_url');
-  if (candidate) { try { const u = new URL(candidate); if (u.protocol === 'https:') return u.toString(); } catch (_) {} }
-  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
-  return null;
-}
-function suspiciousCheck() {
-  // Local, non-blocking heuristic: more rubies than physically collectable.
-  const maxRate = 6; // rubies/sec ceiling incl. rush streams
-  const cap = Math.ceil(Math.max(8, state.elapsed) * maxRate);
-  if (state.score > cap) return 'rate';
-  if (state.score > 0 && state.jumps === 0 && state.dodged > 6) return 'no-input';
-  return null;
-}
-function buildClaimUrl() {
-  const base = resolveCallbackUrl();
-  if (!base) return null;
-  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const sep = base.includes('?') ? '&' : '?';
-  let url = base + sep + 'game=' + encodeURIComponent(CONFIG.GAME_NAME)
-    + '&score=' + Math.max(0, state.score | 0) + '&token=' + encodeURIComponent(token);
-  const sus = suspiciousCheck();
-  if (sus) url += '&suspicious=true&suspicious_reason=' + encodeURIComponent(sus);
-  return url;
+async function buildClaimUrl() {
+  if (!window.ClaimCallback) {
+    return null;
+  }
+
+  return window.ClaimCallback.buildClaimUrl({
+    claimContext,
+    score: Math.max(0, state.score | 0),
+    gameName: CONFIG.GAME_NAME,
+    extraData: {
+      obstacles_cleared: state.dodged,
+      time_played_sec: Math.round(state.elapsed),
+      jumps: state.jumps,
+    },
+  });
 }
 
 // =============================================================================
@@ -1646,13 +1638,13 @@ bindHold(dom.shootBtn, () => { state.shootHeld = true; shoot(); }, () => { state
 function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
-dom.claimBtn.addEventListener('click', () => {
+dom.claimBtn.addEventListener('click', async () => {
   if ((state.score | 0) <= 0) { startGame(); return; }
   dom.claimBtn.disabled = true;
-  const claimUrl = buildClaimUrl();
+  const claimUrl = await buildClaimUrl();
   if (!claimUrl) {
     dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
+    dom.claimBtn.disabled = false;
     return;
   }
   location.href = claimUrl;
@@ -1711,6 +1703,9 @@ function loop(t) {
 // =============================================================================
 // Boot — ?phase=play dev jump (CLAUDE.md pattern #10) + persisted prefs
 // =============================================================================
+if (window.ClaimCallback) {
+  window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+}
 showBest();
 updateMuteUI();
 

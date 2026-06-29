@@ -175,13 +175,13 @@ const ROWS = CONFIG.rows, COLS = CONFIG.cols;
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en:{ start:'START GAME', timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'CLAIM SCORE', submit:'SUBMIT SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CLAIM UNAVAILABLE',
+    claim:'CLAIM SCORE', submit:'SUBMIT SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE',
     subtitle:'Merge three matching dice to grow the number. Chain them to score big!',
     end:'End', hintDrag:'Drag the pair onto the board · tap it to rotate',
     combo:'COMBO', ruby:'RUBY BURST!', claimed:'Score sent. Thank you!',
     claimFail:'Could not reach server — score saved locally.' },
   ms:{ start:'MULA MAIN', timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'TUNTUT SKOR', submit:'HANTAR SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'TUNTUTAN TIDAK TERSEDIA',
+    claim:'TUNTUT SKOR', submit:'HANTAR SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA',
     subtitle:'Gabungkan tiga dadu sama untuk naikkan nombor. Rangkai untuk skor tinggi!',
     end:'Tamat', hintDrag:'Seret dadu ke papan · klik untuk pusing',
     combo:'COMBO', ruby:'LETUSAN RUBY!', claimed:'Skor dihantar. Terima kasih!',
@@ -861,7 +861,6 @@ async function submitScore(){
   if(!url){
     note.textContent = COPY.claimUnavailable;
     note.classList.remove('hidden');
-    STATE.submitted=false;
     return;
   }
   location.href=url;

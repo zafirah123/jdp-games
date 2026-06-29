@@ -885,7 +885,7 @@ dom.claimBtn.addEventListener('click', async () => {
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
-      console.warn('[number-snap] claim submit unavailable: no callback configured');
+      console.warn('[number-snap] claim submit unavailable: invalid or missing callback context');
       dom.claimBtn.textContent = COPY.claimUnavailable;
       dom.claimBtn.disabled = true;
       claimLocked = false;
@@ -894,8 +894,9 @@ dom.claimBtn.addEventListener('click', async () => {
     location.href = claimUrl;
   } catch (e) {
     console.warn('[number-snap] claim submit failed:', e);
-    dom.claimBtn.disabled = false;
     claimLocked = false;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.disabled = true;
   }
 });
 

@@ -19,7 +19,7 @@ export const COPY = {
     audioOff:   'AUDIO OFF',
     claimScore: 'CLAIM SCORE',
     retry:      'RETRY',
-    claimUnavailable: 'CLAIM UNAVAILABLE',
+    claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimSubmitting:  'Sending your score...',
     claimFailed:      'Unable to open the score claim. Please try again.',
     // --- StartScene -----------------------------------------------------
@@ -52,7 +52,7 @@ export const COPY = {
     audioOff:   'AUDIO OFF',
     claimScore: 'TUNTUT SKOR',
     retry:      'RETRY',
-    claimUnavailable: 'TUNTUTAN TIDAK TERSEDIA',
+    claimUnavailable: 'PANGGIL BALIK TIADA',
     claimSubmitting:  'Menghantar skor anda...',
     claimFailed:      'Tidak dapat membuka tuntutan skor. Sila cuba lagi.',
     // --- StartScene -----------------------------------------------------

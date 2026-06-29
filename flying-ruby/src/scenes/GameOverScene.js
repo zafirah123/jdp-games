@@ -253,7 +253,7 @@ export class GameOverScene extends Phaser.Scene {
         } else {
           this._setClaimStatus(COPY.claimFailed, PALETTE_CSS.ruby);
         }
-        this._setClaimButtonDisabled(!this.claimReady);
+        this._setClaimButtonDisabled(true);
       });
 
     if (this.score > 0 && !this.claimReady) {

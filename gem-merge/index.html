@@ -355,7 +355,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
-    claimUnavailable: 'CLAIM UNAVAILABLE',
+    claimUnavailable: 'CALLBACK UNAVAILABLE',
     retry: 'RETRY',
     next: 'Next',
     score: 'Score',
@@ -380,7 +380,7 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
-    claimUnavailable: 'TUNTUTAN TIDAK TERSEDIA',
+    claimUnavailable: 'PANGGIL BALIK TIADA',
     retry: 'RETRY',
     next: 'Seterusnya',
     score: 'Skor',
@@ -1423,15 +1423,16 @@ async function submitClaim() {
     if (url) {
       window.location.href = url;
     } else {
-      console.log('[gem-merge] CLAIM SCORE (no callback configured)', extra);
+      console.log('[gem-merge] CLAIM SCORE unavailable: invalid or missing callback context', extra);
       dom.claimBtn.textContent = COPY.claimUnavailable;
       dom.claimBtn.disabled = true;
       claimLocked = false;
     }
   } catch (e) {
     console.warn('[gem-merge] claim submit failed:', e);
-    dom.claimBtn.disabled = false;
     claimLocked = false;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.disabled = true;
   }
 }
 // =============================================================================

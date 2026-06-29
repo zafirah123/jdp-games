@@ -1069,7 +1069,7 @@ async function handleClaimTap() {
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
-      console.warn('[tap-tap-match] claim submit unavailable: no callback configured');
+      console.warn('[tap-tap-match] claim submit unavailable: invalid or missing callback context');
       state.claimUnavailable = true;
       claimLocked = false;
       syncGameOverUi();
@@ -1078,8 +1078,9 @@ async function handleClaimTap() {
     location.href = claimUrl;
   } catch (err) {
     console.warn('[tap-tap-match] claim submit failed:', err);
-    claimBtn.disabled = false;
     claimLocked = false;
+    state.claimUnavailable = true;
+    syncGameOverUi();
   }
 }
 

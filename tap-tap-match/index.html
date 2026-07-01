@@ -98,6 +98,79 @@
   }
   .mute:active { transform: scale(0.92); }
   .mute svg { width: 22px; height: 22px; fill: currentColor; }
+  .overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(3, 16, 52, 0.92);
+    backdrop-filter: blur(4px);
+    z-index: 30;
+    padding: 16px;
+  }
+  .overlay.hidden { display: none !important; }
+  .card {
+    background: linear-gradient(180deg, #142244 0%, #0b1530 100%);
+    border: 2px solid #2B3C72;
+    border-radius: 20px;
+    padding: 24px 20px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .card-title {
+    margin: 0 0 12px;
+    font-size: 32px;
+    font-weight: 800;
+    color: #FFD633;
+    text-shadow: 0 3px 0 #9E131F;
+  }
+  .card-subtitle {
+    margin: 0 0 8px;
+    color: #FFFFFF;
+    font-size: 15px;
+    opacity: 0.9;
+  }
+  .card-score {
+    margin: 0 0 14px;
+    color: #FFB603;
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .card-best {
+    min-height: 24px;
+    margin: 0 0 16px;
+    color: rgba(255,255,255,0.72);
+    font-size: 14px;
+  }
+  .card-best.is-new {
+    color: #FFD633;
+    font-size: 24px;
+    font-weight: 700;
+  }
+  .cta {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 16px;
+    background: linear-gradient(180deg, #FFE258 0%, #FFBA0A 100%);
+    color: #9E131F;
+    border: none;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    box-shadow: 0 4px 0 #DE9D00;
+    cursor: pointer;
+  }
+  .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
+  .cta:disabled {
+    opacity: 0.7;
+    cursor: default;
+    box-shadow: none;
+    transform: none;
+  }
 </style>
 </head>
 <body>
@@ -111,7 +184,16 @@
     </button>
   </div>
 </div>
-<script src="./claim-callback.js?v=20260530.1"></script>
+<div id="gameOverOverlay" class="overlay hidden">
+  <div class="card">
+    <h2 id="goTitle" class="card-title"></h2>
+    <p id="goFinalLabel" class="card-subtitle"></p>
+    <div id="goScore" class="card-score">0</div>
+    <p id="goBest" class="card-best"></p>
+    <button id="claimBtn" class="cta" type="button"></button>
+  </div>
+</div>
+<script src="./claim-callback.js?v=20260624.2"></script>
 <script>
 'use strict';
 
@@ -213,13 +295,13 @@ const CONFIG = {
     mute: 'tap-tap-match:mute',
   },
 
-  // CLAIM SCORE â€” CLAUDE.md Â§6.5
+  // CLAIM SCORE - CLAUDE.md section 6.5
   gameName: 'tap-tap-match',
   claimFallbackUrl: null,
 };
 
 // ============================================================
-// I18N â€” CLAUDE.md Â§6.4. ?lang=ms switches to Bahasa Melayu.
+// I18N - CLAUDE.md section 6.4. ?lang=ms switches to Bahasa Melayu.
 // ============================================================
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
@@ -227,7 +309,7 @@ const COPY = {
     // canonical
     start:    'START GAME',
     timeUp:   "TIME'S UP!",
-    gameOver: 'MISSED!',
+    gameOver: 'GAME OVER',
     audioOn:  'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim:    'CLAIM SCORE',
@@ -251,7 +333,7 @@ const COPY = {
   ms: {
     start:    'MULA MAIN',
     timeUp:   'MASA TAMAT!',
-    gameOver: 'TERLEPAS!',
+    gameOver: 'PERMAINAN TAMAT',
     audioOn:  'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim:    'TUNTUT SKOR',
@@ -420,6 +502,12 @@ function playButton() {
 // ============================================================
 const canvas    = document.getElementById('game');
 const ctx       = canvas.getContext('2d');
+const claimBtn  = document.getElementById('claimBtn');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const goTitle   = document.getElementById('goTitle');
+const goFinalLabel = document.getElementById('goFinalLabel');
+const goScore   = document.getElementById('goScore');
+const goBest    = document.getElementById('goBest');
 const muteBtn   = document.getElementById('muteBtn');
 const hudBar    = document.getElementById('hudBar');
 const scoreVal  = document.getElementById('scoreVal');
@@ -466,6 +554,32 @@ function syncHud() {
   timeVal.textContent = `${mm}:${ss}`;
   const urgent = secsLeft <= CONFIG.urgentSecs && secsLeft > 0;
   timeVal.classList.toggle('pulse-urgent', urgent);
+}
+
+function syncGameOverUi() {
+  if (state.scene !== 'gameover') {
+    gameOverOverlay.classList.add('hidden');
+    claimBtn.disabled = true;
+    return;
+  }
+  const label = endCtaLabel();
+  goTitle.textContent = state.endedByTimer ? COPY.timeUp : COPY.gameOver;
+  goFinalLabel.textContent = COPY.finalScore;
+  goScore.textContent = String(state.score);
+  if (state.newBest) {
+    goBest.textContent = COPY.newBest;
+    goBest.classList.add('is-new');
+  } else if (state.best > 0) {
+    goBest.textContent = `${COPY.bestPrefix}: ${state.best}`;
+    goBest.classList.remove('is-new');
+  } else {
+    goBest.textContent = '';
+    goBest.classList.remove('is-new');
+  }
+  claimBtn.disabled = state.claimUnavailable;
+  claimBtn.textContent = label;
+  claimBtn.setAttribute('aria-label', label);
+  gameOverOverlay.classList.remove('hidden');
 }
 
 function resize() {
@@ -793,48 +907,6 @@ function drawStartScreen(time) {
   ctx.textBaseline = 'alphabetic';
 }
 
-function drawGameOverScreen(time) {
-  ctx.fillStyle = 'rgba(3, 16, 52, 0.94)';
-  ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
-
-  drawPbot(CONFIG.width / 2, 180, 200, time);
-
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  ctx.fillStyle = CONFIG.palette.chromeHi;
-  ctx.font = '700 38px Poppins, sans-serif';
-  ctx.fillText(state.endedByTimer ? COPY.timeUp : COPY.gameOver, CONFIG.width / 2, 320);
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '500 16px Poppins, sans-serif';
-  ctx.fillText(COPY.finalScore, CONFIG.width / 2, 360);
-
-  ctx.fillStyle = CONFIG.palette.accent;
-  ctx.font = '700 78px Poppins, sans-serif';
-  ctx.fillText(String(state.score), CONFIG.width / 2, 425);
-
-  if (state.newBest) {
-    const pulse = 1 + 0.1 * Math.sin(time * 0.008);
-    ctx.save();
-    ctx.translate(CONFIG.width / 2, 495);
-    ctx.scale(pulse, pulse);
-    ctx.fillStyle = CONFIG.palette.chromeHi;
-    ctx.font = '700 26px Poppins, sans-serif';
-    ctx.fillText(COPY.newBest, 0, 0);
-    ctx.restore();
-  } else if (state.best > 0) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
-    ctx.font = '500 14px Poppins, sans-serif';
-    ctx.fillText(`${COPY.bestPrefix}: ${state.best}`, CONFIG.width / 2, 495);
-  }
-
-  drawButton(BTN_CLAIM.x, BTN_CLAIM.y, BTN_CLAIM.w, BTN_CLAIM.h, endCtaLabel());
-
-  ctx.textAlign = 'start';
-  ctx.textBaseline = 'alphabetic';
-}
-
 function draw() {
   const time = performance.now();
   drawBackground();
@@ -847,8 +919,6 @@ function draw() {
   drawHUD(time);
   drawGrid(time);
   drawStatusText(time);
-
-  if (state.scene === 'gameover') drawGameOverScreen(time);
 }
 
 // ============================================================
@@ -985,6 +1055,35 @@ function eventPoint(e) {
   };
 }
 
+async function handleClaimTap() {
+  playButton();
+  if (isZeroScore()) {
+    claimLocked = false;
+    state.claimUnavailable = false;
+    startGame();
+    return;
+  }
+  if (claimLocked) return;
+  claimLocked = true;
+  claimBtn.disabled = true;
+  try {
+    const claimUrl = await buildClaimUrl();
+    if (!claimUrl) {
+      console.warn('[tap-tap-match] claim submit unavailable: invalid or missing callback context');
+      state.claimUnavailable = true;
+      claimLocked = false;
+      syncGameOverUi();
+      return;
+    }
+    location.href = claimUrl;
+  } catch (err) {
+    console.warn('[tap-tap-match] claim submit failed:', err);
+    claimLocked = false;
+    state.claimUnavailable = true;
+    syncGameOverUi();
+  }
+}
+
 canvas.addEventListener('pointerdown', async (e) => {
   e.preventDefault();
   ensureAudio();
@@ -995,30 +1094,6 @@ canvas.addEventListener('pointerdown', async (e) => {
     return;
   }
   if (state.scene === 'gameover') {
-    if (pointInRect(p, BTN_CLAIM)) {
-      playButton();
-      if (isZeroScore()) {
-        claimLocked = false;
-        state.claimUnavailable = false;
-        startGame();
-      } else {
-        if (claimLocked) return;
-        claimLocked = true;
-        try {
-          const claimUrl = await buildClaimUrl();
-          if (!claimUrl) {
-            console.warn('[tap-tap-match] claim submit unavailable: no callback configured');
-            state.claimUnavailable = true;
-            claimLocked = false;
-            return;
-          }
-          location.href = claimUrl;
-        } catch (err) {
-          console.warn('[tap-tap-match] claim submit failed:', err);
-          claimLocked = false;
-        }
-      }
-    }
     return;
   }
   if (state.scene === 'input') {
@@ -1026,6 +1101,12 @@ canvas.addEventListener('pointerdown', async (e) => {
     if (idx >= 0) handleInputTap(idx);
   }
 }, { passive: false });
+
+claimBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
+  ensureAudio();
+  await handleClaimTap();
+});
 
 // ============================================================
 // MUTE BUTTON
@@ -1078,6 +1159,7 @@ function loop(t) {
   update(dt);
   draw();
   syncHud();
+  syncGameOverUi();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

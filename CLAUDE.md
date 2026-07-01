@@ -211,7 +211,7 @@ See also the more detailed pre-implementation checklist in
 - [ ] Added a `?scene=` / `?phase=` dev jump at boot from day one.
 - [ ] Persisted best score and mute preference in `localStorage` with try/catch for sandboxed webviews.
 - [ ] Used the standardized strings from §6.4 — `START GAME`, `TIME'S UP!`, `GAME OVER`, `AUDIO ON`, `AUDIO OFF` — and wired `?lang=ms` to switch the game's copy to Bahasa Melayu.
-- [ ] End-of-game modal CTA follows §6.5: `CLAIM SCORE` for score `> 0`, `RETRY` for score `= 0`; callback flow still applies for all score `> 0` endings (`callback_url` support + product fallback).
+- [ ] End-of-game modal CTA follows §6.5: `CLAIM SCORE` for score `> 0`, `RETRY` for score `= 0`; zero-score endings never submit a callback.
 
 ---
 
@@ -415,6 +415,7 @@ one). Casing is **uppercase** for all five.
 | Audio is currently playing (tap to mute) | `AUDIO ON` | `AUDIO ON` |
 | Audio is currently muted (tap to enable) | `AUDIO OFF` | `AUDIO OFF` |
 | End-of-game CTA (see §6.5 score rule) | `CLAIM SCORE` / `RETRY` | `TUNTUT SKOR` / `RETRY` |
+| Claim unavailable state | `CALLBACK UNAVAILABLE` | `PANGGIL BALIK TIADA` |
 
 **`TIME'S UP!` and `GAME OVER` are different states.** Use `TIME'S UP!`
 only when the round timer hits zero — the natural end-of-round. Use
@@ -469,7 +470,7 @@ modal has **one CTA** on the end-of-game modal, with score-dependent behavior:
 | End-of-game CTA (`score > 0`) | `CLAIM SCORE` | `TUNTUT SKOR` |
 | End-of-game CTA (`score = 0`) | `RETRY` | `RETRY` |
 
-For score `> 0`, tapping the CTA sends results to a callback endpoint.
+For score `> 0`, tapping the CTA attempts callback submission.
 For score `= 0`, tapping `RETRY` restarts locally and does not submit callback.
 
 Callback target resolution order:
@@ -478,6 +479,9 @@ Callback target resolution order:
 2. If absent/invalid, use the platform callback fallback configured by
    product.
 3. Do not hardcode a public callback URL into game code.
+4. Validate callback URLs and only allow valid `https` callback targets.
+5. Claim URL generation must fail closed. If callback preparation cannot be
+   completed, return `null` / unavailable instead of throwing where possible.
 
 Minimum payload fields:
 
@@ -511,9 +515,16 @@ function resolveCallbackUrl() {
   }
   // Platform-managed fallback (product-owned). Keep game code decoupled
   // from hardcoded public callback paths.
-  return (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__)
+  const fallback = (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__)
     ? window.__JDP_CALLBACK_URL__
     : null;
+  if (!fallback) return null;
+  try {
+    const u = new URL(fallback);
+    return u.protocol === 'https:' ? u.toString() : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 function buildClaimPayload(finalScore, extra = {}) {
@@ -523,6 +534,51 @@ function buildClaimPayload(finalScore, extra = {}) {
   return { game: GAME_NAME, score: Math.max(0, finalScore | 0), token, ...extra };
 }
 ```
+
+For the final handoff, prefer building a callback URL and redirecting with
+`window.location.href` / `location.href`. In-app WebViews are less reliable
+with `fetch`-first score submission, especially when the host app expects a
+navigation-based callback.
+
+Claim CTAs must be single-submit safe. Disable the CTA on the first tap
+before resolving or navigating to the callback URL, keep it disabled while
+the handoff is in progress, and only re-enable it on a recoverable local
+failure. If callback preparation fails because launch/callback context is
+missing, expired, malformed, or invalid, keep the CTA disabled and show the
+standard unavailable copy instead of leaving the CTA apparently tappable:
+`CALLBACK UNAVAILABLE` (en) / `PANGGIL BALIK TIADA` (ms).
+
+Timeout handling follows the same rule: if a player times out and then taps
+`CLAIM SCORE`, either the callback still resolves and the page redirects, or
+the CTA transitions into the unavailable state above. It must never remain a
+dead clickable button.
+
+Recommended helper shape for copied claim code:
+
+```js
+function prepareClaim(finalScore, extra = {}) {
+  const score = Math.max(0, finalScore | 0);
+  if (score === 0) return { mode: 'retry' };
+  const callbackBase = resolveCallbackUrl();
+  if (!callbackBase) return null;
+  try {
+    const url = new URL(callbackBase);
+    const payload = buildClaimPayload(score, extra);
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value != null) url.searchParams.set(key, String(value));
+    });
+    return { mode: 'claim', url: url.toString() };
+  } catch (_) {
+    return null;
+  }
+}
+```
+
+When shipping claim-flow changes, bump the versioned script or module URL
+used by the game (for example `claim-callback.js?v=...` or `main.js?v=...`,
+plus any ES-module imports behind it). Some in-app WebViews cache old JS
+aggressively, so a version bump is the safest way to ensure the updated
+claim behavior is actually what runs.
 
 **Early end is required.** In addition to the final end-of-game modal, every
 game must provide a player-accessible way to end the run early and submit the
@@ -545,6 +601,20 @@ after the player declines `CONTINUE` on a crash with no time left.
 **Restart exception for zero-score endings.** A local `RETRY` is allowed
 only when final score is exactly `0`. For any score `> 0`, keep the
 single-CTA claim flow and do not offer in-page restart.
+
+**Implementation checklist for future game authors**
+
+- Use `RETRY` only for final score `= 0`; never submit zero-score callbacks.
+- Resolve callback targets in order: `?callback_url=` → product fallback, and
+  accept only valid `https` URLs.
+- Make claim-preparation helpers fail closed and return `null` / unavailable
+  instead of throwing where possible.
+- Disable the CTA immediately on tap and keep it disabled during preparation
+  and redirect.
+- On missing, expired, malformed, or invalid callback context, keep the CTA
+  disabled and show `CALLBACK UNAVAILABLE` / `PANGGIL BALIK TIADA`.
+- Support the same claim contract for player-triggered early-end and final
+  timeout / game-over endings.
 
 ### 6.6 Genet callback override (when integrating under `public/games/genet/`)
 
@@ -572,6 +642,10 @@ callback contract instead of the generic `game/score/token` payload in §6.5.
 
 - Any game-specific stats must be nested under `data`.
 - Never submit score `0`; final score `<= 0` uses local `RETRY`.
+- If token decode, callback extraction, or encrypted callback preparation
+  fails, fail closed: return unavailable instead of throwing where possible,
+  keep the CTA disabled, and show `CALLBACK UNAVAILABLE` /
+  `PANGGIL BALIK TIADA`.
 - Add a duplicate-submit guard (lock/flag) so one run cannot submit twice.
 - If `page_title` exists, apply it to `document.title` and visible heading
   where applicable.
@@ -687,6 +761,8 @@ A game is shippable when it satisfies **all** of:
 - [ ] End-of-game modal follows §6.5 — score `> 0` uses `CLAIM SCORE` callback CTA (payload includes `game`, `score`, random `token`); score `= 0` uses local `RETRY`
 - [ ] Game supports `callback_url` query param and platform fallback callback target
 - [ ] Game supports player-triggered early-end callback (same payload contract)
+- [ ] Claim CTA disables on first tap, stays disabled during preparation/redirect, and remains disabled with `CALLBACK UNAVAILABLE` / `PANGGIL BALIK TIADA` when callback context is missing, expired, malformed, or invalid
+- [ ] Claim-flow script/module URLs are version-bumped when shipping callback changes, especially for in-app WebView launches
 - [ ] If using Genet launcher integration (§6.6), callback submit uses encrypted `token` + `dd` + `dv`, includes duplicate-submit guard, and never submits score `0`
 - [ ] Optional suspicious-score check (if present) runs locally pre-submit and flags payload
 - [ ] Optional `log` payload (if present) is lightweight and excludes PII/tracking

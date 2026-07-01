@@ -322,9 +322,14 @@ resolves the callback target in §6.5 order — `?callback_url=` (https only) �
 
 - Payload: `game: 'ruby-breaker-v2'` (matches the games.js path), `score` (clamped ≥0 int),
   fresh `token` (UUID v4 / hex fallback), plus optional `cause` + `timeUsedMs` diagnostics.
-- No callback configured (direct play) → logs the would-be payload to console and returns
-  instead of redirecting to a 404. Also mirrors every claim to `localStorage`
-  (`ruby-breaker-v2:claims`) for QA — wrapped in try/catch for sandboxed webviews.
+- Score `= 0` is never submitted. Final zero-score endings use local `RETRY`.
+- Callback preparation is fail-closed: invalid/malformed/expired/missing callback context
+  returns unavailable instead of throwing where possible, and only valid `https` callback
+  targets are accepted.
+- If callback preparation fails, the CTA stays disabled and switches to the standard
+  unavailable state: `CALLBACK UNAVAILABLE` / `PANGGIL BALIK TIADA`.
+- Direct play with no callback configured is treated as unavailable, not as a clickable
+  retry path and not as a redirect to a null/empty target.
 - **Do not hardcode a public callback URL** — that's the whole point of the resolver.
 
 ### 2. `src/copy.js` (new) — §6.4 `?lang=ms` switching
@@ -360,11 +365,22 @@ Removed **PLAY AGAIN** and **MAIN MENU** (the §6.5 no-in-game-retry rule). One 
 `timeup` / `gameover`. Title uses `COPY.victory` (cap reached) / `COPY.timeUp` (timer) /
 `COPY.gameOver` (other), per the §6.4 state distinction.
 
+Current UX contract for that CTA:
+
+- Disable immediately on tap.
+- Stay disabled while claim preparation / redirect is in progress.
+- If redirect succeeds, the page navigates away.
+- If callback context is missing, expired, malformed, or invalid, keep the CTA disabled and
+  show `CALLBACK UNAVAILABLE` / `PANGGIL BALIK TIADA`.
+- If the player reaches the final modal with score `0`, show local `RETRY` instead of
+  `CLAIM SCORE`.
+
 ### If you touch this code
 
 - `claimScore` redirects via `window.location.href` — there's no return path in production.
-  Test with `?callback_url=https://example.com/claim` and watch the URL, or play with no
-  callback and read the console + `localStorage['ruby-breaker-v2:claims']`.
+  Test with `?callback_url=https://example.com/claim` and watch the URL. Also test an
+  unavailable path (missing/invalid callback context) and confirm the CTA stays disabled
+  with the unavailable copy instead of becoming clickable again.
 - The pause button only works while `gameActive` (not after end-of-game).
 - If you re-add any scene `pointerdown` behaviour, keep the `_overControl` guard or control
   taps will leak into gameplay.

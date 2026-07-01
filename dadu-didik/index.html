@@ -129,6 +129,7 @@
   </div>
 </div>
 
+<script src="./claim-callback.js?v=20260629.1"></script>
 <script>
 /* ============================================================================
    DADU DIDIK — vanilla JS + Canvas 2D, single file.
@@ -174,18 +175,20 @@ const ROWS = CONFIG.rows, COLS = CONFIG.cols;
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en:{ start:'START GAME', timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'CLAIM SCORE', submit:'SUBMIT SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!',
+    claim:'CLAIM SCORE', submit:'SUBMIT SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE',
     subtitle:'Merge three matching dice to grow the number. Chain them to score big!',
     end:'End', hintDrag:'Drag the pair onto the board · tap it to rotate',
     combo:'COMBO', ruby:'RUBY BURST!', claimed:'Score sent. Thank you!',
     claimFail:'Could not reach server — score saved locally.' },
   ms:{ start:'MULA MAIN', timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'TUNTUT SKOR', submit:'HANTAR SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!',
+    claim:'TUNTUT SKOR', submit:'HANTAR SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA',
     subtitle:'Gabungkan tiga dadu sama untuk naikkan nombor. Rangkai untuk skor tinggi!',
     end:'Tamat', hintDrag:'Seret dadu ke papan · klik untuk pusing',
     combo:'COMBO', ruby:'LETUSAN RUBY!', claimed:'Skor dihantar. Terima kasih!',
     claimFail:'Tidak dapat hubungi pelayan — skor disimpan setempat.' },
 }[LANG];
+
+const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
 
 const ICON_ON  = 'M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z';
 const ICON_OFF = 'M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z';
@@ -824,46 +827,49 @@ function endGame(reason){
   const cta=document.getElementById('ctaBtn');
   cta.classList.remove('hidden'); cta.disabled=false;
   document.getElementById('claimNote').classList.add('hidden');
-  cta.textContent = STATE.score>0?COPY.claim:COPY.submit;
-  cta.dataset.mode='claim';
+  cta.textContent = STATE.score>0?COPY.claim:COPY.retry;
+  cta.dataset.mode=STATE.score>0?'claim':'retry';
   show('overModal');
 }
 
 /* ------------------------------ CALLBACK (§6.5) --------------------------- */
-function resolveCallbackUrl(){
-  const qs=new URLSearchParams(location.search), cand=qs.get('callback_url');
-  if(cand){ try{ const u=new URL(cand); if(u.protocol==='https:') return u.toString(); }catch(_){} }
-  return (typeof window!=='undefined' && window.__JDP_CALLBACK_URL__) ? window.__JDP_CALLBACK_URL__ : null;
-}
 function buildClaimPayload(finalScore){
-  const token=(typeof crypto!=='undefined'&&crypto.randomUUID)
-    ? crypto.randomUUID() : Math.random().toString(36).slice(2)+Date.now().toString(36);
   const st=STATE.stats;
-  return { game:CONFIG.gameName, score:Math.max(0,finalScore|0), token,
-    log:{ duration_ms:Math.round(performance.now()-st.startWall), placements:st.placements,
-          merges:st.merges, rubies:st.rubies, bursts:st.bursts, max_chain:st.maxChain } };
+  return {
+    duration_ms:Math.round(performance.now()-st.startWall),
+    placements:st.placements,
+    merges:st.merges,
+    rubies:st.rubies,
+    bursts:st.bursts,
+    max_chain:st.maxChain,
+  };
+}
+async function buildClaimUrl(payload){
+  if(!window.ClaimCallback) return null;
+  return window.ClaimCallback.buildClaimUrl({
+    claimContext,
+    score: STATE.score,
+    gameName: CONFIG.gameName,
+    extraData: payload,
+  });
 }
 async function submitScore(){
   if(STATE.submitted) return; STATE.submitted=true;
   const payload=buildClaimPayload(STATE.score);
-  const url=resolveCallbackUrl();
+  const url=await buildClaimUrl(payload);
   const note=document.getElementById('claimNote');
-  let ok=false;
-  if(url){
-    try{ const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); ok=res.ok; }
-    catch(_){ ok=false; }
-    if(!ok){ // GET redirect fallback
-      try{ const u=new URL(url); Object.entries(payload).forEach(([k,v])=>u.searchParams.set(k, typeof v==='object'?JSON.stringify(v):v));
-        location.href=u.toString(); return; }catch(_){}
-    }
+  if(!url){
+    note.textContent = COPY.claimUnavailable;
+    note.classList.remove('hidden');
+    return;
   }
-  note.textContent = ok?COPY.claimed:(url?COPY.claimFail:COPY.claimed);
-  note.classList.remove('hidden');
+  location.href=url;
 }
 
 /* CTA handler */
 document.getElementById('ctaBtn').addEventListener('click',function(){
   sfx.ui();
+  if(this.dataset.mode==='retry'){ startGame(); return; }
   this.disabled=true;
   submitScore();
 });
@@ -888,6 +894,9 @@ function applyCopy(){
 }
 function boot(){
   applyCopy();
+  if(window.ClaimCallback){
+    window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'titleGame');
+  }
   // persisted prefs (before any audio)
   Audio2.muted = load(CONFIG.gameName+':mute')==='1';
   applyMuteUI();

@@ -1,6 +1,6 @@
-import { PALETTE, PALETTE_CSS, FONTS } from '../config.js';
-import { addMuteButton } from '../muteButton.js';
-import { COPY } from '../copy.js';
+import { PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260624.2';
+import { addMuteButton } from '../muteButton.js?v=20260624.2';
+import { COPY } from '../copy.js?v=20260624.2';
 
 export class StartScene extends Phaser.Scene {
   constructor() {

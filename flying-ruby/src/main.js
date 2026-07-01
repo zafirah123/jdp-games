@@ -1,8 +1,8 @@
-import { GAME, PALETTE_CSS } from './config.js';
-import { BootScene } from './scenes/BootScene.js';
-import { StartScene } from './scenes/StartScene.js';
-import { GameScene } from './scenes/GameScene.js';
-import { GameOverScene } from './scenes/GameOverScene.js';
+import { GAME, PALETTE_CSS } from './config.js?v=20260624.2';
+import { BootScene } from './scenes/BootScene.js?v=20260624.2';
+import { StartScene } from './scenes/StartScene.js?v=20260624.2';
+import { GameScene } from './scenes/GameScene.js?v=20260624.2';
+import { GameOverScene } from './scenes/GameOverScene.js?v=20260624.2';
 
 const MAX_HEIGHT = 1400;
 function getGameHeight() {

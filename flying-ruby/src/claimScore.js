@@ -63,19 +63,37 @@ function newToken() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+function toHttpsUrl(candidate) {
+  if (!candidate || typeof candidate !== 'string') return null;
+  try {
+    const target = new URL(candidate);
+    return target.protocol === 'https:' ? target : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export function resolveCallbackUrl() {
   try {
     const qs = new URLSearchParams(window.location.search);
     const candidate = qs.get('callback_url');
     if (candidate) {
-      const u = new URL(candidate);
-      if (u.protocol === 'https:') return u.toString();
+      const u = toHttpsUrl(candidate);
+      if (u) return u.toString();
     }
   } catch (_) {}
 
-  if (claimContext.tokenCallbackUrl) return claimContext.tokenCallbackUrl;
-  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
+  const tokenCallbackUrl = toHttpsUrl(claimContext.tokenCallbackUrl);
+  if (tokenCallbackUrl) return tokenCallbackUrl.toString();
+
+  const fallbackCallbackUrl = toHttpsUrl(typeof window !== 'undefined' ? window.__JDP_CALLBACK_URL__ : null);
+  if (fallbackCallbackUrl) return fallbackCallbackUrl.toString();
+
   return null;
+}
+
+export function canClaimScore() {
+  return !!resolveCallbackUrl();
 }
 
 export function buildClaimUrl(callbackUrl, payload) {
@@ -96,7 +114,7 @@ function recordClaim(payload) {
 }
 
 export async function claimScore(score, { timeUsedMs, cause } = {}) {
-  if (claimLocked) return null;
+  if (claimLocked) return { status: 'locked', payload: null };
   claimLocked = true;
 
   const token = newToken();
@@ -111,14 +129,25 @@ export async function claimScore(score, { timeUsedMs, cause } = {}) {
   recordClaim(payload);
 
   try {
+    if (payload.score <= 0) {
+      claimLocked = false;
+      return { status: 'missing_callback', payload };
+    }
+
     const callbackUrl = resolveCallbackUrl();
     if (!callbackUrl) {
       console.info('[flying-ruby] claimScore (no callback_url configured):', payload);
       claimLocked = false;
-      return payload;
+      return { status: 'missing_callback', payload };
     }
 
     if (claimContext.launchToken && claimContext.resKey && claimContext.tokenCallbackUrl) {
+      const tokenCallbackUrl = toHttpsUrl(claimContext.tokenCallbackUrl);
+      if (!tokenCallbackUrl) {
+        claimLocked = false;
+        return { status: 'missing_callback', payload };
+      }
+
       const encrypted = await encryptGenetPayload(claimContext.resKey, {
         score: payload.score,
         is_suspicious: false,
@@ -128,20 +157,19 @@ export async function claimScore(score, { timeUsedMs, cause } = {}) {
           claimed_at: payload.claimedAt,
         },
       });
-      const target = new URL(claimContext.tokenCallbackUrl);
-      target.searchParams.set('token', claimContext.launchToken);
-      target.searchParams.set('dd', encrypted.dd);
-      target.searchParams.set('dv', encrypted.dv);
-      window.location.href = target.toString();
-      return payload;
+      tokenCallbackUrl.searchParams.set('token', claimContext.launchToken);
+      tokenCallbackUrl.searchParams.set('dd', encrypted.dd);
+      tokenCallbackUrl.searchParams.set('dv', encrypted.dv);
+      window.location.href = tokenCallbackUrl.toString();
+      return { status: 'redirecting', payload };
     }
 
     window.location.href = buildClaimUrl(callbackUrl, payload);
-    return payload;
+    return { status: 'redirecting', payload };
   } catch (e) {
     console.warn('[flying-ruby] claim submit failed:', e);
     claimLocked = false;
-    return payload;
+    return { status: 'failed', payload, error: e };
   }
 }
 

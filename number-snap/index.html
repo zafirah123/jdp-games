@@ -262,7 +262,7 @@
     </div>
   </div>
 
-<script src="./claim-callback.js?v=20260530.1"></script>
+<script src="./claim-callback.js?v=20260624.2"></script>
 <script>
 'use strict';
 
@@ -859,7 +859,7 @@ function endRound(titleKey) {
 dom.startBtn.addEventListener('click', () => { startRound(); ensureAudio(); });
 
 // ===========================================================================
-// CLAIM SCORE — supports default callback flow (§6.5) and Genet encrypted flow (§6.6)
+// CLAIM SCORE - supports default callback flow (section 6.5) and Genet encrypted flow (section 6.6)
 // ===========================================================================
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
@@ -881,10 +881,11 @@ dom.claimBtn.addEventListener('click', async () => {
   }
   if (claimLocked) return;
   claimLocked = true;
+  dom.claimBtn.disabled = true;
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
-      console.warn('[number-snap] claim submit unavailable: no callback configured');
+      console.warn('[number-snap] claim submit unavailable: invalid or missing callback context');
       dom.claimBtn.textContent = COPY.claimUnavailable;
       dom.claimBtn.disabled = true;
       claimLocked = false;
@@ -894,6 +895,8 @@ dom.claimBtn.addEventListener('click', async () => {
   } catch (e) {
     console.warn('[number-snap] claim submit failed:', e);
     claimLocked = false;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.disabled = true;
   }
 });
 

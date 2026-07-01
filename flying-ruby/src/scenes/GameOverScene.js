@@ -1,7 +1,7 @@
-import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js';
-import { addMuteButton } from '../muteButton.js';
-import { COPY } from '../copy.js';
-import { claimScore } from '../claimScore.js';
+import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260624.2';
+import { addMuteButton } from '../muteButton.js?v=20260624.2';
+import { COPY } from '../copy.js?v=20260624.2';
+import { canClaimScore, claimScore } from '../claimScore.js?v=20260624.2';
 
 const BEST_KEY = 'flying-ruby:best';
 
@@ -14,6 +14,7 @@ export class GameOverScene extends Phaser.Scene {
     this.score      = data?.score ?? 0;
     this.timeUsedMs = data?.timeUsedMs ?? 0;
     this.cause      = data?.cause ?? 'crash'; // 'crash' | 'time'
+    this.claimReady = this.score <= 0 || canClaimScore();
 
     // A continue is offered only after a crash with time still left in the
     // shared 3-minute budget. Once the full 3:00 is spent, the only way on
@@ -223,18 +224,54 @@ export class GameOverScene extends Phaser.Scene {
     this.buttonLayer.destroy();
     this.buttonLayer = this.add.container(0, 0);
 
-    this._makeButton(cx, by + 32, 240, 64, this.score <= 0 ? COPY.retry : COPY.claimScore,
+    this.claimStatus = this.add.text(cx, by + 92, '', {
+      fontFamily: FONTS.ui,
+      fontSize:   '13px',
+      color:      PALETTE_CSS.white,
+      wordWrap:   { width: 280 },
+      align:      'center',
+    }).setOrigin(0.5).setAlpha(0.85);
+
+    this.claimButton = this._makeButton(cx, by + 32, 240, 64, this.score <= 0 ? COPY.retry : COPY.claimScore,
       PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
-      () => {
+      async () => {
         if (this.score <= 0) {
           this.scene.start('StartScene');
           return;
         }
-        claimScore(this.score, {
+        this._setClaimButtonDisabled(true);
+        this._setClaimStatus(COPY.claimSubmitting);
+        const result = await claimScore(this.score, {
           timeUsedMs: this.timeUsedMs,
           cause:      this.cause,
         });
+        if (result?.status === 'redirecting') return;
+        if (result?.status === 'missing_callback') {
+          this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+        } else if (result?.status === 'locked') {
+          this._setClaimStatus(COPY.claimSubmitting);
+        } else {
+          this._setClaimStatus(COPY.claimFailed, PALETTE_CSS.ruby);
+        }
+        this._setClaimButtonDisabled(true);
       });
+
+    if (this.score > 0 && !this.claimReady) {
+      this._setClaimButtonDisabled(true);
+      this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+    }
+  }
+
+  _setClaimStatus(message, color = PALETTE_CSS.white) {
+    if (!this.claimStatus) return;
+    this.claimStatus.setText(message || '');
+    this.claimStatus.setColor(color);
+  }
+
+  _setClaimButtonDisabled(disabled) {
+    if (!this.claimButton) return;
+    this.claimButton.isDisabled = disabled;
+    this.claimButton.setAlpha(disabled ? 0.55 : 1);
   }
 
   _makeButton(x, y, w, h, label, fillColor, textColor, borderColor, onClick, outlined = false) {
@@ -282,6 +319,7 @@ export class GameOverScene extends Phaser.Scene {
     );
 
     btn.on('pointerover', () => {
+      if (btn.isDisabled) return;
       this.input.setDefaultCursor('pointer');
       this.tweens.add({ targets: btn, scale: 1.05, duration: 120, ease: 'Sine.easeOut' });
     });
@@ -290,10 +328,12 @@ export class GameOverScene extends Phaser.Scene {
       this.tweens.add({ targets: btn, scale: 1.0, duration: 120, ease: 'Sine.easeOut' });
     });
     btn.on('pointerdown', () => {
+      if (btn.isDisabled) return;
       this.tweens.add({
         targets: btn, scale: 0.94, duration: 80, yoyo: true,
         onComplete: onClick,
       });
     });
+    return btn;
   }
 }

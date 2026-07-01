@@ -14,8 +14,8 @@
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>FlagFindr</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+<link rel="stylesheet" href="./vendor/tailwind.min.css">
+<script src="./vendor/matter.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
 
@@ -176,7 +176,7 @@ body{
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260613.1"></script>
+<script src="./claim-callback.js?v=20260624.2"></script>
 <script>
 "use strict";
 const { Engine, World, Bodies, Body, Composite, Query } = Matter;
@@ -243,7 +243,7 @@ const COPY = {
     howto: 'Your <b>card</b> up top and the <b>jar</b> below share exactly <b>one</b> flag. Find it, then tap that bubble in the jar!',
     cardHint: 'One of these is in the jar ↓',
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
-    claim: 'CLAIM SCORE', retry: 'RETRY', spots: 'Spots',
+    claim: 'CLAIM SCORE', retry: 'RETRY', claimUnavailable: 'CALLBACK UNAVAILABLE', spots: 'Spots',
     scoreLabel: 'Score', timeLabel: 'Time',
     newBest: 'NEW BEST!', best: 'Best', endRun: 'End Run',
     settle: '❄️ FREEZE — jar stops!', rush: '💎 Spot Rush ×2!',
@@ -253,7 +253,7 @@ const COPY = {
     howto: '<b>Kad</b> anda di atas dan <b>balang</b> di bawah berkongsi <b>satu</b> bendera sahaja. Cari, dan klik bendera itu dalam balang!',
     cardHint: 'Satu ada dalam balang ↓',
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
-    claim: 'TUNTUT SKOR', retry: 'RETRY', spots: 'Skor',
+    claim: 'TUNTUT SKOR', retry: 'RETRY', claimUnavailable: 'PANGGIL BALIK TIADA', spots: 'Skor',
     scoreLabel: 'Skor', timeLabel: 'Masa',
     newBest: 'REKOD BAHARU!', best: 'Terbaik', endRun: 'Tamatkan',
     settle: '❄️ BEKU — balang henti!', rush: '💎 Rentak Ganda ×2!',
@@ -1002,6 +1002,7 @@ function endRun(byTimer){
   nb.textContent = COPY.newBest; nb.classList.toggle('show', isBest);
   const claim = document.getElementById('claimBtn');
   claim.textContent = state.score > 0 ? COPY.claim : COPY.retry;
+  claim.disabled = false;
   claimLocked = false;
   document.getElementById('overOverlay').classList.remove('hidden');
 }
@@ -1024,11 +1025,25 @@ async function buildClaimUrl(){
 document.getElementById('claimBtn').addEventListener('click', async ()=>{
   if (state.score <= 0){ startGame(); return; }   // RETRY (§6.5) — local restart for zero-score only
   if (claimLocked) return; claimLocked = true;
+  document.getElementById('claimBtn').disabled = true;
   try {
     const url = await buildClaimUrl();
-    if (!url){ console.warn('[flag-findr] no callback configured'); claimLocked = false; return; }
+    if (!url){
+      console.warn('[flag-findr] claim unavailable: invalid or missing callback context');
+      const claimBtn = document.getElementById('claimBtn');
+      claimBtn.textContent = COPY.claimUnavailable;
+      claimBtn.disabled = true;
+      claimLocked = false;
+      return;
+    }
     location.href = url;
-  } catch(err){ console.warn('[flag-findr] claim failed', err); claimLocked = false; }
+  } catch(err){
+    console.warn('[flag-findr] claim failed', err);
+    const claimBtn = document.getElementById('claimBtn');
+    claimLocked = false;
+    claimBtn.textContent = COPY.claimUnavailable;
+    claimBtn.disabled = true;
+  }
 });
 document.getElementById('endRunBtn').addEventListener('click', ()=> endRun(false));
 

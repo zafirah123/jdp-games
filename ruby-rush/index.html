@@ -354,6 +354,7 @@
   </div>
 </div>
 
+<script src="./claim-callback.js?v=20260629.1"></script>
 <script>
 'use strict';
 
@@ -370,6 +371,8 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
+    claimUnavailable: 'CALLBACK UNAVAILABLE',
+    retry: 'RETRY',
     menuSub: "Jump! Duck! Shoot!<br>Let's rush for the high score!",
     menuHint: 'Tap / <kbd>Space</kbd> jump &nbsp;·&nbsp; hold lower screen / <kbd>↓</kbd> duck &nbsp;·&nbsp; <kbd>X</kbd> shoot',
     scoreLabel: 'Rubies', timeLabel: 'Time',
@@ -389,6 +392,8 @@ const COPY = {
     audioOn: 'AUDIO ON',
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
+    claimUnavailable: 'PANGGIL BALIK TIADA',
+    retry: 'RETRY',
     menuSub: 'Lompat! Tunduk! Tembak!<br>Jom rentas untuk skor tertinggi!',
     menuHint: 'Ketuk / <kbd>Space</kbd> lompat &nbsp;·&nbsp; tahan bawah / <kbd>↓</kbd> tunduk &nbsp;·&nbsp; <kbd>X</kbd> tembak',
     scoreLabel: 'Delima', timeLabel: 'Masa',
@@ -402,6 +407,8 @@ const COPY = {
     statScore: 'Delima', statBest: 'Terbaik', statDodged: 'Halangan dilepasi', statTime: 'Masa dimainkan',
   },
 }[LANG];
+
+const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
 
 // =============================================================================
 // CONFIG — all tunables live here (CLAUDE.md pattern #1)
@@ -479,7 +486,6 @@ const CONFIG = {
   RESUME_INVULN_SEC: 1.6,       // grace window after a Continue
   STORAGE_KEY_BEST: 'ruby-rush:best',
   STORAGE_KEY_MUTE: 'ruby-rush:mute',
-  CLAIM_FALLBACK_URL: 'https://app.pandai.org/app/game',
 };
 
 // Touch devices get a gentler combat balance — enemies fall in 2 orbs and the
@@ -1566,6 +1572,8 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
     `<div class="label">${COPY.statDodged}</div><div class="value">${state.dodged}</div>` +
     `<div class="label">${COPY.statTime}</div><div class="value">${fmtTime(state.elapsed)}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
+  dom.claimBtn.textContent = state.score > 0 ? COPY.claim : COPY.retry;
+  dom.claimBtn.disabled = false;
 
   stopMusic();
   playGameOver();
@@ -1579,31 +1587,21 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
 // =============================================================================
 // CLAIM SCORE — §6.5 callback contract (game, score, token + suspicious)
 // =============================================================================
-function resolveCallbackUrl() {
-  const qs = new URLSearchParams(location.search);
-  const candidate = qs.get('callback_url');
-  if (candidate) { try { const u = new URL(candidate); if (u.protocol === 'https:') return u.toString(); } catch (_) {} }
-  if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
-  return CONFIG.CLAIM_FALLBACK_URL;
-}
-function suspiciousCheck() {
-  // Local, non-blocking heuristic: more rubies than physically collectable.
-  const maxRate = 6; // rubies/sec ceiling incl. rush streams
-  const cap = Math.ceil(Math.max(8, state.elapsed) * maxRate);
-  if (state.score > cap) return 'rate';
-  if (state.score > 0 && state.jumps === 0 && state.dodged > 6) return 'no-input';
-  return null;
-}
-function buildClaimUrl() {
-  const token = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const base = resolveCallbackUrl();
-  const sep = base.includes('?') ? '&' : '?';
-  let url = base + sep + 'game=' + encodeURIComponent(CONFIG.GAME_NAME)
-    + '&score=' + Math.max(0, state.score | 0) + '&token=' + encodeURIComponent(token);
-  const sus = suspiciousCheck();
-  if (sus) url += '&suspicious=true&suspicious_reason=' + encodeURIComponent(sus);
-  return url;
+async function buildClaimUrl() {
+  if (!window.ClaimCallback) {
+    return null;
+  }
+
+  return window.ClaimCallback.buildClaimUrl({
+    claimContext,
+    score: Math.max(0, state.score | 0),
+    gameName: CONFIG.GAME_NAME,
+    extraData: {
+      obstacles_cleared: state.dodged,
+      time_played_sec: Math.round(state.elapsed),
+      jumps: state.jumps,
+    },
+  });
 }
 
 // =============================================================================
@@ -1640,7 +1638,17 @@ bindHold(dom.shootBtn, () => { state.shootHeld = true; shoot(); }, () => { state
 function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
-dom.claimBtn.addEventListener('click', () => { location.href = buildClaimUrl(); });
+dom.claimBtn.addEventListener('click', async () => {
+  if ((state.score | 0) <= 0) { startGame(); return; }
+  dom.claimBtn.disabled = true;
+  const claimUrl = await buildClaimUrl();
+  if (!claimUrl) {
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.disabled = true;
+    return;
+  }
+  location.href = claimUrl;
+});
 dom.endBtn.addEventListener('click', () => { if (state.phase === 'PLAYING') { state.phase = 'PAUSED'; state.ducking = false; showTouch(false); dom.pause.classList.remove('hidden'); } });
 dom.resumeBtn.addEventListener('click', () => { if (state.phase === 'PAUSED') { state.phase = 'PLAYING'; showTouch(true); dom.pause.classList.add('hidden'); } });
 dom.endRunBtn.addEventListener('click', () => endGame('early'));
@@ -1695,6 +1703,9 @@ function loop(t) {
 // =============================================================================
 // Boot — ?phase=play dev jump (CLAUDE.md pattern #10) + persisted prefs
 // =============================================================================
+if (window.ClaimCallback) {
+  window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+}
 showBest();
 updateMuteUI();
 

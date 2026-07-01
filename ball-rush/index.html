@@ -243,8 +243,12 @@ const COPY = {
 // =============================================================================
 const CONFIG = {
   GAME_DURATION_SEC: 180,
-  ROT_SPEED: 3.2,            // rad/s ball rotation
-  ROLL_RATE: 0.95,           // surface-band cycles per tunnel unit (rolling look)
+  ROT_SPEED: 3.2,            // rad/s peak steering speed
+  STEER_RESPONSE: 14,        // per-second easing toward the held direction
+  ROLL_RATE: 0.45,           // stripe sweeps per tunnel unit (rolling look)
+  ROLL_STRIPES: 4,           // rolling texture stripes on the ball
+  HUE_EASE: 3.5,             // per-second easing between sequence hues
+  OVERSCAN_RINGS: 5,         // checker rows drawn past the ball plane (fills corners)
   SPEED_START: 1.35,         // tunnel z-units / sec at round start
   SPEED_END: 2.7,            // peak speed at SPEED_PEAK_FRAC of the round
   SPEED_PEAK_FRAC: 0.85,
@@ -347,9 +351,13 @@ const state = {
   phase: 'MENU',            // MENU | PLAYING | CRASHED | CONTINUE | GAME_OVER
   theta: Math.PI / 2,       // ball angle (screen space)
   holdDir: 0,
+  angVel: 0,                // eased steering velocity (rad/s)
+  rollTilt: 0,              // eased lean of the rolling texture while steering
   ballSquash: 1,
+  hue: CONFIG.HUES[0],      // displayed tunnel hue, eased toward currentHue()
   features: [],
   floaters: [],
+  sparks: [],
   score: 0,
   level: START_LEVEL,
   seqCleared: 0,
@@ -394,6 +402,14 @@ resize();
 
 // perspective: ring radius for a given depth z
 function radiusAt(z) { return view.base / (1 + Math.max(0, z) * CONFIG.RADIUS_K); }
+// raw perspective — valid past the ball plane (z < 0) so the checker grid and
+// features can slide off toward the screen edges instead of freezing at the rim.
+// Capped so near-singular depths stay drawable.
+function radiusRaw(z) {
+  const d = 1 + z * CONFIG.RADIUS_K;
+  const cap = (view.w + view.h) * 1.6;
+  return d < view.base / cap ? cap : Math.min(view.base / d, cap);
+}
 
 // =============================================================================
 // Sequence generation (procedural — fresh every sequence, never hardcoded)
@@ -468,10 +484,14 @@ function spawnGate() {
   });
 }
 function spawnHole() {
-  // hole is a small gap snapped to the checker grid: segCount of SEGMENTS columns wide
+  // hole is a gap snapped to the checker grid: segCount of SEGMENTS columns wide,
+  // and depth-snapped to a tile row boundary so it stays flush with the grid as
+  // both scroll by exactly the same dz per frame.
   const segCount = state.level <= 2 ? 2 : state.level <= 4 ? 3 : 4;
   const seg0 = randInt(0, CONFIG.SEGMENTS - 1);
-  state.features.push({ type: 'hole', z: CONFIG.Z_SPAWN, prevZ: CONFIG.Z_SPAWN, resolved: false, seg0, segCount });
+  const ringStep = CONFIG.Z_VIEW / CONFIG.RINGS;
+  const z = Math.ceil((state.scrollDist + CONFIG.Z_SPAWN) / ringStep) * ringStep - state.scrollDist;
+  state.features.push({ type: 'hole', z, prevZ: z, resolved: false, seg0, segCount });
 }
 function holeArc(f) { return { start: f.seg0 / CONFIG.SEGMENTS * TAU, len: f.segCount / CONFIG.SEGMENTS * TAU }; }
 function spawnPower() {
@@ -500,9 +520,23 @@ function addScore(raw) {
   dom.scoreVal.textContent = String(state.score);
   return pts;
 }
-function floater(text, color) {
+function ballScreenPos() {
   const r = radiusAt(0) * 0.74;
-  state.floaters.push({ x: view.cx + Math.cos(state.theta) * r, y: view.cy + Math.sin(state.theta) * r, text, color, t: 0 });
+  return { x: view.cx + Math.cos(state.theta) * r, y: view.cy + Math.sin(state.theta) * r };
+}
+function floater(text, color) {
+  const p = ballScreenPos();
+  state.floaters.push({ x: p.x, y: p.y, text, color, t: 0 });
+}
+function burst(colors, n, speed) {
+  const p = ballScreenPos();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU, v = speed * (0.4 + Math.random() * 0.8);
+    state.sparks.push({
+      x: p.x, y: p.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - speed * 0.3,
+      size: 2 + Math.random() * 2.5, color: pick(colors), t: 0, life: 0.45 + Math.random() * 0.35,
+    });
+  }
 }
 
 // =============================================================================
@@ -525,11 +559,13 @@ function resolveFeature(f) {
 function onCorrect() {
   const pts = addScore(CONFIG.BASE_PTS * state.level);
   floater('+' + pts, '#fdd83d');
+  burst(['#fdd83d', '#ffb800', '#fff2a8'], 10, 180);
   state.collectIndex++;
   playGood();
   if (state.collectIndex >= 5) {
     const bonus = addScore(CONFIG.COMBO_PTS * state.level);
     floater(COPY.combo + ' +' + bonus, '#7CFFB0');
+    burst(['#7CFFB0', '#fdd83d'], 16, 240);
     playCombo();
     showToast(COPY.combo);
     newSequence(true);
@@ -545,6 +581,7 @@ function onWrong() {
 function activatePower(kind) {
   if (kind === 'slow') { state.slowUntil = state.elapsed + CONFIG.SLOWMO_SEC; showToast(COPY.slowmo); }
   else { state.doubleUntil = state.elapsed + CONFIG.DOUBLE_SEC; showToast(COPY.dbl); }
+  burst(kind === 'slow' ? ['#46c8ff', '#bfeaff'] : ['#ffd633', '#ffb800'], 12, 200);
   playPower();
 }
 
@@ -559,6 +596,10 @@ function currentSpeed() {
 function update(dt) {
   if (state.shake > 0) state.shake -= dt;
   if (state.redFlash > 0) state.redFlash -= dt;
+
+  // ease the displayed hue toward the current sequence hue (shortest path)
+  const hueDiff = ((currentHue() - state.hue + 540) % 360) - 180;
+  state.hue += hueDiff * Math.min(1, dt * CONFIG.HUE_EASE);
 
   if (state.phase === 'CRASHED') {
     state.crashT += dt;
@@ -577,9 +618,12 @@ function update(dt) {
   if (sl <= 10 && sl >= 1 && state.lastTick !== sl) { playTick(); state.lastTick = sl; }
   if (state.timer <= 0) { endGame('time'); return; }
 
-  // rotate ball
-  if (state.holdDir !== 0) { state.theta = norm(state.theta + state.holdDir * CONFIG.ROT_SPEED * dt); state.ballSquash += (0.82 - state.ballSquash) * 0.3; }
-  else state.ballSquash += (1 - state.ballSquash) * 0.2;
+  // steer — eased angular velocity so starts/stops feel smooth, not snapped
+  state.angVel += (state.holdDir * CONFIG.ROT_SPEED - state.angVel) * Math.min(1, dt * CONFIG.STEER_RESPONSE);
+  state.theta = norm(state.theta + state.angVel * dt);
+  const steer = Math.abs(state.angVel) / CONFIG.ROT_SPEED;
+  state.ballSquash += ((1 - 0.15 * steer) - state.ballSquash) * Math.min(1, dt * 12);
+  state.rollTilt += (Math.atan2(-state.angVel * 0.35, 1.7) - state.rollTilt) * Math.min(1, dt * 8);
 
   const speed = currentSpeed() * (slowActive() ? CONFIG.SLOWMO_MUL : 1);
   const dz = speed * dt;
@@ -608,12 +652,19 @@ function decayFloaters(dt) {
     const f = state.floaters[i]; f.t += dt; f.y -= dt * 46;
     if (f.t > 0.85) state.floaters.splice(i, 1);
   }
+  for (let i = state.sparks.length - 1; i >= 0; i--) {
+    const s = state.sparks[i];
+    s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt;
+    s.vy += 430 * dt; s.vx *= Math.max(0, 1 - 2.2 * dt);
+    if (s.t > s.life) state.sparks.splice(i, 1);
+  }
 }
 
 function crash() {
   if (state.phase !== 'PLAYING') return;
   state.phase = 'CRASHED';
   state.crashT = 0; state.shake = 0.5; state.redFlash = 0.5;
+  burst(['#e23b46', '#ffd2d5', '#8f1119'], 18, 280);
   playCrash();
 }
 
@@ -654,10 +705,11 @@ function draw() {
   ctx.translate(view.cx + sx, view.cy + sy);
 
   drawTunnel();
-  // features far -> near
+  // features far -> near; holes stay visible past the ball plane so they
+  // slide off the rim with the grid instead of vanishing at the edge
   const sorted = state.features.slice().sort((a, b) => b.z - a.z);
   for (const f of sorted) {
-    if (f.z < -0.4) continue;
+    if (f.z < (f.type === 'hole' ? -0.95 : -0.45)) continue;
     if (f.type === 'hole') drawHole(f);
     else if (f.type === 'gate') drawGate(f);
     else drawPower(f);
@@ -666,31 +718,32 @@ function draw() {
   ctx.restore();
 
   for (const f of state.floaters) drawFloater(f);
+  drawSparks();
   if (state.redFlash > 0) { ctx.save(); ctx.globalAlpha = clamp(state.redFlash, 0, 0.5); ctx.fillStyle = '#b81c26'; ctx.fillRect(0, 0, view.w, view.h); ctx.restore(); }
 }
 
 function drawTunnel() {
-  const hue = currentHue();
+  const hue = state.hue;
   const ringStep = CONFIG.Z_VIEW / CONFIG.RINGS;
   const shift = state.scrollDist % ringStep;
   const wraps = Math.floor(state.scrollDist / ringStep);
   const seg = CONFIG.SEGMENTS;
-  for (let k = CONFIG.RINGS; k >= 1; k--) {
+  const eps = 0.006; // tiny angular overlap — kills hairline seams between tiles
+  // overscan rings continue the checker past the ball plane to the screen edges
+  for (let k = CONFIG.RINGS; k >= 1 - CONFIG.OVERSCAN_RINGS; k--) {
     const zf = k * ringStep - shift;
-    const zn = (k - 1) * ringStep - shift;
-    if (zn < 0) continue;
-    const rf = radiusAt(zf), rn = radiusAt(zn);
+    const zn = zf - ringStep;
+    const rf = radiusRaw(zf), rn = radiusRaw(zn) + 0.75;
     const fade = clamp(1 - zf / CONFIG.Z_VIEW, 0.12, 1);
+    const outer = clamp(1 + zn * 0.22, 0.3, 1); // gentle vignette past the ball plane
     for (let s = 0; s < seg; s++) {
-      const a0 = s / seg * TAU, a1 = (s + 1) / seg * TAU;
+      const a0 = s / seg * TAU, a1 = (s + 1) / seg * TAU + eps;
       const light = ((k + wraps + s) % 2) === 0;
-      const L = (light ? 46 : 30) * fade + 4;
+      const L = ((light ? 46 : 30) * fade + 4) * outer;
       ctx.fillStyle = `hsl(${hue}, 58%, ${L}%)`;
       ctx.beginPath();
-      ctx.lineTo(Math.cos(a0) * rf, Math.sin(a0) * rf);
-      ctx.lineTo(Math.cos(a1) * rf, Math.sin(a1) * rf);
-      ctx.lineTo(Math.cos(a1) * rn, Math.sin(a1) * rn);
-      ctx.lineTo(Math.cos(a0) * rn, Math.sin(a0) * rn);
+      ctx.arc(0, 0, rn, a0, a1);
+      ctx.arc(0, 0, rf, a1, a0, true);
       ctx.closePath();
       ctx.fill();
     }
@@ -702,24 +755,34 @@ function drawTunnel() {
 }
 
 function drawHole(f) {
-  // one grid-row deep so it reads as missing checker tiles, not a wall
+  // exactly one checker row deep, spawn-snapped to the grid — the gap sits flush
+  // on tile boundaries for its whole life, so it reads as missing tiles
   const ringStep = CONFIG.Z_VIEW / CONFIG.RINGS;
-  const z = Math.max(0, f.z);
-  const rO = radiusAt(z);                 // near edge of the row (matches the grid box)
-  const rI = radiusAt(z + ringStep);      // far edge — exactly one ring in
+  const z = f.z;
+  const rO = radiusRaw(z);                // near lip — on a grid row boundary
+  const rI = radiusRaw(z + ringStep);     // far edge — the next row boundary
   const a = holeArc(f), a0 = a.start, a1 = a.start + a.len;
-  // same tunnel hue, much darker — reads as a gap in the checker, not a hazard decal
-  const hue = currentHue();
+  const hue = state.hue;
   const fade = clamp(1 - z / CONFIG.Z_VIEW, 0.12, 1);
-  ctx.fillStyle = `hsl(${hue}, 58%, ${10 * fade + 3}%)`;
+  const outer = clamp(1 + z * 0.22, 0.3, 1);
+  const aIn = clamp((CONFIG.Z_SPAWN + ringStep - z) / 0.8, 0, 1);
+  ctx.save();
+  ctx.globalAlpha = aIn;
+  // darkest at the far edge so the gap reads as depth, not a painted decal
+  const g = ctx.createRadialGradient(0, 0, rI, 0, 0, Math.max(rO, rI + 0.5));
+  g.addColorStop(0, `hsl(${hue}, 60%, ${2 * fade * outer}%)`);
+  g.addColorStop(1, `hsl(${hue}, 60%, ${(9 * fade + 2) * outer}%)`);
+  ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(0, 0, rO, a0, a1);
   ctx.arc(0, 0, rI, a1, a0, true);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = `hsl(${hue}, 58%, ${6 * fade + 2}%)`;
-  ctx.lineWidth = clamp(2.5 / (1 + f.z), 0.8, 2.5);
-  ctx.stroke();
+  // light catching the near lip of the gap
+  ctx.strokeStyle = `hsla(${hue}, 65%, ${58 * fade}%, 0.35)`;
+  ctx.lineWidth = clamp(2.4 / (1 + Math.max(0, z) * 0.5), 1, 2.4);
+  ctx.beginPath(); ctx.arc(0, 0, rO, a0, a1); ctx.stroke();
+  ctx.restore();
 }
 
 // glossy 3D ball — radial highlight + drop shadow + specular gloss
@@ -731,39 +794,51 @@ function glossyBall(x, y, rad, c1, c2, c3) {
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
   ctx.restore();
   ctx.save();
-  ctx.globalAlpha = 0.5; ctx.fillStyle = '#fff';
+  ctx.globalAlpha *= 0.5; ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.ellipse(x - rad * 0.3, y - rad * 0.36, rad * 0.28, rad * 0.16, -0.6, 0, TAU); ctx.fill();
   ctx.restore();
 }
 
 function drawGate(f) {
-  const r = radiusAt(Math.max(0, f.z));
+  const r = radiusRaw(f.z);
+  // fade in from the deep, fade out as the gate slides past the player
+  const alpha = Math.min(clamp((CONFIG.Z_SPAWN - f.z) / 0.8 + 1e-6, 0, 1), clamp(1 + f.z * 2.2, 0, 1));
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
   const orbR = clamp(r * 0.18, 12, 120);
   const playerSector = sectorOf(state.theta, f.rot);
   for (let i = 0; i < 3; i++) {
     const a = sectorCenter(f.rot, i);
+    const bob = 1 + 0.05 * Math.sin(state.elapsed * 4.2 + i * 2.1);
     const px = Math.cos(a) * r * 0.62, py = Math.sin(a) * r * 0.62;
+    const oR = orbR * bob;
     const isPlayer = i === playerSector && f.z < 4;
     if (isPlayer) {
       ctx.save();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = orbR * 0.16;
-      ctx.shadowColor = '#fff'; ctx.shadowBlur = orbR * 0.6;
-      ctx.beginPath(); ctx.arc(px, py, orbR * 1.2, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = oR * 0.16;
+      ctx.shadowColor = '#fff'; ctx.shadowBlur = oR * 0.6;
+      ctx.beginPath(); ctx.arc(px, py, oR * 1.2, 0, TAU); ctx.stroke();
       ctx.restore();
     }
     // yellow collectible ball, distinct from the red running ball
-    glossyBall(px, py, orbR, '#fff2a8', '#fdd83d', '#ffb800');
+    glossyBall(px, py, oR, '#fff2a8', '#fdd83d', '#ffb800');
     ctx.fillStyle = '#020d26';
-    ctx.font = `800 ${orbR * 0.95}px 'Roboto Mono', monospace`;
+    ctx.font = `800 ${oR * 0.95}px 'Roboto Mono', monospace`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(String(f.values[i]), px, py);
   }
+  ctx.restore();
 }
 
 function drawPower(f) {
-  const r = radiusAt(Math.max(0, f.z));
+  const r = radiusRaw(f.z);
+  const alpha = Math.min(clamp((CONFIG.Z_SPAWN - f.z) / 0.8 + 1e-6, 0, 1), clamp(1 + f.z * 2.2, 0, 1));
+  if (alpha <= 0) return;
   const px = Math.cos(f.ang) * r * 0.62, py = Math.sin(f.ang) * r * 0.62;
-  const rad = clamp(r * 0.16, 10, 100);
+  const rad = clamp(r * 0.16, 10, 100) * (1 + 0.08 * Math.sin(state.elapsed * 5));
+  ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.save();
   ctx.shadowColor = f.kind === 'slow' ? '#46c8ff' : '#fdd83d'; ctx.shadowBlur = 18;
   ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU);
@@ -772,35 +847,81 @@ function drawPower(f) {
   ctx.fillStyle = '#fff'; ctx.font = `800 ${rad}px Poppins, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(f.kind === 'slow' ? '⏱' : '×2', px, py);
+  ctx.restore();
 }
 
 function drawBall() {
   const r = radiusAt(0) * 0.74;
   const bx = Math.cos(state.theta) * r, by = Math.sin(state.theta) * r;
   const rad = view.base * 0.075 * (state.crashT > 0 ? Math.max(0, 1 - state.crashT * 1.5) : 1);
-  const sq = state.ballSquash;
-  ctx.save();
-  ctx.translate(bx, by); ctx.scale(1 / sq, sq);
-  // spinning marble — offset highlight orbits the center, dark rim for depth
-  const spin = state.rollPhase * TAU;
-  const hx = Math.cos(spin) * rad * 0.42, hy = Math.sin(spin) * rad * 0.42;
-  ctx.shadowColor = '#b81c26'; ctx.shadowBlur = 24;
-  const g = ctx.createRadialGradient(hx, hy, rad * 0.06, 0, 0, rad);
-  g.addColorStop(0, '#ffd2d5');
-  g.addColorStop(0.38, '#e23b46');
-  g.addColorStop(1, '#2a0609');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.fill();
-  ctx.shadowBlur = 0;
-  // bright specular that spins with the surface
-  ctx.globalAlpha = 0.7; ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(hx, hy, rad * 0.15, 0, TAU); ctx.fill();
-  ctx.restore();
+  if (rad > 0.5) {
+    const sq = state.ballSquash;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(state.theta + Math.PI);   // local +x points into the tunnel — the roll direction
+    // soft contact shadow cast outward onto the tunnel wall
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.beginPath(); ctx.ellipse(-rad * 0.72, 0, rad * 0.45, rad * 1.02, 0, 0, TAU); ctx.fill();
+    ctx.rotate(state.rollTilt);          // lean the roll axis while steering
+    ctx.scale(sq, 1 / sq);               // press against the wall while steering
+    // ambient glow behind the marble
+    ctx.shadowColor = 'rgba(184,28,38,0.85)'; ctx.shadowBlur = 24;
+    ctx.fillStyle = '#8f1119';
+    ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.clip();
+    // fixed light source — the shading stays put while the surface texture rolls,
+    // which is what sells the rolling (a moving highlight reads as orbiting instead)
+    const lightA = -2.1 - (state.theta + Math.PI + state.rollTilt);
+    const lx = Math.cos(lightA) * rad * 0.36, ly = Math.sin(lightA) * rad * 0.36;
+    const g = ctx.createRadialGradient(lx, ly, rad * 0.08, 0, 0, rad * 1.02);
+    g.addColorStop(0, '#ffb3b8');
+    g.addColorStop(0.35, '#e23b46');
+    g.addColorStop(0.75, '#9c141d');
+    g.addColorStop(1, '#2a0609');
+    ctx.fillStyle = g; ctx.fillRect(-rad * 1.1, -rad * 1.1, rad * 2.2, rad * 2.2);
+    // rolling meridian stripes — half-ellipses sweeping along the travel direction,
+    // fading at the silhouette so they never pop in or out at the edges
+    for (let i = 0; i < CONFIG.ROLL_STRIPES; i++) {
+      const p = (state.rollPhase + i / CONFIG.ROLL_STRIPES) % 1;
+      const phi = (p - 0.5) * Math.PI;
+      const vis = Math.cos(phi);
+      if (vis < 0.05) continue;
+      const xr = Math.max(Math.abs(Math.sin(phi)) * rad, 0.001);
+      ctx.strokeStyle = `rgba(52, 4, 9, ${0.34 * vis})`;
+      ctx.lineWidth = rad * 0.16 * (0.45 + 0.55 * vis);
+      ctx.beginPath();
+      if (Math.sin(phi) >= 0) ctx.ellipse(0, 0, xr, rad, 0, -Math.PI / 2, Math.PI / 2);
+      else ctx.ellipse(0, 0, xr, rad, 0, Math.PI / 2, Math.PI * 1.5);
+      ctx.stroke();
+    }
+    // specular gloss pinned to the light, not the surface
+    ctx.globalAlpha = 0.55; ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, rad * 0.30, rad * 0.17, Math.atan2(ly, lx) + Math.PI / 2, 0, TAU);
+    ctx.fill();
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.arc(lx * 1.15, ly * 1.15, rad * 0.07, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
   if (state.crashT > 0) {
     ctx.save(); ctx.globalAlpha = clamp(1 - state.crashT * 1.3, 0, 1);
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
     const rr = rad + state.crashT * 140;
     ctx.beginPath(); ctx.arc(bx, by, rr, 0, TAU); ctx.stroke(); ctx.restore();
   }
+}
+
+function drawSparks() {
+  if (!state.sparks.length) return;
+  ctx.save();
+  for (const s of state.sparks) {
+    const k = clamp(1 - s.t / s.life, 0, 1);
+    ctx.globalAlpha = k;
+    ctx.fillStyle = s.color;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.size * (0.5 + 0.5 * k), 0, TAU); ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawFloater(f) {
@@ -841,7 +962,8 @@ function playTick() { playTone({ freq: 1200, type: 'sine', dur: 0.06, gain: 0.1 
 function startGame() {
   state.phase = 'PLAYING';
   state.theta = Math.PI / 2; state.holdDir = 0; state.ballSquash = 1;
-  state.features = []; state.floaters = [];
+  state.angVel = 0; state.rollTilt = 0; state.hue = CONFIG.HUES[0];
+  state.features = []; state.floaters = []; state.sparks = [];
   state.score = 0; state.level = START_LEVEL; state.seqCleared = 0;
   state.elapsed = 0; state.timer = CONFIG.GAME_DURATION_SEC;
   state.sinceSpawn = CONFIG.FEATURE_GAP; state.scrollDist = 0; state.rollPhase = 0; state.plan = []; state.prevGen = null;
@@ -880,6 +1002,7 @@ function doContinue() {
   dom.cont.classList.add('hidden');
   state.features = []; state.sinceSpawn = CONFIG.FEATURE_GAP; state.plan = [];
   state.theta = Math.PI / 2; state.crashT = 0;
+  state.angVel = 0; state.rollTilt = 0; state.holdDir = 0;
   newSequence(false);          // fresh sequence, same level (D9)
   state.phase = 'PLAYING';
 }

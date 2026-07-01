@@ -266,6 +266,8 @@ const CONFIG = {
   DOUBLE_SEC: 6,
   POWER_CHANCE: 0.10,       // chance a hazard slot becomes a power-up
   CONTINUE_COUNT: 5,
+  MUSIC_TEMPO: 72,          // BPM of the lofi backing loop
+  MUSIC_VOL: 0.85,          // master gain for the backing loop (SFX are separate)
   STORAGE_KEY_BEST: 'ball-rush:best',
   STORAGE_KEY_MUTE: 'ball-rush:mute',
   GAME_NAME: 'ball-rush',
@@ -955,6 +957,112 @@ function playBad() { playTone({ freq: 240, freqEnd: 150, type: 'sawtooth', dur: 
 function playCrash() { playTone({ freq: 200, freqEnd: 50, type: 'sawtooth', dur: 0.5, gain: 0.24 }); }
 function playPower() { playTone({ freq: 520, freqEnd: 1040, type: 'square', dur: 0.2, gain: 0.14 }); }
 function playTick() { playTone({ freq: 1200, type: 'sine', dur: 0.06, gain: 0.1 }); }
+// end-of-round celebration — rising arpeggio into a warm closing chord
+function playFanfare(newBest) {
+  const arp = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+  arp.forEach((f, i) => playTone({ freq: f, type: 'triangle', dur: 0.16, gain: 0.16, delay: i * 0.1 }));
+  [261.63, 329.63, 392.0, 523.25].forEach(f => playTone({ freq: f, type: 'triangle', dur: 0.8, gain: 0.08, delay: 0.42 }));
+  if (newBest) [1318.5, 1568.0, 2093.0].forEach((f, i) => playTone({ freq: f, type: 'sine', dur: 0.3, gain: 0.1, delay: 0.68 + i * 0.09 }));
+}
+
+// =============================================================================
+// BGM — synthesized lofi loop, no asset files. Everything routes through one
+// gain node so the mute button silences already-scheduled notes instantly.
+// =============================================================================
+const NOTE = n => 440 * Math.pow(2, (n - 69) / 12); // midi -> Hz
+const BGM_CHORDS = [ // IV - iii - ii - I in C, the classic mellow descent
+  { bass: NOTE(41), pad: [NOTE(53), NOTE(57), NOTE(60), NOTE(64)] }, // Fmaj7
+  { bass: NOTE(40), pad: [NOTE(52), NOTE(55), NOTE(59), NOTE(62)] }, // Em7
+  { bass: NOTE(38), pad: [NOTE(50), NOTE(53), NOTE(57), NOTE(60)] }, // Dm7
+  { bass: NOTE(36), pad: [NOTE(48), NOTE(52), NOTE(55), NOTE(59)] }, // Cmaj7
+];
+const BGM_PENTA = [72, 74, 76, 79, 81, 84].map(NOTE); // C major pentatonic, high
+const bgm = { gain: null, noise: null, timer: 0, nextBar: 0, bar: 0, playing: false };
+
+function bgmEnsure() {
+  if (!audioCtx) return false;
+  if (!bgm.gain) {
+    bgm.gain = audioCtx.createGain();
+    bgm.gain.gain.value = 0;
+    bgm.gain.connect(audioCtx.destination);
+    const len = Math.floor(audioCtx.sampleRate * 0.1);
+    bgm.noise = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = bgm.noise.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return true;
+}
+function bgmNote(o) {
+  const osc = audioCtx.createOscillator(), g = audioCtx.createGain(), lp = audioCtx.createBiquadFilter();
+  osc.type = o.type || 'triangle'; osc.frequency.setValueAtTime(o.freq, o.t);
+  lp.type = 'lowpass'; lp.frequency.value = o.cut || 1100; // lowpass = the "lofi" warmth
+  g.gain.setValueAtTime(0.0001, o.t);
+  g.gain.exponentialRampToValueAtTime(o.gain, o.t + (o.attack || 0.02));
+  g.gain.exponentialRampToValueAtTime(0.0001, o.t + o.dur);
+  osc.connect(lp).connect(g).connect(bgm.gain);
+  osc.start(o.t); osc.stop(o.t + o.dur + 0.05);
+}
+function bgmHat(t) {
+  const src = audioCtx.createBufferSource(), g = audioCtx.createGain(), hp = audioCtx.createBiquadFilter();
+  src.buffer = bgm.noise;
+  hp.type = 'highpass'; hp.frequency.value = 6000;
+  g.gain.setValueAtTime(0.02, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+  src.connect(hp).connect(g).connect(bgm.gain);
+  src.start(t); src.stop(t + 0.08);
+}
+function bgmBar(t, bar) {
+  const beat = 60 / CONFIG.MUSIC_TEMPO;
+  const ch = BGM_CHORDS[bar % BGM_CHORDS.length];
+  // warm pad — staggered chord tones with a slow swell
+  ch.pad.forEach((f, i) => bgmNote({ freq: f, t: t + i * 0.03, dur: beat * 3.7, gain: 0.045, attack: 0.5, cut: 850 }));
+  // laid-back bass on beats 1 and 3
+  bgmNote({ freq: ch.bass, t, dur: beat * 1.7, type: 'sine', gain: 0.1, attack: 0.03, cut: 400 });
+  bgmNote({ freq: ch.bass, t: t + beat * 2, dur: beat * 1.5, type: 'sine', gain: 0.085, attack: 0.03, cut: 400 });
+  // soft off-beat hats
+  for (let b = 0; b < 4; b++) bgmHat(t + (b + 0.5) * beat);
+  // sparse pentatonic plucks so the loop never feels copy-pasted
+  for (let b = 0; b < 4; b++) {
+    if (Math.random() < 0.45) {
+      bgmNote({ freq: pick(BGM_PENTA), t: t + b * beat + (Math.random() < 0.5 ? 0 : beat / 2), dur: beat * 0.9, type: 'sine', gain: 0.05, attack: 0.01, cut: 2200 });
+    }
+  }
+}
+function bgmTick() {
+  if (!bgm.playing || !audioCtx) return;
+  // while suspended or muted, pin the cursor to "now" so unmuting never
+  // dumps a burst of catch-up bars
+  if (audioCtx.state !== 'running' || state.muted) { bgm.nextBar = audioCtx.currentTime + 0.06; return; }
+  const barDur = 60 / CONFIG.MUSIC_TEMPO * 4;
+  if (bgm.nextBar < audioCtx.currentTime) bgm.nextBar = audioCtx.currentTime + 0.05;
+  while (bgm.nextBar < audioCtx.currentTime + 0.9) { bgmBar(bgm.nextBar, bgm.bar++); bgm.nextBar += barDur; }
+}
+function startMusic() {
+  ensureAudio();
+  if (!bgmEnsure()) return;
+  const t = audioCtx.currentTime;
+  bgm.gain.gain.cancelScheduledValues(t);
+  bgm.gain.gain.setValueAtTime(state.muted ? 0 : CONFIG.MUSIC_VOL, t);
+  bgm.playing = true; bgm.bar = 0; bgm.nextBar = t + 0.1;
+  clearInterval(bgm.timer); bgm.timer = setInterval(bgmTick, 200);
+  bgmTick();
+}
+function stopMusic() {
+  if (!bgm.playing) return;
+  bgm.playing = false; clearInterval(bgm.timer);
+  if (audioCtx && bgm.gain) {
+    const t = audioCtx.currentTime;
+    bgm.gain.gain.cancelScheduledValues(t);
+    bgm.gain.gain.setValueAtTime(Math.max(bgm.gain.gain.value, 0.0001), t);
+    bgm.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+  }
+}
+function setMusicMuted(muted) {
+  if (!audioCtx || !bgm.gain) return;
+  const t = audioCtx.currentTime;
+  bgm.gain.gain.cancelScheduledValues(t);
+  bgm.gain.gain.setValueAtTime(!muted && bgm.playing ? CONFIG.MUSIC_VOL : 0, t);
+}
 
 // =============================================================================
 // Lifecycle
@@ -977,6 +1085,7 @@ function startGame() {
   dom.hud.classList.remove('hidden');
   dom.seqBar.classList.remove('hidden');
   dom.chevL.classList.remove('hidden'); dom.chevR.classList.remove('hidden');
+  startMusic();
 }
 
 function openContinue() {
@@ -1013,6 +1122,8 @@ function endGame(reason) {
   state.phase = 'GAME_OVER';
   const isNewBest = state.score > state.best;
   if (isNewBest) { state.best = state.score; storageSet(CONFIG.STORAGE_KEY_BEST, String(state.best)); }
+  stopMusic();
+  playFanfare(isNewBest);
   dom.goTitle.textContent = reason === 'time' ? COPY.timeUp : COPY.gameOver;
   dom.goNewBest.classList.toggle('hidden', !isNewBest);
   dom.finalStats.innerHTML =
@@ -1078,7 +1189,7 @@ dom.claimBtn.addEventListener('click', async () => {
 // =============================================================================
 // Mute
 // =============================================================================
-dom.muteBtn.addEventListener('click', () => { state.muted = !state.muted; storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0'); updateMuteUI(); });
+dom.muteBtn.addEventListener('click', () => { state.muted = !state.muted; storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0'); setMusicMuted(state.muted); updateMuteUI(); });
 const MUTE_ICON_ON = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
 const MUTE_ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
 function updateMuteUI() {
@@ -1093,8 +1204,13 @@ function showBest() { dom.bestText.innerHTML = state.best > 0 ? `${COPY.bestPref
 // Pause on tab hide
 // =============================================================================
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { if (state.phase === 'PLAYING' && !state.paused) { state.paused = true; } }
-  else { if (state.paused) { state.paused = false; lastT = 0; } }
+  if (document.hidden) {
+    if (state.phase === 'PLAYING' && !state.paused) { state.paused = true; }
+    if (audioCtx) audioCtx.suspend(); // freezes the music clock too — no catch-up burst
+  } else {
+    if (state.paused) { state.paused = false; lastT = 0; }
+    if (audioCtx) audioCtx.resume();
+  }
 });
 
 // =============================================================================

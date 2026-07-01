@@ -303,12 +303,14 @@ renderMute();
    ============================================================ */
 const lostControl=()=>now()<state.stumbleUntil;          // stumbling → inputs ignored
 function moveLane(dir){ if(state.scene!=='playing'||lostControl()) return;
-  const n=clamp(state.lane+dir,0,CONFIG.lanes-1); if(n!==state.lane){ state.lane=n; Audio_.sfx.step(); } }
+  const n=clamp(state.lane+dir,0,CONFIG.lanes-1); if(n!==state.lane){ state.lane=n; Audio_.sfx.step();
+    const L=layout(); dust(laneCenterX(L,n,1)-dir*L.W*0.07, L.phone.py-4, 5, 'rgba(190,170,120,.85)', 70); } }
 function doJump(){ if(state.scene!=='playing'||lostControl()) return;
-  const full=CONFIG.dino.jumpK*layout().R.rsh;
+  const R=layout().R, full=CONFIG.dino.jumpK*R.rsh;
   if(state.dinoY<=0.5){                                    // ground jump
     state.dinoVy=full; state.dinoSquash=1; state.airBoost=1;
     state.thumbTap=1; state.tapSide=-state.tapSide; Audio_.sfx.jump();
+    dust(R.rsx+R.rsw*0.16+R.dsize*0.4, R.gy, 5, 'rgba(155,160,166,.8)');
   } else if(state.airBoost>0){                             // mid-air tap → boost higher (once)
     state.airBoost--; state.dinoVy=Math.min(state.dinoVy+full*0.6, full*1.2);
     state.thumbTap=1; state.tapSide=-state.tapSide; Audio_.sfx.jump();
@@ -378,6 +380,9 @@ function spawnHeart(){ const R=layout().R, s=CONFIG.focus.sizeFrac*R.rsh*1.15;  
 /* ---------- particles / floats ---------- */
 function burst(x,y,color,n=12,spd=180){ for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, v=rand(spd*0.3,spd);
   state.particles.push({ x,y, vx:Math.cos(a)*v, vy:Math.sin(a)*v-60, life:rand(0.4,0.8), t:0, color, r:rand(2,4) }); } }
+function dust(x,y,n=6,color='rgba(176,160,128,.9)',spread=55){ for(let i=0;i<n;i++)
+  state.particles.push({ x:x+rand(-6,6), y:y+rand(-2,2), vx:rand(-spread,spread), vy:rand(-spread*0.6,-8),
+    life:rand(0.25,0.5), t:0, color, r:rand(1.5,3), g:60, grow:16 }); }
 function floatText(x,y,text,color){ state.floats.push({ x,y,text,color,t:0,life:0.9 }); }
 
 /* ============================================================
@@ -411,8 +416,10 @@ function update(dt){
 
     // dino physics
     const grav=CONFIG.dino.gravK*R.rsh, maxJ=R.rsh-R.dsize-4;
+    const wasAir=state.dinoY>0.5;
     state.dinoVy-=grav*dt; state.dinoY+=state.dinoVy*dt;
-    if(state.dinoY<=0){ state.dinoY=0; state.dinoVy=0; }
+    if(state.dinoY<=0){ state.dinoY=0; state.dinoVy=0;
+      if(wasAir){ state.dinoSquash=1; dust(R.rsx+R.rsw*0.16+R.dsize*0.4, R.gy, 7, 'rgba(155,160,166,.8)'); } }
     else if(state.dinoY>maxJ){ state.dinoY=maxJ; if(state.dinoVy>0) state.dinoVy=0; }   // keep it on-screen
     state.dinoSquash=Math.max(0,state.dinoSquash-dt*4);
     state.thumbTap=Math.max(0,state.thumbTap-dt*6);          // quick tap-press decay
@@ -484,7 +491,7 @@ function update(dt){
     if(state.crashTimer>900) endGame('over');
   }
 
-  for(const p of state.particles){ p.t+=dt; p.vy+=520*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; }
+  for(const p of state.particles){ p.t+=dt; p.vy+=(p.g!==undefined?p.g:520)*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; if(p.grow) p.r+=p.grow*dt; }
   state.particles=state.particles.filter(p=>p.t<p.life);
   for(const f of state.floats){ f.t+=dt; f.y-=40*dt; }
   state.floats=state.floats.filter(f=>f.t<f.life);
@@ -555,6 +562,24 @@ function drawFloor(L){
   road.addColorStop(0,'#efe9da'); road.addColorStop(0.5,'#ece0c4'); road.addColorStop(1,'#dccb9f');
   ctx.fillStyle=road; ctx.beginPath();
   ctx.moveTo(eT.l,0); ctx.lineTo(eT.r,0); ctx.lineTo(eB.r,H); ctx.lineTo(eB.l,H); ctx.closePath(); ctx.fill();
+  // roadside greenery scrolling past — sells the walking speed
+  const S=state.scrollFloor/420, frac=S-Math.floor(S);
+  for(let k=0;k<10;k++){
+    let t=(k+frac)/5.5; t=t*t; const gy=hY+span*t; if(gy>H+40) break;
+    const seed=k-Math.floor(S);                            // stable per physical bush as it scrolls
+    const r1=Math.abs(Math.sin(seed*127.1)*43758.5453)%1, side=((seed%2)+2)%2===0?-1:1;
+    const e=roadEdges(L,t), s=lerp(0.35,1.25,clamp(t,0,1.4)/1.4);
+    const bx = side<0 ? e.l-(14+26*r1)*s : e.r+(14+26*r1)*s;
+    ctx.globalAlpha=clamp(t*2.2,0,1)*0.9;
+    if(r1>0.5){                                            // small tree
+      ctx.fillStyle='#6d4b28'; ctx.fillRect(bx-2*s,gy-9*s,4*s,10*s);
+      ctx.fillStyle='#4c7a35'; ctx.beginPath(); ctx.arc(bx,gy-16*s,11*s,0,Math.PI*2); ctx.fill();
+    } else {                                               // bush
+      ctx.fillStyle='#557f3a'; ctx.beginPath();
+      ctx.arc(bx-6*s,gy-4*s,7*s,0,Math.PI*2); ctx.arc(bx+5*s,gy-5*s,8*s,0,Math.PI*2); ctx.arc(bx,gy-9*s,7*s,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
   // distance haze at the very top so the road melts into the horizon
   const haze=ctx.createLinearGradient(0,0,0,H*0.20);
   haze.addColorStop(0,'rgba(233,234,230,.92)'); haze.addColorStop(1,'rgba(233,234,230,0)');
@@ -583,30 +608,40 @@ function drawLaneMarker(L){
   ctx.moveTo(laneEdgeX(L,fL,pTop),0); ctx.lineTo(laneEdgeX(L,fR,pTop),0);
   ctx.lineTo(laneEdgeX(L,fR,pBot),H); ctx.lineTo(laneEdgeX(L,fL,pBot),H); ctx.closePath(); ctx.fill();
   // the walker's shadow — head + sloped shoulders + torso, as one connected silhouette
-  // (its lower body is hidden behind the phone). Sways gently left/right while walking.
-  const u=L.W, sway=Math.sin(state.scrollFloor/70)*u*0.02;
-  const cx=laneCenterX(L,lane,1)+sway, py=L.phone.py;
+  // (its lower body is hidden behind the phone). Sways + bobs with the stride,
+  // leans into lane changes, and wobbles while stumbling.
+  const u=L.W, py=L.phone.py;
+  const sway=Math.sin(state.scrollFloor/70)*u*0.02;
+  const bobY = stumbling ? u*0.02 : -Math.abs(Math.sin(state.scrollFloor/55))*u*0.012;   // stride bounce (drops when tripped)
+  const lean = clamp((state.lane-state.renderLane)*0.35,-0.22,0.22);                     // tips into the lane switch
+  const wob  = stumbling ? Math.sin(now()/45)*0.10 : 0;                                  // off-balance shake
+  const cx=laneCenterX(L,lane,1)+sway;
+  ctx.save(); ctx.translate(cx,py+u*0.1); ctx.rotate(lean+wob); ctx.translate(0,bobY-u*0.1);
   const shW=u*0.18, twW=u*0.16, neckW=u*0.055, headR=u*0.07;
-  const shoulderY=py-u*0.02, neckY=shoulderY-u*0.05, headCy=neckY-headR*0.55, bottomY=L.H;   // body runs straight down off-screen
+  const shoulderY=-u*0.02, neckY=shoulderY-u*0.05, headCy=neckY-headR*0.55, bottomY=L.H-py;   // body runs straight down off-screen
   ctx.fillStyle = stumbling ? 'rgba(150,30,30,.34)' : 'rgba(0,0,0,.30)';
   ctx.beginPath();
   // body: torso sides (narrower) rise to wider sloped shoulders and a neck; bottom hidden behind phone
-  ctx.moveTo(cx-twW, bottomY);
-  ctx.lineTo(cx-shW, shoulderY+u*0.05);
-  ctx.quadraticCurveTo(cx-shW, shoulderY, cx-neckW, neckY);
-  ctx.lineTo(cx+neckW, neckY);
-  ctx.quadraticCurveTo(cx+shW, shoulderY, cx+shW, shoulderY+u*0.05);
-  ctx.lineTo(cx+twW, bottomY);
+  ctx.moveTo(-twW, bottomY);
+  ctx.lineTo(-shW, shoulderY+u*0.05);
+  ctx.quadraticCurveTo(-shW, shoulderY, -neckW, neckY);
+  ctx.lineTo(neckW, neckY);
+  ctx.quadraticCurveTo(shW, shoulderY, shW, shoulderY+u*0.05);
+  ctx.lineTo(twW, bottomY);
   ctx.closePath();
-  // head — unioned in the same fill so it connects cleanly at the neck (no two-bubble look)
-  ctx.moveTo(cx+headR, headCy); ctx.arc(cx, headCy, headR, 0, Math.PI*2);
+  // head — unioned in the same fill so it connects cleanly at the neck (no two-bubble look);
+  // drifts slightly out of phase with the shoulders for a loose, natural gait
+  const headSway=Math.sin(state.scrollFloor/70+0.7)*u*0.008;
+  ctx.moveTo(headSway+headR, headCy); ctx.arc(headSway, headCy, headR, 0, Math.PI*2);
   ctx.fill();
-  if(state.shield) drawAura(cx, shoulderY, shW, '#7fd4ff');
+  ctx.restore();
+  if(state.shield) drawAura(cx, py-u*0.02, shW, '#7fd4ff');
 }
 
 function drawFloorObstacle(L,o){
   const p=floorProgress(L,o.y), s=floorScale(L,o.y), cx=laneCenterX(L,o.lane,p);
   const w=o.baseW*s, h=o.baseH*s, x=cx-w/2, y=o.y-h;
+  ctx.globalAlpha=clamp(0.1+p*2.6,0,1);                    // emerges from the distance haze
   ctx.fillStyle='rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(cx,o.y,w*0.5,5*s,0,0,Math.PI*2); ctx.fill();
   switch(o.type){
     case 'sign':                                   // yellow wet-floor triangle with a !
@@ -641,6 +676,7 @@ function drawFloorObstacle(L,o){
       brick(x+w*0.08,     o.y-bh*2.9,    '#a8492a');   // top
     }
   }
+  ctx.globalAlpha=1;
 }
 
 function drawPhone(L){
@@ -648,8 +684,10 @@ function drawPhone(L){
   // body
   rrect(p.px,p.py,p.pw,p.ph,Math.round(p.pw*0.07),'#10151c');
   ctx.strokeStyle='#2a3340'; ctx.lineWidth=3; rstroke(p.px+2,p.py+2,p.pw-4,p.ph-4,Math.round(p.pw*0.065));
-  // screen
-  ctx.fillStyle='#f7f7f7'; rrect(R.rsx,R.rsy,R.rsw,R.rsh,8,'#f7f7f7');
+  // screen — faint sky gradient, brighter up top
+  const sg=ctx.createLinearGradient(0,R.rsy,0,R.rsy+R.rsh);
+  sg.addColorStop(0,'#fdfefe'); sg.addColorStop(0.75,'#f4f6f7'); sg.addColorStop(1,'#eaeef0');
+  roundPath(R.rsx,R.rsy,R.rsw,R.rsh,8); ctx.fillStyle=sg; ctx.fill();
   // notch + status
   ctx.fillStyle='#10151c'; rrect(p.px+p.pw/2-22,p.py+5,44,8,4,'#10151c');
 
@@ -691,15 +729,20 @@ function drawPhone(L){
 }
 
 function drawRunner(L,R){
+  // distant parallax hills — slow far band, quicker near band
+  ctx.fillStyle='#e2e8ec'; hillBand(R,0.10,R.rsh*0.16,150);
+  ctx.fillStyle='#d4dde3'; hillBand(R,0.24,R.rsh*0.10,95);
   // ground line
   ctx.strokeStyle='#9aa0a6'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.moveTo(R.rsx,R.gy+1); ctx.lineTo(R.rsx+R.rsw,R.gy+1); ctx.stroke();
   ctx.setLineDash([6,7]); ctx.lineDashOffset=-(state.scrollRunner*0.6)% 13; ctx.globalAlpha=0.6;
   ctx.beginPath(); ctx.moveTo(R.rsx,R.gy+5); ctx.lineTo(R.rsx+R.rsw,R.gy+5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
-  // drifting clouds
-  ctx.fillStyle='#bcdcf2';
-  for(let i=0;i<2;i++){ const cx=R.rsx+((i*0.55*R.rsw - state.scrollRunner*0.25)%(R.rsw+40)+R.rsw+40)%(R.rsw+40)-20; const cy=R.rsy+R.rsh*(0.22+i*0.12);
-    rrect(cx,cy,26,8,4,'#bcdcf2'); rrect(cx+7,cy-5,14,8,4,'#bcdcf2'); }
+  // drifting puffy clouds (parallax)
+  ctx.fillStyle='#cfe3f2';
+  for(let i=0;i<3;i++){ const w=R.rsw+60, speed=0.16+i*0.08;
+    const cx=R.rsx+((i*0.42*R.rsw - state.scrollRunner*speed)%w+w)%w-30, cy=R.rsy+R.rsh*(0.18+i*0.11);
+    ctx.beginPath(); ctx.arc(cx+8,cy-5,6,0,Math.PI*2); ctx.arc(cx+17,cy-7,7,0,Math.PI*2); ctx.arc(cx+26,cy-4,5,0,Math.PI*2); ctx.fill();
+    rrect(cx,cy-4,34,9,4,'#cfe3f2'); }
 
   // focus star pickups
   for(const p of state.pickups) if(p.layer==='phone') drawPhonePickup(p);
@@ -709,6 +752,17 @@ function drawRunner(L,R){
 
   // dino
   drawDino(L,R);
+
+  // Focus frenzy — warm tint + golden speed streaks whipping past
+  if(now()<state.focusUntil){
+    ctx.fillStyle='rgba(255,214,51,.07)'; ctx.fillRect(R.rsx,R.rsy,R.rsw,R.rsh);
+    ctx.strokeStyle='rgba(255,182,3,.5)'; ctx.lineWidth=2; ctx.lineCap='round';
+    for(let i=0;i<5;i++){ const w=R.rsw+80;
+      const lx=R.rsx+((i*0.23*R.rsw - state.scrollRunner*(2.2+i*0.3))%w+w)%w-40;
+      const ly=R.rsy+R.rsh*(0.12+(i*0.19)%0.7);
+      ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+30+i*6,ly); ctx.stroke(); }
+    ctx.lineCap='butt';
+  }
 
   // tiny score in the phone corner (homage to the offline game)
   ctx.fillStyle='#9aa0a6'; ctx.font=`600 ${Math.round(R.rsh*0.07)}px 'Roboto Mono',monospace`; ctx.textAlign='right'; ctx.textBaseline='top';
@@ -729,26 +783,51 @@ function drawRunner(L,R){
   }
 }
 
+// one rolling hill silhouette across the phone screen, scrolling at `par` of the runner speed
+function hillBand(R,par,amp,wl){
+  const base=R.gy, off=state.scrollRunner*par;
+  ctx.beginPath(); ctx.moveTo(R.rsx,base);
+  for(let x=0;x<=R.rsw;x+=8){ const wx=(x+off)/wl;
+    ctx.lineTo(R.rsx+x, base-amp*Math.max(0.05, 0.5+0.4*Math.sin(wx)+0.22*Math.sin(wx*2.7))); }
+  ctx.lineTo(R.rsx+R.rsw,base); ctx.closePath(); ctx.fill();
+}
+
 function drawDino(L,R){
-  const sz=R.dsize, x=R.rsx+R.rsw*0.16, y=R.gy-sz-state.dinoY;
+  const sz=R.dsize, gx=R.rsx+R.rsw*0.16, gy=R.gy-sz-state.dinoY;
   const sc=clamp(1-state.dinoY/(R.rsh*0.45),0.4,1);
-  ctx.fillStyle=`rgba(0,0,0,${0.22*sc})`; ctx.beginPath(); ctx.ellipse(x+sz*0.4,R.gy+2,sz*0.42*sc,3*sc,0,0,Math.PI*2); ctx.fill();
-  const sq=state.dinoSquash*0.16, w=sz*0.82*(1+sq), h=sz*(1-sq);
-  if(now()<state.dinoHurtUntil && Math.floor(now()/90)%2===0) ctx.globalAlpha=0.4;   // blink after a hit
+  ctx.fillStyle=`rgba(0,0,0,${0.22*sc})`; ctx.beginPath(); ctx.ellipse(gx+sz*0.4,R.gy+2,sz*0.42*sc,3*sc,0,0,Math.PI*2); ctx.fill();
+  const air=state.dinoY>0.5, dead=state.scene==='crashing';
+  // squash on takeoff/landing, stretch at speed mid-air
+  const stretch=air?clamp(Math.abs(state.dinoVy)/(R.rsh*5),0,0.10):0;
+  const sq=state.dinoSquash*0.16, w=sz*0.82*(1+sq-stretch*0.6), h=sz*(1-sq+stretch);
+  // tilt — nose up while rising, down while falling; keel over when crashed
+  let rot=air?clamp(-state.dinoVy/(R.rsh*3.2),-0.16,0.22):0;
+  if(dead) rot=-Math.PI*0.5*Math.min(1,state.crashTimer/450);
+  ctx.save(); ctx.translate(gx+w*0.4,gy+h*0.55); ctx.rotate(rot); ctx.translate(-w*0.4,-h*0.55);
+  const x=0, y=0;
+  if(!dead && now()<state.dinoHurtUntil && Math.floor(now()/90)%2===0) ctx.globalAlpha=0.4;   // blink after a hit
   ctx.fillStyle='#e2541d';
   // body + tail + head (blocky T-rex silhouette)
   rrect(x,y+h*0.32,w*0.7,h*0.5,3,'#e2541d');                 // body
   ctx.fillRect(x-w*0.28,y+h*0.42,w*0.32,h*0.16);             // tail
   rrect(x+w*0.42,y,w*0.5,h*0.42,3,'#e2541d');                // head
   ctx.fillRect(x+w*0.86,y+h*0.26,w*0.12,h*0.1);              // snout
-  ctx.fillStyle='#f7f7f7'; ctx.fillRect(x+w*0.74,y+h*0.12,4,4); // eye
+  // eye — X'd out when crashed, occasional blink otherwise
+  if(dead){ ctx.strokeStyle='#f7f7f7'; ctx.lineWidth=2; ctx.beginPath();
+    ctx.moveTo(x+w*0.72,y+h*0.10); ctx.lineTo(x+w*0.80,y+h*0.20);
+    ctx.moveTo(x+w*0.80,y+h*0.10); ctx.lineTo(x+w*0.72,y+h*0.20); ctx.stroke(); }
+  else { const blink=Math.sin(now()/900)>0.985;
+    ctx.fillStyle='#f7f7f7'; ctx.fillRect(x+w*0.74,y+h*0.12,4,blink?1.5:4); }
   ctx.fillStyle='#e2541d'; ctx.fillRect(x+w*0.5,y+h*0.5,w*0.12,h*0.14); // arm
-  // legs (run cycle when grounded)
-  const stride=state.dinoY<=0.5?Math.sin(state.dinoRun)*0.5:0;
-  ctx.fillRect(x+w*0.2,y+h*0.78,w*0.14,h*0.22*(1+stride*0.3));
-  ctx.fillRect(x+w*0.46,y+h*0.78,w*0.14,h*0.22*(1-stride*0.3));
+  // legs — alternate-step run cycle on the ground, tucked in the air
+  const lw=w*0.14, ly=y+h*0.78;
+  if(air||dead){ ctx.fillRect(x+w*0.2,ly,lw,h*0.12); ctx.fillRect(x+w*0.46,ly,lw,h*0.12); }
+  else { const step=Math.sin(state.dinoRun)>0;
+    ctx.fillRect(x+w*0.2, ly, lw, h*(step?0.22:0.12));
+    ctx.fillRect(x+w*0.46,ly, lw, h*(step?0.12:0.22)); }
   ctx.globalAlpha=1;
-  if(now()<state.focusUntil) drawAura(x+sz*0.4,y+sz*0.5,sz*0.7,'#FFD633');   // Focus is the dino-side power-up
+  ctx.restore();
+  if(!dead && now()<state.focusUntil) drawAura(gx+sz*0.4,gy+sz*0.5,sz*0.7,'#FFD633');   // Focus is the dino-side power-up
 }
 // pixel-art heart bitmap: o=dark outline, r=red fill, w=white highlight, .=empty
 const HEART_ART=[
@@ -808,10 +887,12 @@ function drawFocusIcon(cx,cy,s){
   for(let i=0;i<10;i++){ const a=i*Math.PI/5-Math.PI/2, r=i%2?s*0.22:s*0.5, fx=cx+Math.cos(a)*r, fy=cy+Math.sin(a)*r; i?ctx.lineTo(fx,fy):ctx.moveTo(fx,fy); }
   ctx.closePath(); ctx.fill();
 }
-function drawFloorPickup(L,p){ const prog=floorProgress(L,p.y), cx=laneCenterX(L,p.lane,prog), s=p.w*floorScale(L,p.y); drawShieldIcon(cx,p.y,s); }
+function drawFloorPickup(L,p){ const prog=floorProgress(L,p.y), cx=laneCenterX(L,p.lane,prog), s=p.w*floorScale(L,p.y);
+  drawShieldIcon(cx, p.y - s*0.35 - Math.sin(p.t*4)*4, s); }                 // hovers + bobs (visual only)
 function drawPhonePickup(p){
-  if(p.kind==='heart'){ const cx=p.x+p.w/2, cy=p.y+p.h/2; drawAura(cx,cy,p.w*0.65,'#e23b3b'); drawHeart(cx,cy,p.w,true); }
-  else drawFocusIcon(p.x+p.w/2,p.y+p.h/2,p.w);
+  const bob=Math.sin(p.t*5)*3;
+  if(p.kind==='heart'){ const cx=p.x+p.w/2, cy=p.y+p.h/2+bob; drawAura(cx,cy,p.w*0.65,'#e23b3b'); drawHeart(cx,cy,p.w,true); }
+  else drawFocusIcon(p.x+p.w/2,p.y+p.h/2+bob,p.w);
 }
 function drawAura(cx,cy,r,color){ const pulse=0.5+0.5*Math.sin(now()/120);
   ctx.strokeStyle=color; ctx.globalAlpha=0.4+0.4*pulse; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(cx,cy,r*(0.9+0.12*pulse),0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1; }

@@ -286,6 +286,7 @@ const CONFIG = {
   CONTINUE_COUNT: 10,
   MUSIC_TEMPO: 72,          // BPM of the lofi backing loop
   MUSIC_VOL: 0.85,          // master gain for the backing loop (SFX are separate)
+  PATTERN_THINK_SEC: 2.5,   // spawn-free breather when a new pattern appears
   STORAGE_KEY_BEST: 'ball-rush:best',
   STORAGE_KEY_MUTE: 'ball-rush:mute',
   GAME_NAME: 'ball-rush',
@@ -499,6 +500,10 @@ function newSequence(levelUp) {
   state.seq = g.seq; state.seqStep = g.step;
   state.collectIndex = 2;
   state.colorIndex++;
+  // breathing room: hold the spawn director back a few seconds so the player
+  // can read the new pattern before more numbers and holes arrive. Scaled by
+  // current speed so the pause stays constant as the tunnel ramps up.
+  state.sinceSpawn = Math.min(state.sinceSpawn, -currentSpeed() * CONFIG.PATTERN_THINK_SEC);
   updateStrip();
 }
 

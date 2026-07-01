@@ -821,17 +821,30 @@ function drawHole(f) {
   ctx.restore();
 }
 
-// glossy 3D ball — radial highlight + drop shadow + specular gloss
-function glossyBall(x, y, rad, c1, c2, c3) {
+// glossy 3D orb — layered shading: drop shadow, 4-stop sphere gradient with a
+// dark rim, bottom bounce-light, and twin specular glints
+function glossyBall(x, y, rad, c1, c2, c3, c4) {
+  const amb = ctx.globalAlpha;
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = rad * 0.5; ctx.shadowOffsetY = rad * 0.32;
-  const g = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.4, rad * 0.1, x, y, rad);
-  g.addColorStop(0, c1); g.addColorStop(0.5, c2); g.addColorStop(1, c3);
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = rad * 0.55; ctx.shadowOffsetY = rad * 0.30;
+  const g = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.42, rad * 0.08, x, y, rad * 1.05);
+  g.addColorStop(0, c1); g.addColorStop(0.45, c2); g.addColorStop(0.8, c3); g.addColorStop(1, c4 || c3);
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
   ctx.restore();
   ctx.save();
-  ctx.globalAlpha *= 0.5; ctx.fillStyle = '#fff';
+  // bounce light reflected up from below — lifts the sphere off its shadow
+  ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.clip();
+  const bl = ctx.createRadialGradient(x, y + rad * 0.6, rad * 0.15, x, y + rad * 0.6, rad * 0.8);
+  bl.addColorStop(0, 'rgba(255,255,255,0.16)'); bl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = bl; ctx.fillRect(x - rad, y + rad * 0.1, rad * 2, rad * 0.9);
+  ctx.restore();
+  ctx.save();
+  // twin specular glints
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = amb * 0.5;
   ctx.beginPath(); ctx.ellipse(x - rad * 0.3, y - rad * 0.36, rad * 0.28, rad * 0.16, -0.6, 0, TAU); ctx.fill();
+  ctx.globalAlpha = amb * 0.85;
+  ctx.beginPath(); ctx.arc(x - rad * 0.44, y - rad * 0.5, rad * 0.07, 0, TAU); ctx.fill();
   ctx.restore();
 }
 
@@ -846,43 +859,102 @@ function drawGate(f) {
   const playerSector = sectorOf(state.theta, f.rot);
   for (let i = 0; i < 3; i++) {
     const a = sectorCenter(f.rot, i);
-    const bob = 1 + 0.05 * Math.sin(state.elapsed * 4.2 + i * 2.1);
-    const px = Math.cos(a) * r * 0.62, py = Math.sin(a) * r * 0.62;
-    const oR = orbR * bob;
+    // gentle float + slow breathing, phase-offset per orb so they don't march in step
+    const px = Math.cos(a) * r * 0.62;
+    const py = Math.sin(a) * r * 0.62 + Math.sin(state.elapsed * 3.2 + i * 2.1) * orbR * 0.10;
+    const oR = orbR * (1 + 0.035 * Math.sin(state.elapsed * 4.4 + i * 2.1));
     const isPlayer = i === playerSector && f.z < 4;
     if (isPlayer) {
+      // spinning dashed ring marks the orb the player is lined up with
       ctx.save();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = oR * 0.16;
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = oR * 0.13;
       ctx.shadowColor = '#fff'; ctx.shadowBlur = oR * 0.6;
-      ctx.beginPath(); ctx.arc(px, py, oR * 1.2, 0, TAU); ctx.stroke();
+      ctx.setLineDash([oR * 0.45, oR * 0.28]);
+      ctx.lineDashOffset = -state.elapsed * oR * 2.4;
+      ctx.beginPath(); ctx.arc(px, py, oR * 1.26, 0, TAU); ctx.stroke();
       ctx.restore();
     }
-    // yellow collectible ball, distinct from the red running ball
-    glossyBall(px, py, oR, '#fff2a8', '#fdd83d', '#ffb800');
-    ctx.fillStyle = '#020d26';
-    ctx.font = `800 ${oR * 0.95}px 'Roboto Mono', monospace`;
+    // yellow collectible orb, distinct from the red running ball
+    glossyBall(px, py, oR, '#fff7c4', '#fdd83d', '#ffb800', '#8a5400');
+    // embossed number — light catch below, ink on top
+    ctx.font = `800 ${oR * 0.9}px 'Roboto Mono', monospace`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText(String(f.values[i]), px, py + oR * 0.07);
+    ctx.fillStyle = '#020d26';
     ctx.fillText(String(f.values[i]), px, py);
   }
   ctx.restore();
+}
+
+// small white sparkles orbiting a power orb on a tilted ring; the back pass
+// draws the ones behind the sphere, the front pass the ones in front
+function powerSparkles(px, py, rad, seed, front) {
+  for (let k = 0; k < 3; k++) {
+    const a = state.elapsed * 2.4 + seed + k * TAU / 3;
+    const s = Math.sin(a);
+    if (front ? s <= 0 : s > 0) continue;
+    ctx.save();
+    ctx.globalAlpha *= 0.85;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(px + Math.cos(a) * rad * 1.5, py + s * rad * 0.45, rad * (0.08 + 0.04 * s), 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawPower(f) {
   const r = radiusRaw(f.z);
   const alpha = Math.min(clamp((CONFIG.Z_SPAWN - f.z) / 0.8 + 1e-6, 0, 1), clamp(1 + f.z * 2.2, 0, 1));
   if (alpha <= 0) return;
-  const px = Math.cos(f.ang) * r * 0.62, py = Math.sin(f.ang) * r * 0.62;
-  const rad = clamp(r * 0.16, 10, 100) * (1 + 0.08 * Math.sin(state.elapsed * 5));
+  const slow = f.kind === 'slow';
+  const px = Math.cos(f.ang) * r * 0.62;
+  const py = Math.sin(f.ang) * r * 0.62 + Math.sin(state.elapsed * 3.6 + f.ang * 5) * r * 0.015;
+  const rad = clamp(r * 0.16, 10, 100) * (1 + 0.05 * Math.sin(state.elapsed * 4.5 + f.ang));
+  const glow = slow ? '#46c8ff' : '#fdd83d';
   ctx.save();
   ctx.globalAlpha = alpha;
+  powerSparkles(px, py, rad, f.ang, false);
+  // pulsing colored under-glow
   ctx.save();
-  ctx.shadowColor = f.kind === 'slow' ? '#46c8ff' : '#fdd83d'; ctx.shadowBlur = 18;
-  ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU);
-  ctx.fillStyle = f.kind === 'slow' ? '#1535a8' : '#ffb800'; ctx.fill();
+  ctx.shadowColor = glow; ctx.shadowBlur = rad * (0.8 + 0.25 * Math.sin(state.elapsed * 5));
+  ctx.fillStyle = glow; ctx.globalAlpha = alpha * 0.55;
+  ctx.beginPath(); ctx.arc(px, py, rad * 0.96, 0, TAU); ctx.fill();
   ctx.restore();
-  ctx.fillStyle = '#fff'; ctx.font = `800 ${rad}px Poppins, sans-serif`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(f.kind === 'slow' ? '⏱' : '×2', px, py);
+  // glassy sphere
+  if (slow) glossyBall(px, py, rad, '#d9f5ff', '#49c9ff', '#1535a8', '#081543');
+  else glossyBall(px, py, rad, '#fff7c4', '#ffd633', '#ff9d00', '#7a4a00');
+  if (slow) {
+    // hand-drawn clock with spinning hands — reads "time" on every platform,
+    // unlike the ⏱ emoji it replaces
+    ctx.strokeStyle = '#fff'; ctx.lineCap = 'round';
+    ctx.lineWidth = rad * 0.11;
+    ctx.beginPath(); ctx.arc(px, py, rad * 0.52, 0, TAU); ctx.stroke();
+    ctx.lineWidth = rad * 0.09;
+    for (let k = 0; k < 4; k++) {
+      const ta = k * Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(ta) * rad * 0.40, py + Math.sin(ta) * rad * 0.40);
+      ctx.lineTo(px + Math.cos(ta) * rad * 0.50, py + Math.sin(ta) * rad * 0.50);
+      ctx.stroke();
+    }
+    const mi = -Math.PI / 2 + state.elapsed * 2.6;      // minute hand spins
+    const ho = -Math.PI / 2 + state.elapsed * 2.6 / 12; // hour hand follows
+    ctx.lineWidth = rad * 0.10;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(mi) * rad * 0.38, py + Math.sin(mi) * rad * 0.38); ctx.stroke();
+    ctx.lineWidth = rad * 0.12;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(ho) * rad * 0.24, py + Math.sin(ho) * rad * 0.24); ctx.stroke();
+  } else {
+    // embossed ×2, same treatment as the gate numbers
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `800 ${rad * 0.88}px Poppins, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText('×2', px, py + rad * 0.07);
+    ctx.fillStyle = '#031034';
+    ctx.fillText('×2', px, py);
+  }
+  powerSparkles(px, py, rad, f.ang, true);
   ctx.restore();
 }
 
@@ -991,6 +1063,13 @@ function playBad() { playTone({ freq: 240, freqEnd: 150, type: 'sawtooth', dur: 
 function playCrash() { playTone({ freq: 200, freqEnd: 50, type: 'sawtooth', dur: 0.5, gain: 0.24 }); }
 function playPower() { playTone({ freq: 520, freqEnd: 1040, type: 'square', dur: 0.2, gain: 0.14 }); }
 function playTick() { playTone({ freq: 1200, type: 'sine', dur: 0.06, gain: 0.1 }); }
+// Continue-countdown ticker: a dry "tock" that rises in pitch as the count
+// drops, so the final seconds feel urgent.
+function playContTick(count) {
+  const urgent = count <= 3;
+  playTone({ freq: urgent ? 900 : 620, freqEnd: urgent ? 640 : 460,
+             type: 'triangle', dur: 0.08, gain: urgent ? 0.16 : 0.11 });
+}
 // end-of-round celebration — rising arpeggio into a warm closing chord
 function playFanfare(newBest) {
   const arp = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
@@ -1129,6 +1208,7 @@ function openContinue() {
   dom.contTier.textContent = COPY.contTier + ' ' + tierFor(state.level) + ' · ' + COPY.contLevel + ' ' + state.level;
   dom.contClock.textContent = COPY.contTimeLeft + ' ' + fmtClock(state.timer);
   dom.cont.classList.remove('hidden');
+  playContTick(state.contCountdown);
   tickContinue();
 }
 let contTimer = 0;
@@ -1139,6 +1219,7 @@ function tickContinue() {
     state.contCountdown--;
     if (state.contCountdown <= 0) { endGame('crash'); return; }
     dom.contCount.textContent = state.contCountdown;
+    playContTick(state.contCountdown);
     tickContinue();
   }, 1000);
 }

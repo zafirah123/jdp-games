@@ -134,6 +134,8 @@
     background: rgba(255,214,51,0.15); border: 1px solid rgba(255,214,51,0.3);
     padding: 2px 6px; border-radius: 4px; color: #FFD633; font-family: inherit; font-size: 11px;
   }
+  .card .hint kbd.arrow { display: inline-block; line-height: 1; }
+  .card .hint kbd.arrow.flip { transform: scaleX(-1); }
   .cta {
     background: linear-gradient(180deg, #FFE258 0%, #FFBA0A 100%);
     border: 3px solid #FFB603; border-radius: 999px; padding: 14px 36px;
@@ -231,7 +233,7 @@ const COPY = {
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', end: 'End',
     menuSub: 'Steer the ball to collect the number that continues the pattern — and dodge the holes!',
-    menuHint: 'Hold <kbd>◄</kbd> <kbd>►</kbd> or tap the left / right of the screen',
+    menuHint: 'Hold <kbd class="arrow flip">►</kbd> <kbd class="arrow">►</kbd> or tap the left / right of the screen',
     claim: 'CLAIM SCORE', retry: 'RETRY', newBest: 'NEW BEST!',
     contTitle: 'CRASHED!', contSub: 'Jump back in — your time is still running.',
     contBtn: 'CONTINUE', slowmo: 'SLOW-MO!', dbl: 'DOUBLE SCORE!', combo: 'COMBO!',
@@ -243,7 +245,7 @@ const COPY = {
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', end: 'Tamat',
     menuSub: 'Kawal bola untuk kutip nombor yang menyambung corak — dan elak lubang!',
-    menuHint: 'Tahan <kbd>◄</kbd> <kbd>►</kbd> atau ketuk kiri / kanan skrin',
+    menuHint: 'Tahan <kbd class="arrow flip">►</kbd> <kbd class="arrow">►</kbd> atau ketuk kiri / kanan skrin',
     claim: 'TUNTUT SKOR', retry: 'RETRY', newBest: 'REKOD BAHARU!',
     contTitle: 'TERLANGGAR!', contSub: 'Sambung semula — masa anda masih berjalan.',
     contBtn: 'SAMBUNG', slowmo: 'PERLAHAN!', dbl: 'SKOR DUA KALI!', combo: 'KOMBO!',
@@ -280,6 +282,7 @@ const CONFIG = {
   SLOWMO_SEC: 4, SLOWMO_MUL: 0.5,
   DOUBLE_SEC: 6,
   POWER_CHANCE: 0.10,       // chance a hazard slot becomes a power-up
+  HOLE_SENSE: 0.45,         // fraction of the ball's width over the gap that counts as falling in
   CONTINUE_COUNT: 10,
   MUSIC_TEMPO: 72,          // BPM of the lofi backing loop
   MUSIC_VOL: 0.85,          // master gain for the backing loop (SFX are separate)
@@ -292,6 +295,10 @@ const CONFIG = {
 
 const TAU = Math.PI * 2;
 const SECTOR = TAU / 3;
+// tunnel depth where the ball VISUALLY sits: the ball orbits at 0.74 of the
+// front-ring radius, which maps to this z on the wall. Holes must resolve here,
+// not at z=0, or the crash fires half a second after the ball crossed the gap.
+const BALL_Z = (1 / 0.74 - 1) / CONFIG.RADIUS_K;
 
 // =============================================================================
 // Math helpers
@@ -303,7 +310,15 @@ function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function norm(a) { a %= TAU; return a < 0 ? a + TAU : a; }
+function lerpAngle(a, b, t) { let d = norm(b - a); if (d > Math.PI) d -= TAU; return norm(a + d * t); }
 function inArc(theta, start, len) { return norm(theta - start) <= len; }
+// overlap length of two arcs on a circle (both lengths < TAU)
+function arcOverlap(s1, l1, s2, l2) {
+  const d = norm(s2 - s1);
+  let o = 0;
+  for (const off of [d, d - TAU]) o = Math.max(o, Math.min(l1, off + l2) - Math.max(0, off));
+  return Math.max(0, o);
+}
 function sectorOf(theta, rot) { return Math.floor(norm(theta - rot) / SECTOR) % 3; }
 function sectorCenter(rot, i) { return norm(rot + (i + 0.5) * SECTOR); }
 
@@ -392,6 +407,7 @@ const state = {
   prevGen: null,
   slowUntil: -1, doubleUntil: -1,
   crashT: 0, shake: 0, redFlash: 0,
+  crashTheta0: 0, crashTheta: 0, // fall animation: from steering angle to gap center
   contCountdown: 0,
   muted: storageGet(CONFIG.STORAGE_KEY_MUTE, '0') === '1',
   best: parseInt(storageGet(CONFIG.STORAGE_KEY_BEST, '0'), 10) || 0,
@@ -561,14 +577,19 @@ function burst(colors, n, speed) {
 }
 
 // =============================================================================
-// Resolve a feature crossing the ball plane
+// Resolve features. Holes are checked continuously while their row is under
+// the ball (see update loop); gates/powers resolve when crossing the plane.
 // =============================================================================
+// true when enough of the ball's width hangs over the gap to fall in
+function ballOverHole(f) {
+  const a = holeArc(f);
+  const halfW = (view.base * 0.075) / (radiusAt(0) * 0.74); // ball's angular half-width
+  const overlap = arcOverlap(a.start, a.len, norm(state.theta - halfW), halfW * 2);
+  return overlap >= halfW * 2 * CONFIG.HOLE_SENSE;
+}
 function resolveFeature(f) {
   f.resolved = true;
-  if (f.type === 'hole') {
-    const a = holeArc(f);
-    if (inArc(state.theta, a.start, a.len)) crash();
-  } else if (f.type === 'gate') {
+  if (f.type === 'gate') {
     const val = f.values[sectorOf(state.theta, f.rot)];
     if (val === f.target) onCorrect(); else onWrong();
   } else if (f.type === 'power') {
@@ -656,10 +677,18 @@ function update(dt) {
   state.rollPhase += dz * CONFIG.ROLL_RATE;
 
   // advance + resolve features
+  const ringStep = CONFIG.Z_VIEW / CONFIG.RINGS;
   for (let i = state.features.length - 1; i >= 0; i--) {
     const f = state.features[i];
     f.z -= dz;
-    if (!f.resolved && f.prevZ > 0 && f.z <= 0) resolveFeature(f);
+    if (!f.resolved) {
+      if (f.type === 'hole') {
+        // checked every frame while the one-row gap is under the ball (at
+        // BALL_Z, its visual depth) — steering in or out mid-crossing counts
+        if (f.z + ringStep < BALL_Z) f.resolved = true; // slipped past — dodged
+        else if (f.z <= BALL_Z && ballOverHole(f)) { f.resolved = true; crash(f); }
+      } else if (f.prevZ > 0 && f.z <= 0) resolveFeature(f);
+    }
     f.prevZ = f.z;
     if (f.z < -1.0) state.features.splice(i, 1);
   }
@@ -684,11 +713,15 @@ function decayFloaters(dt) {
   }
 }
 
-function crash() {
+function crash(hole) {
   if (state.phase !== 'PLAYING') return;
   state.phase = 'CRASHED';
   state.crashT = 0; state.shake = 0.5; state.redFlash = 0.5;
-  burst(['#e23b46', '#ffd2d5', '#8f1119'], 18, 280);
+  // the fall animation slides the ball to the center of the gap it fell into
+  state.crashTheta0 = state.theta;
+  state.crashTheta = hole ? norm(holeArc(hole).start + holeArc(hole).len / 2) : state.theta;
+  burst(['#e23b46', '#ffd2d5', '#8f1119'], 14, 280);        // impact shards
+  burst(['#2a3f66', '#51689a', '#8fa3cc'], 10, 150);        // tile dust from the rim
   playCrash();
 }
 
@@ -959,14 +992,23 @@ function drawPower(f) {
 }
 
 function drawBall() {
-  const r = radiusAt(0) * 0.74;
-  const bx = Math.cos(state.theta) * r, by = Math.sin(state.theta) * r;
-  const rad = view.base * 0.075 * (state.crashT > 0 ? Math.max(0, 1 - state.crashT * 1.5) : 1);
-  if (rad > 0.5) {
+  // crash = tumble into the gap: slide to its center, sink outward through the
+  // floor, shrink and go dark — reads as falling in, not popping out of existence
+  let theta = state.theta, sink = 0;
+  if (state.crashT > 0) {
+    theta = lerpAngle(state.crashTheta0, state.crashTheta, clamp(state.crashT / 0.3, 0, 1));
+    const p = clamp(state.crashT / 0.7, 0, 1);
+    sink = p * p; // ease-in — the drop accelerates like gravity
+  }
+  const r = radiusAt(0) * 0.74 * (1 + sink * 0.10);
+  const bx = Math.cos(theta) * r, by = Math.sin(theta) * r;
+  const rad = view.base * 0.075 * (1 - sink * 0.85);
+  if (rad > 0.5 && sink < 1) {
     const sq = state.ballSquash;
     ctx.save();
+    ctx.globalAlpha = 1 - sink * 0.6;
     ctx.translate(bx, by);
-    ctx.rotate(state.theta + Math.PI);   // local +x points into the tunnel — the roll direction
+    ctx.rotate(theta + Math.PI);         // local +x points into the tunnel — the roll direction
     // soft contact shadow cast outward onto the tunnel wall
     ctx.fillStyle = 'rgba(0,0,0,0.30)';
     ctx.beginPath(); ctx.ellipse(-rad * 0.72, 0, rad * 0.45, rad * 1.02, 0, 0, TAU); ctx.fill();
@@ -980,7 +1022,7 @@ function drawBall() {
     ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.clip();
     // fixed light source — the shading stays put while the surface texture rolls,
     // which is what sells the rolling (a moving highlight reads as orbiting instead)
-    const lightA = -2.1 - (state.theta + Math.PI + state.rollTilt);
+    const lightA = -2.1 - (theta + Math.PI + state.rollTilt);
     const lx = Math.cos(lightA) * rad * 0.36, ly = Math.sin(lightA) * rad * 0.36;
     const g = ctx.createRadialGradient(lx, ly, rad * 0.08, 0, 0, rad * 1.02);
     g.addColorStop(0, '#ffb3b8');
@@ -1010,6 +1052,11 @@ function drawBall() {
     ctx.fill();
     ctx.globalAlpha = 0.9;
     ctx.beginPath(); ctx.arc(lx * 1.15, ly * 1.15, rad * 0.07, 0, TAU); ctx.fill();
+    // light falls away as the ball drops below the floor
+    if (sink > 0) {
+      ctx.globalAlpha = sink * 0.9; ctx.fillStyle = '#03081a';
+      ctx.fillRect(-rad * 1.2, -rad * 1.2, rad * 2.4, rad * 2.4);
+    }
     ctx.restore();
   }
   if (state.crashT > 0) {
@@ -1060,7 +1107,13 @@ function playTone(o) {
 function playGood() { playTone({ freq: 660, freqEnd: 880, type: 'triangle', dur: 0.13, gain: 0.18 }); }
 function playCombo() { playTone({ freq: 660, type: 'triangle', dur: 0.12, gain: 0.16 }); playTone({ freq: 880, type: 'triangle', dur: 0.14, gain: 0.16, delay: 0.08 }); playTone({ freq: 1320, type: 'triangle', dur: 0.18, gain: 0.14, delay: 0.16 }); }
 function playBad() { playTone({ freq: 240, freqEnd: 150, type: 'sawtooth', dur: 0.22, gain: 0.16 }); }
-function playCrash() { playTone({ freq: 200, freqEnd: 50, type: 'sawtooth', dur: 0.5, gain: 0.24 }); }
+// cartoon tumble into the hole: impact thud, descending slide, soft boom below
+function playCrash() {
+  playTone({ freq: 170, freqEnd: 60, type: 'sine', dur: 0.15, gain: 0.28 });
+  playTone({ freq: 750, freqEnd: 130, type: 'triangle', dur: 0.5, gain: 0.17 });
+  playTone({ freq: 300, freqEnd: 45, type: 'sawtooth', dur: 0.35, gain: 0.1, delay: 0.05 });
+  playTone({ freq: 85, freqEnd: 42, type: 'sine', dur: 0.3, gain: 0.22, delay: 0.42 });
+}
 function playPower() { playTone({ freq: 520, freqEnd: 1040, type: 'square', dur: 0.2, gain: 0.14 }); }
 function playTick() { playTone({ freq: 1200, type: 'sine', dur: 0.06, gain: 0.1 }); }
 // Continue-countdown ticker: a dry "tock" that rises in pitch as the count

@@ -156,6 +156,15 @@
     animation: pulse 0.5s ease-in-out infinite alternate;
   }
   .count { font-size: 48px; font-weight: 800; color: #FFD633; margin: 6px 0 14px; font-family: 'Roboto Mono', monospace; }
+  .cont-info { display: flex; gap: 8px; justify-content: center; margin: 0 0 12px; flex-wrap: wrap; }
+  .cont-info span {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700; color: #fff;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 999px; padding: 5px 12px;
+  }
+  .cont-info .cont-tier { color: #FFD633; }
+  .cont-info .cont-clock { font-family: 'Roboto Mono', monospace; }
   @media (max-width: 420px) { .card h1 { font-size: 34px; } .seq-cell { min-width: 34px; height: 34px; font-size: 15px; } }
 </style>
 </head>
@@ -190,6 +199,10 @@
   <div class="card">
     <h2 id="contTitle"></h2>
     <p class="sub" id="contSub"></p>
+    <div class="cont-info">
+      <span class="cont-tier" id="contTier"></span>
+      <span class="cont-clock" id="contClock"></span>
+    </div>
     <div class="count" id="contCount">5</div>
     <button id="contBtn" class="cta"></button>
     <button id="contEndBtn" class="cta ghost"></button>
@@ -222,6 +235,7 @@ const COPY = {
     claim: 'CLAIM SCORE', retry: 'RETRY', newBest: 'NEW BEST!',
     contTitle: 'CRASHED!', contSub: 'Jump back in — your time is still running.',
     contBtn: 'CONTINUE', slowmo: 'SLOW-MO!', dbl: 'DOUBLE SCORE!', combo: 'COMBO!',
+    contTier: 'Tier', contLevel: 'Lv', contTimeLeft: 'Time left',
     statScore: 'Score', statLevel: 'Level reached', statSeq: 'Patterns cleared', statBest: 'Best',
     bestPrefix: 'Best',
   },
@@ -233,6 +247,7 @@ const COPY = {
     claim: 'TUNTUT SKOR', retry: 'RETRY', newBest: 'REKOD BAHARU!',
     contTitle: 'TERLANGGAR!', contSub: 'Sambung semula — masa anda masih berjalan.',
     contBtn: 'SAMBUNG', slowmo: 'PERLAHAN!', dbl: 'SKOR DUA KALI!', combo: 'KOMBO!',
+    contTier: 'Tahap', contLevel: 'Lv', contTimeLeft: 'Masa tinggal',
     statScore: 'Skor', statLevel: 'Tahap dicapai', statSeq: 'Corak selesai', statBest: 'Terbaik',
     bestPrefix: 'Terbaik',
   },
@@ -265,7 +280,7 @@ const CONFIG = {
   SLOWMO_SEC: 4, SLOWMO_MUL: 0.5,
   DOUBLE_SEC: 6,
   POWER_CHANCE: 0.10,       // chance a hazard slot becomes a power-up
-  CONTINUE_COUNT: 5,
+  CONTINUE_COUNT: 10,
   MUSIC_TEMPO: 72,          // BPM of the lofi backing loop
   MUSIC_VOL: 0.85,          // master gain for the backing loop (SFX are separate)
   STORAGE_KEY_BEST: 'ball-rush:best',
@@ -317,6 +332,8 @@ const dom = {
   contTitle: document.getElementById('contTitle'),
   contSub: document.getElementById('contSub'),
   contCount: document.getElementById('contCount'),
+  contTier: document.getElementById('contTier'),
+  contClock: document.getElementById('contClock'),
   contBtn: document.getElementById('contBtn'),
   contEndBtn: document.getElementById('contEndBtn'),
   gameOver: document.getElementById('gameOver'),
@@ -416,8 +433,10 @@ function radiusRaw(z) {
 // =============================================================================
 // Sequence generation (procedural — fresh every sequence, never hardcoded)
 // =============================================================================
+function tierFor(level) { return level <= 2 ? 1 : level <= 4 ? 2 : 3; }
+
 function genSequence(level) {
-  const tier = level <= 2 ? 1 : level <= 4 ? 2 : 3;
+  const tier = tierFor(level);
   let types, steps, startMax, tables;
   if (tier === 1) { types = ['asc']; steps = [2, 5, 10]; startMax = 20; tables = []; }
   else if (tier === 2) { types = ['asc', 'desc', 'mul']; steps = [3, 4, 25]; startMax = 60; tables = [3, 4]; }
@@ -603,22 +622,26 @@ function update(dt) {
   const hueDiff = ((currentHue() - state.hue + 540) % 360) - 180;
   state.hue += hueDiff * Math.min(1, dt * CONFIG.HUE_EASE);
 
+  // The round clock keeps ticking through the crash + continue prompt —
+  // time is a shared budget (§1.2), so pausing here would be a free break.
   if (state.phase === 'CRASHED') {
     state.crashT += dt;
+    if (advanceClock(dt)) { endGame('time'); return; }
     if (state.crashT > 0.9) {
       if (state.timer > 0.5) openContinue(); else endGame('crash');
     }
     decayFloaters(dt);
     return;
   }
+  if (state.phase === 'CONTINUE') {
+    if (advanceClock(dt)) { clearTimeout(contTimer); endGame('time'); return; }
+    dom.contClock.textContent = COPY.contTimeLeft + ' ' + fmtClock(state.timer);
+    decayFloaters(dt);
+    return;
+  }
   if (state.phase !== 'PLAYING') { decayFloaters(dt); return; }
 
-  state.elapsed += dt;
-  state.timer = Math.max(0, CONFIG.GAME_DURATION_SEC - state.elapsed);
-
-  const sl = Math.ceil(state.timer);
-  if (sl <= 10 && sl >= 1 && state.lastTick !== sl) { playTick(); state.lastTick = sl; }
-  if (state.timer <= 0) { endGame('time'); return; }
+  if (advanceClock(dt)) { endGame('time'); return; }
 
   // steer — eased angular velocity so starts/stops feel smooth, not snapped
   state.angVel += (state.holdDir * CONFIG.ROT_SPEED - state.angVel) * Math.min(1, dt * CONFIG.STEER_RESPONSE);
@@ -646,7 +669,6 @@ function update(dt) {
   while (state.sinceSpawn >= CONFIG.FEATURE_GAP) { spawnNext(); state.sinceSpawn -= CONFIG.FEATURE_GAP; }
 
   decayFloaters(dt);
-  updateTimeHud();
 }
 
 function decayFloaters(dt) {
@@ -673,9 +695,21 @@ function crash() {
 // =============================================================================
 // HUD
 // =============================================================================
+function fmtClock(secs) {
+  const s = Math.ceil(secs);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+// Advance the shared round clock. Returns true when time has run out.
+function advanceClock(dt) {
+  state.elapsed += dt;
+  state.timer = Math.max(0, CONFIG.GAME_DURATION_SEC - state.elapsed);
+  const sl = Math.ceil(state.timer);
+  if (sl <= 10 && sl >= 1 && state.lastTick !== sl) { playTick(); state.lastTick = sl; }
+  updateTimeHud();
+  return state.timer <= 0;
+}
 function updateTimeHud() {
-  const s = Math.ceil(state.timer);
-  dom.timeVal.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  dom.timeVal.textContent = fmtClock(state.timer);
   dom.timePill.classList.toggle('urgent', state.timer <= 10);
 }
 function updateStrip() {
@@ -1092,6 +1126,8 @@ function openContinue() {
   state.phase = 'CONTINUE';
   state.contCountdown = CONFIG.CONTINUE_COUNT;
   dom.contCount.textContent = state.contCountdown;
+  dom.contTier.textContent = COPY.contTier + ' ' + tierFor(state.level) + ' · ' + COPY.contLevel + ' ' + state.level;
+  dom.contClock.textContent = COPY.contTimeLeft + ' ' + fmtClock(state.timer);
   dom.cont.classList.remove('hidden');
   tickContinue();
 }

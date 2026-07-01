@@ -623,7 +623,7 @@ function onWrong() {
 function activatePower(kind) {
   if (kind === 'slow') { state.slowUntil = state.elapsed + CONFIG.SLOWMO_SEC; showToast(COPY.slowmo); }
   else { state.doubleUntil = state.elapsed + CONFIG.DOUBLE_SEC; showToast(COPY.dbl); }
-  burst(kind === 'slow' ? ['#46c8ff', '#bfeaff'] : ['#ffd633', '#ffb800'], 12, 200);
+  burst(kind === 'slow' ? ['#46c8ff', '#bfeaff'] : ['#7CFFB0', '#5fe896'], 12, 200);
   playPower();
 }
 
@@ -945,7 +945,7 @@ function drawPower(f) {
   const px = Math.cos(f.ang) * r * 0.62;
   const py = Math.sin(f.ang) * r * 0.62 + Math.sin(state.elapsed * 3.6 + f.ang * 5) * r * 0.015;
   const rad = clamp(r * 0.16, 10, 100) * (1 + 0.05 * Math.sin(state.elapsed * 4.5 + f.ang));
-  const glow = slow ? '#46c8ff' : '#fdd83d';
+  const glow = slow ? '#46c8ff' : '#5dff9f'; // green ×2 — distinct from gold gates and blue slow-mo
   ctx.save();
   ctx.globalAlpha = alpha;
   powerSparkles(px, py, rad, f.ang, false);
@@ -957,7 +957,7 @@ function drawPower(f) {
   ctx.restore();
   // glassy sphere
   if (slow) glossyBall(px, py, rad, '#d9f5ff', '#49c9ff', '#1535a8', '#081543');
-  else glossyBall(px, py, rad, '#fff7c4', '#ffd633', '#ff9d00', '#7a4a00');
+  else glossyBall(px, py, rad, '#dcffe9', '#5fe896', '#17a854', '#07522a');
   if (slow) {
     // hand-drawn clock with spinning hands — reads "time" on every platform,
     // unlike the ⏱ emoji it replaces

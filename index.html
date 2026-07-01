@@ -203,20 +203,26 @@
       <p class="lede">Static game previews hosted on GitHub Pages. Approved games will appear here separately from the pending ones.</p>
     </header>
 
+    <section class="section" aria-labelledby="production-title">
+      <h2 id="production-title">Released — In Production</h2>
+      <ul id="production-games" class="grid"></ul>
+      <p id="production-empty" class="empty" hidden>No games in production at the moment.</p>
+    </section>
+
     <section class="section" aria-labelledby="approved-dev-title">
       <h2 id="approved-dev-title">Approved — For Development</h2>
       <ul id="approved-dev-games" class="grid"></ul>
-      <p id="approved-dev-empty" class="empty" hidden>No games approved for development yet.</p>
+      <p id="approved-dev-empty" class="empty" hidden>No games approved for development at the moment.</p>
     </section>
 
     <section class="section" aria-labelledby="approved-design-title">
       <h2 id="approved-design-title">Approved — For Design</h2>
       <ul id="approved-design-games" class="grid"></ul>
-      <p id="approved-design-empty" class="empty" hidden>No games approved for design yet.</p>
+      <p id="approved-design-empty" class="empty" hidden>No games approved for design at the moment.</p>
     </section>
 
     <section class="section" aria-labelledby="pending-title">
-      <h2 id="pending-title">Pending</h2>
+      <h2 id="pending-title">Pending — In Development</h2>
       <ul id="pending-games" class="grid"></ul>
       <p id="pending-empty" class="empty" hidden>No pending games right now.</p>
     </section>
@@ -235,11 +241,13 @@
 
     function renderGames() {
       const lists = {
+        'production':      document.getElementById('production-games'),
         'approved-dev':    document.getElementById('approved-dev-games'),
         'approved-design': document.getElementById('approved-design-games'),
         'pending':         document.getElementById('pending-games'),
       };
       const empties = {
+        'production':      document.getElementById('production-empty'),
         'approved-dev':    document.getElementById('approved-dev-empty'),
         'approved-design': document.getElementById('approved-design-empty'),
         'pending':         document.getElementById('pending-empty'),
@@ -264,7 +272,7 @@
           titleWrap.appendChild(author);
         }
 
-        if (game.status === 'approved-dev') {
+        if (game.status === 'approved-dev' || game.production) {
           const envFlags = document.createElement('span');
           envFlags.className = 'env-flags';
           const folderName = String(game.path || '')
@@ -316,9 +324,11 @@
         return 'pending';
       }
 
-      const counts = { 'approved-dev': 0, 'approved-design': 0, 'pending': 0 };
+      const counts = { 'production': 0, 'approved-dev': 0, 'approved-design': 0, 'pending': 0 };
       window.GAMES.forEach((game) => {
-        const bucket = bucketFor(game.status);
+        // Games live in production show under "Released — In Production"
+        // regardless of their status bucket.
+        const bucket = game.production ? 'production' : bucketFor(game.status);
         lists[bucket].appendChild(renderGame(game));
         counts[bucket] += 1;
       });

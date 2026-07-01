@@ -13,13 +13,13 @@
 // - `production`: true if available in production environment
 window.GAMES = [
   { name: '2048', path: './2048/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
-  { name: 'Ball Rush', path: './ball-rush/', status: 'pending', author: 'akmalakhpah' },
+  { name: 'Ball Rush', path: './ball-rush/', status: 'approved-dev', author: 'akmalakhpah' },
   { name: 'Bubble Shooter', path: './bubble-shooter/', status: 'approved-dev', author: 'Koplo3', staging: true },
   { name: 'Dadu Didik', path: './dadu-didik/', status: 'approved-dev', author: 'akmalakhpah', staging: true },
   { name: 'FlagFindr', path: './flag-findr/', status: 'approved-dev', author: 'akmalakhpah', staging: true },
   { name: 'Flying Ruby', path: './flying-ruby/', status: 'approved-dev', author: 'pandaipixel', staging: true, production: true },
   { name: 'Gem Merge', path: './gem-merge/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
-  { name: 'Heads Up!', path: './heads-up/', status: 'pending', author: 'akmalakhpah' },
+  { name: 'Heads Up!', path: './heads-up/', status: 'approved-dev', author: 'akmalakhpah' },
   { name: 'Kataku', path: './kataku/', status: 'approved-dev', author: 'akmalakhpah', staging: true, production: true },
   { name: 'Liquid Sort', path: './liquid-sort/', status: 'pending', author: 'zafirah123' },
   { name: 'Number Run', path: './number-run/', status: 'pending', author: 'akmalakhpah' },

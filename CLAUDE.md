@@ -666,14 +666,42 @@ Example:
 
 ## 7. Publishing a new game
 
-The landing page has three lists, each backed by a `status` value in
-[`games.js`](./games.js):
+The landing page has four sections. Three are backed by a `status` value in
+[`games.js`](./games.js); the fourth (**Released — In Production**) is driven
+by the `production` flag and takes precedence over the status buckets:
 
 | `status` value | Section on landing page | When to use |
 |---|---|---|
 | `pending` | **Pending** | Default. Game is still in active build / not ready for either review. |
 | `approved-dev` | **Approved — For Development** | Game has progressed far enough that the development team should review or pick it up. |
 | `approved-design` | **Approved — For Design** | Game has progressed far enough that the design team should review or pick it up. |
+
+### 7.0 Environment flags (`staging` / `production`)
+
+Games in `approved-dev` may carry two optional boolean flags in
+[`games.js`](./games.js) that record where the game is actually deployed:
+
+| Flag | Meaning | Landing-page effect |
+|---|---|---|
+| `staging: true` | Game is live in the staging environment (`dev.pandai.org`). | Renders a green **STAGING ON** chip (click-through to the staging URL). |
+| `production: true` | Game is live in the production environment (`app.pandai.org`). | Renders a green **PRODUCTION ON** chip **and** moves the game into the **Released — In Production** section. |
+
+Mark these flags to match reality:
+
+- Set `staging: true` once the game is deployed to `dev.pandai.org`.
+- Set `production: true` once the game is deployed to `app.pandai.org`. This
+  is the flag that surfaces the game under **Released — In Production** — the
+  game's `status` stays `approved-dev`, but the `production` flag overrides
+  which section it renders in.
+- Leave a flag off (or omit it) until the game is genuinely live there. Don't
+  set `production: true` speculatively — the section is a record of what has
+  actually shipped.
+
+**Example `games.js` entry with flags:**
+
+```js
+{ name: 'Your Game', path: './your-game/', status: 'approved-dev', author: 'your-github-username', staging: true, production: true },
+```
 
 ### 7.1 Initial publishing flow
 
@@ -725,15 +753,20 @@ the status for you.
 
 ### 7.3 Rules
 
-- A game lives in **exactly one list** at a time. To move it again later,
+- A game lives in **exactly one section** at a time. To move it again later,
   open another PR flipping the status.
+- A game with `production: true` always renders under **Released — In
+  Production**, regardless of its `status` value — the `production` flag wins
+  over the status bucket. Clear the flag (set it to `false` or omit it) to
+  send the game back to its status-driven section.
 - Don't add new status values without updating both [`index.html`](./index.html)
   (the `bucketFor()` function) and this document. Unknown / typo'd status
   values fall back to **Pending** so a bad value never drops a game off the
   landing page — but that fallback is a safety net, not a substitute for
   using the documented values.
 - A move is reversible: you can flip `approved-dev` → `pending` if the game
-  regresses. Be honest about it.
+  regresses, or clear `production` / `staging` if a deployment is rolled back.
+  Be honest about it.
 
 ---
 

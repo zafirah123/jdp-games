@@ -967,6 +967,7 @@ function saveBest(v){ try { localStorage.setItem(CONFIG.gameName+':best', String
 
 function startGame(){
   claimLocked = false;
+  claimUnavailable = false;
   // clear
   for (const t of tokens.slice()) removeToken(t);
   tokens = []; particles = []; floats = [];
@@ -987,6 +988,7 @@ function startGame(){
 }
 
 let claimLocked = false;
+let claimUnavailable = false;
 function endRun(byTimer){
   if (state.scene !== 'play') return;
   state.scene = 'over';
@@ -1029,6 +1031,11 @@ function syncClaimButton(){
     claimBtn.disabled = true;
     return;
   }
+  if (claimUnavailable){
+    claimBtn.textContent = COPY.claimUnavailable;
+    claimBtn.disabled = true;
+    return;
+  }
   claimBtn.textContent = COPY.claim;
   claimBtn.disabled = claimLocked;
 }
@@ -1053,6 +1060,7 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
     if (!url){
       console.warn('[flag-findr] claim unavailable: invalid or missing callback context');
       claimLocked = false;
+      claimUnavailable = true;
       syncClaimButton();
       return;
     }
@@ -1060,6 +1068,7 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
   } catch(err){
     console.warn('[flag-findr] claim failed', err);
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
   }
 });

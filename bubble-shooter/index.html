@@ -342,6 +342,7 @@
         }[LANG];
         function isZeroScore() { return (Game.score | 0) <= 0; }
         const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
+        let claimUnavailable = false;
         function hasClaimCallback() {
             return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
         }
@@ -354,6 +355,11 @@
                 return;
             }
             if (!hasClaimCallback()) {
+                restartBtn.textContent = COPY.claimUnavailable;
+                restartBtn.disabled = true;
+                return;
+            }
+            if (claimUnavailable) {
                 restartBtn.textContent = COPY.claimUnavailable;
                 restartBtn.disabled = true;
                 return;
@@ -813,6 +819,7 @@
                 document.getElementById('start-btn').addEventListener('click', () => {
                     SoundSystem.init();
                     SoundSystem.playClick();
+                    claimUnavailable = false;
                     document.getElementById('start-overlay').classList.add('hidden');
                     this.start();
                 });
@@ -821,6 +828,7 @@
                     SoundSystem.init();
                     SoundSystem.playClick();
                     if (isZeroScore()) {
+                        claimUnavailable = false;
                         this.reset();
                         this.start();
                         return;
@@ -831,13 +839,19 @@
                     }
                     // CLAUDE.md ?6.5: CLAIM SCORE redirect ? no in-game retry
                     document.getElementById('restart-btn').disabled = true;
-                    const claimUrl = await buildClaimUrl(this.score);
-                    if (!claimUrl) {
-                        document.getElementById('restart-btn').textContent = COPY.claimUnavailable;
-                        document.getElementById('restart-btn').disabled = true;
-                        return;
+                    try {
+                        const claimUrl = await buildClaimUrl(this.score);
+                        if (!claimUrl) {
+                            claimUnavailable = true;
+                            syncRestartButton();
+                            return;
+                        }
+                        location.href = claimUrl;
+                    } catch (e) {
+                        console.warn('[bubble-shooter] claim submit failed:', e);
+                        claimUnavailable = true;
+                        syncRestartButton();
                     }
-                    location.href = claimUrl;
                 });
 
                 // Toggle Audio — DESIGN.md §5.11
@@ -1784,6 +1798,7 @@
                 // §6.5 — resolve the CTA against the FINAL score: CLAIM SCORE
                 // when score > 0, RETRY only when score = 0. (Initial load runs
                 // applyCopyToDOM() while score is still 0, so re-evaluate here.)
+                claimUnavailable = false;
                 syncRestartButton();
 
                 SoundSystem.playGameOver(victory);

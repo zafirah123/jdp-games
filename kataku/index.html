@@ -823,6 +823,7 @@ function fmtTime(ms) {
 // =============================================================================
 function startRun() {
   claimLocked = false;
+  claimUnavailable = false;
   syncClaimButton();
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
@@ -1243,6 +1244,7 @@ function showGameOver(reason) {
 // CLAIM SCORE - single end-of-game CTA (CLAUDE.md sections 6.5 / 6.6)
 // =============================================================================
 let claimLocked = false;
+let claimUnavailable = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1258,6 +1260,11 @@ function syncClaimButton() {
   }
 
   if (!hasClaimCallback()) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
+  if (claimUnavailable) {
     dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claimUnavailable;
     return;
@@ -1284,6 +1291,7 @@ async function buildClaimUrl() {
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
+    claimUnavailable = false;
     startRun();
     return;
   }
@@ -1300,6 +1308,7 @@ dom.claimBtn.addEventListener('click', async () => {
     if (!claimUrl) {
       console.warn('[kataku] claim submit unavailable: invalid or missing callback context');
       claimLocked = false;
+      claimUnavailable = true;
       syncClaimButton();
       return;
     }
@@ -1307,6 +1316,7 @@ dom.claimBtn.addEventListener('click', async () => {
   } catch (e) {
     console.warn('[kataku] claim submit failed:', e);
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
   }
 });

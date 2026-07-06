@@ -1278,6 +1278,11 @@ function syncClaimButton() {
     dom.claimBtn.textContent = COPY.claimUnavailable;
     return;
   }
+  if (claimUnavailable) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
 
   dom.claimBtn.disabled = claimLocked;
   dom.claimBtn.textContent = COPY.claim;
@@ -1338,6 +1343,7 @@ function updateMuteUI() {
 // =============================================================================
 function startGame() {
   claimLocked = false;
+  claimUnavailable = false;
   state.phase = 'PLAYING';
   state.score = 0;
   state.merges = 0;
@@ -1407,6 +1413,7 @@ function endGame(reason) {
 // CLAIM SCORE callback flow - supports default callback flow (sec 6.5) and Genet encrypted flow (sec 6.6)
 // =============================================================================
 let claimLocked = false;
+let claimUnavailable = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1449,11 +1456,13 @@ async function submitClaim() {
     } else {
       console.log('[gem-merge] CLAIM SCORE unavailable: invalid or missing callback context', extra);
       claimLocked = false;
+      claimUnavailable = true;
       syncClaimButton();
     }
   } catch (e) {
     console.warn('[gem-merge] claim submit failed:', e);
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
   }
 }

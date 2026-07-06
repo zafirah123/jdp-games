@@ -798,6 +798,7 @@ dom.endBtn.addEventListener('click', () => {
 // ===========================================================================
 function startRound() {
   claimLocked = false;
+  claimUnavailable = false;
   state.phase = 'PLAYING';
   state.board = emptyBoard();
   state.score = 0;
@@ -858,6 +859,7 @@ dom.startBtn.addEventListener('click', () => { startRound(); ensureAudio(); });
 // CLAIM SCORE - supports default callback flow (section 6.5) and Genet encrypted flow (section 6.6)
 // ===========================================================================
 let claimLocked = false;
+let claimUnavailable = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -873,6 +875,11 @@ function syncClaimButton() {
   }
 
   if (!hasClaimCallback()) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
+  if (claimUnavailable) {
     dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claimUnavailable;
     return;
@@ -893,6 +900,7 @@ async function buildClaimUrl() {
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
+    claimUnavailable = false;
     startRound();
     return;
   }
@@ -909,6 +917,7 @@ dom.claimBtn.addEventListener('click', async () => {
     if (!claimUrl) {
       console.warn('[number-snap] claim submit unavailable: invalid or missing callback context');
       claimLocked = false;
+      claimUnavailable = true;
       syncClaimButton();
       return;
     }
@@ -916,6 +925,7 @@ dom.claimBtn.addEventListener('click', async () => {
   } catch (e) {
     console.warn('[number-snap] claim submit failed:', e);
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
   }
 });

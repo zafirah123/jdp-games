@@ -878,6 +878,7 @@ function playTick()   { playTone({ freq: 1200, type: 'sine', dur: 0.07, gain: 0.
 // =============================================================================
 function startGame() {
   claimLocked = false;
+  claimUnavailable = false;
   state.phase = 'PLAYING';
   state.blocks = [];
   state.cutoffs = [];
@@ -959,6 +960,7 @@ dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startG
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
+    claimUnavailable = false;
     startGame();
     return;
   }
@@ -975,6 +977,7 @@ dom.claimBtn.addEventListener('click', async () => {
     if (!claimUrl) {
       console.warn('[susun] claim submit unavailable: invalid or missing callback context');
       claimLocked = false;
+      claimUnavailable = true;
       syncClaimButton();
       return;
     }
@@ -982,6 +985,7 @@ dom.claimBtn.addEventListener('click', async () => {
   } catch (e) {
     console.warn('[susun] claim submit failed:', e);
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
   }
 });
@@ -990,6 +994,7 @@ dom.claimBtn.addEventListener('click', async () => {
 // SUBMIT SCORE - supports default callback flow (section 6.5) and Genet encrypted flow (section 6.6)
 // =============================================================================
 let claimLocked = false;
+let claimUnavailable = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1005,6 +1010,11 @@ function syncClaimButton() {
   }
 
   if (!hasClaimCallback()) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
+  if (claimUnavailable) {
     dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claimUnavailable;
     return;

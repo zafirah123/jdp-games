@@ -800,7 +800,7 @@ function startGame(){
   STATE.board=emptyBoard();
   STATE.score=0; STATE.timeLeftMs=CONFIG.roundMs;
   STATE.inputLocked=false; STATE.paused=false; STATE.travel=null; STATE.steps=null;
-  STATE.anims=[]; STATE.hidden=new Set(); STATE.combo=0; STATE.submitted=false; STATE.endReason=null; STATE.lastTickSec=null;
+  STATE.anims=[]; STATE.hidden=new Set(); STATE.combo=0; STATE.submitted=false; STATE.claimUnavailable=false; STATE.endReason=null; STATE.lastTickSec=null;
   STATE.stats={placements:0,merges:0,rubies:0,bursts:0,maxChain:0,startWall:performance.now()};
   spawnPair();
   document.getElementById('score').textContent='0';
@@ -869,6 +869,12 @@ function syncEndCta(){
     cta.dataset.mode='claim';
     return;
   }
+  if(STATE.claimUnavailable){
+    cta.disabled=true;
+    cta.textContent=COPY.claimUnavailable;
+    cta.dataset.mode='claim';
+    return;
+  }
   cta.disabled=STATE.submitted;
   cta.textContent=COPY.claim;
   cta.dataset.mode='claim';
@@ -876,15 +882,24 @@ function syncEndCta(){
 async function submitScore(){
   if(STATE.submitted) return; STATE.submitted=true;
   const payload=buildClaimPayload(STATE.score);
-  const url=await buildClaimUrl(payload);
   const note=document.getElementById('claimNote');
-  if(!url){
+  try{
+    const url=await buildClaimUrl(payload);
+    if(!url){
+      STATE.claimUnavailable=true;
+      note.textContent = COPY.claimUnavailable;
+      note.classList.remove('hidden');
+      syncEndCta();
+      return;
+    }
+    location.href=url;
+  }catch(err){
+    console.warn('[dadu-didik] claim submit failed:', err);
+    STATE.claimUnavailable=true;
     note.textContent = COPY.claimUnavailable;
     note.classList.remove('hidden');
     syncEndCta();
-    return;
   }
-  location.href=url;
 }
 
 /* CTA handler */

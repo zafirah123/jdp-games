@@ -1532,6 +1532,7 @@ function stopMusic() { music.playing = false; if (music.timer) { clearInterval(m
 // =============================================================================
 function startGame() {
   claimLocked = false;
+  claimUnavailable = false;
   Object.assign(state, {
     phase: 'PLAYING', score: 0, elapsed: 0, worldDist: 0, dodged: 0,
     obstacles: [], rubies: [], bubbles: [], floaters: [], particles: [], blasts: [], deathBolts: [], pbDead: false,
@@ -1588,6 +1589,7 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
 // CLAIM SCORE — §6.5 callback contract (game, score, token + suspicious)
 // =============================================================================
 let claimLocked = false;
+let claimUnavailable = false;
 function hasClaimCallback() {
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
@@ -1600,6 +1602,11 @@ function syncClaimButton() {
   }
 
   if (!hasClaimCallback()) {
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.disabled = true;
+    return;
+  }
+  if (claimUnavailable) {
     dom.claimBtn.textContent = COPY.claimUnavailable;
     dom.claimBtn.disabled = true;
     return;
@@ -1661,19 +1668,26 @@ function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.claimBtn.addEventListener('click', async () => {
-  if ((state.score | 0) <= 0) { startGame(); return; }
+  if ((state.score | 0) <= 0) { claimUnavailable = false; startGame(); return; }
   if (!hasClaimCallback()) { syncClaimButton(); return; }
   if (claimLocked) return;
   claimLocked = true;
   syncClaimButton();
-  const claimUrl = await buildClaimUrl();
-  if (!claimUrl) {
+  try {
+    const claimUrl = await buildClaimUrl();
+    if (!claimUrl) {
+      claimLocked = false;
+      claimUnavailable = true;
+      syncClaimButton();
+      return;
+    }
+    location.href = claimUrl;
+  } catch (err) {
+    console.warn('[ruby-rush] claim submit failed:', err);
     claimLocked = false;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
-    return;
+    claimUnavailable = true;
+    syncClaimButton();
   }
-  location.href = claimUrl;
 });
 dom.endBtn.addEventListener('click', () => { if (state.phase === 'PLAYING') { state.phase = 'PAUSED'; state.ducking = false; showTouch(false); dom.pause.classList.remove('hidden'); } });
 dom.resumeBtn.addEventListener('click', () => { if (state.phase === 'PAUSED') { state.phase = 'PLAYING'; showTouch(true); dom.pause.classList.add('hidden'); } });

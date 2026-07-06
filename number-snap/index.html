@@ -414,15 +414,10 @@ dom.menuSub.textContent = COPY.menuSub;
 dom.startBtn.textContent = COPY.start;
 dom.contBtn.textContent = COPY.continueBtn;
 dom.contEndBtn.textContent = COPY.endRun;
-dom.claimBtn.textContent = COPY.claim;
 dom.endLabel.textContent = COPY.endRunShort;
 dom.rerollLabel.textContent = COPY.reroll;
 dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() {
-  dom.claimBtn.disabled = false;
-  dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim;
-}
 
 function refreshBestText() {
   dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : ' ';
@@ -802,6 +797,7 @@ dom.endBtn.addEventListener('click', () => {
 // Round lifecycle
 // ===========================================================================
 function startRound() {
+  claimLocked = false;
   state.phase = 'PLAYING';
   state.board = emptyBoard();
   state.score = 0;
@@ -850,7 +846,7 @@ function endRound(titleKey) {
   dom.goScore.textContent = String(state.score);
   dom.goBest.textContent = `${COPY.bestPrefix}: ${state.best}`;
   dom.goNewBest.classList.toggle('hidden', !isBest);
-  updateEndCta();
+  syncClaimButton();
   dom.gameOver.classList.remove('hidden');
   dom.fabRow.classList.add('hidden');
   dom.timeVal.classList.remove('pulse-urgent');
@@ -864,6 +860,27 @@ dom.startBtn.addEventListener('click', () => { startRound(); ensureAudio(); });
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+
+function hasClaimCallback() {
+  return !!window.ClaimCallback.resolveCallbackUrl(claimContext, CONFIG.CLAIM_FALLBACK_URL);
+}
+
+function syncClaimButton() {
+  if (isZeroScore()) {
+    dom.claimBtn.disabled = false;
+    dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+
+  if (!hasClaimCallback()) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
+
+  dom.claimBtn.disabled = claimLocked;
+  dom.claimBtn.textContent = COPY.claim;
+}
 
 async function buildClaimUrl() {
   return window.ClaimCallback.buildClaimUrl({
@@ -879,24 +896,27 @@ dom.claimBtn.addEventListener('click', async () => {
     startRound();
     return;
   }
+  if (!hasClaimCallback()) {
+    claimLocked = false;
+    syncClaimButton();
+    return;
+  }
   if (claimLocked) return;
   claimLocked = true;
-  dom.claimBtn.disabled = true;
+  syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
       console.warn('[number-snap] claim submit unavailable: invalid or missing callback context');
-      dom.claimBtn.textContent = COPY.claimUnavailable;
-      dom.claimBtn.disabled = true;
       claimLocked = false;
+      syncClaimButton();
       return;
     }
     location.href = claimUrl;
   } catch (e) {
     console.warn('[number-snap] claim submit failed:', e);
     claimLocked = false;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
+    syncClaimButton();
   }
 });
 

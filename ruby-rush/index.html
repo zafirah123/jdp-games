@@ -1531,6 +1531,7 @@ function stopMusic() { music.playing = false; if (music.timer) { clearInterval(m
 // Lifecycle
 // =============================================================================
 function startGame() {
+  claimLocked = false;
   Object.assign(state, {
     phase: 'PLAYING', score: 0, elapsed: 0, worldDist: 0, dodged: 0,
     obstacles: [], rubies: [], bubbles: [], floaters: [], particles: [], blasts: [], deathBolts: [], pbDead: false,
@@ -1572,8 +1573,7 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
     `<div class="label">${COPY.statDodged}</div><div class="value">${state.dodged}</div>` +
     `<div class="label">${COPY.statTime}</div><div class="value">${fmtTime(state.elapsed)}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
-  dom.claimBtn.textContent = state.score > 0 ? COPY.claim : COPY.retry;
-  dom.claimBtn.disabled = false;
+  syncClaimButton();
 
   stopMusic();
   playGameOver();
@@ -1587,6 +1587,28 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
 // =============================================================================
 // CLAIM SCORE — §6.5 callback contract (game, score, token + suspicious)
 // =============================================================================
+let claimLocked = false;
+function hasClaimCallback() {
+  return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
+}
+
+function syncClaimButton() {
+  if ((state.score | 0) <= 0) {
+    dom.claimBtn.textContent = COPY.retry;
+    dom.claimBtn.disabled = false;
+    return;
+  }
+
+  if (!hasClaimCallback()) {
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.disabled = true;
+    return;
+  }
+
+  dom.claimBtn.textContent = COPY.claim;
+  dom.claimBtn.disabled = claimLocked;
+}
+
 async function buildClaimUrl() {
   if (!window.ClaimCallback) {
     return null;
@@ -1640,9 +1662,13 @@ function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.claimBtn.addEventListener('click', async () => {
   if ((state.score | 0) <= 0) { startGame(); return; }
-  dom.claimBtn.disabled = true;
+  if (!hasClaimCallback()) { syncClaimButton(); return; }
+  if (claimLocked) return;
+  claimLocked = true;
+  syncClaimButton();
   const claimUrl = await buildClaimUrl();
   if (!claimUrl) {
+    claimLocked = false;
     dom.claimBtn.textContent = COPY.claimUnavailable;
     dom.claimBtn.disabled = true;
     return;

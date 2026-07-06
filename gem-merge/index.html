@@ -1257,7 +1257,6 @@ const dom = {
 dom.menuSub.textContent = COPY.menuSub;
 dom.menuHint.textContent = COPY.menuHint;
 dom.startBtn.textContent = COPY.start;
-dom.claimBtn.textContent = COPY.claim;
 dom.endRunBtn.textContent = COPY.endRun;
 dom.endConfirmTitle.textContent = COPY.endConfirmTitle;
 dom.endConfirmSub.textContent = COPY.endConfirmSub;
@@ -1267,7 +1266,22 @@ dom.newBestLabel.textContent = COPY.newBest;
 dom.nextLabel.textContent = COPY.next;
 document.querySelector('.jdp-pill .pill-label').textContent = COPY.score;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() { dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim; }
+function syncClaimButton() {
+  if (isZeroScore()) {
+    dom.claimBtn.disabled = false;
+    dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+
+  if (!hasClaimCallback()) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
+
+  dom.claimBtn.disabled = claimLocked;
+  dom.claimBtn.textContent = COPY.claim;
+}
 
 function updateNextPreview() {
   const img = gemImages[state.nextTier];
@@ -1323,6 +1337,7 @@ function updateMuteUI() {
 // Lifecycle
 // =============================================================================
 function startGame() {
+  claimLocked = false;
   state.phase = 'PLAYING';
   state.score = 0;
   state.merges = 0;
@@ -1376,7 +1391,7 @@ function endGame(reason) {
     `<div class="label">${COPY.statMerges}</div><div class="value">${state.merges}</div>` +
     `<div class="label">${COPY.statTopGem}</div><div class="value">${topGemName}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
-  updateEndCta();
+  syncClaimButton();
 
   dom.endRunBtn.classList.add('hidden');
   dom.gemLadder.classList.add('hidden');
@@ -1395,14 +1410,23 @@ let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
+function hasClaimCallback() {
+  return !!window.ClaimCallback.resolveCallbackUrl(claimContext, null);
+}
+
 async function submitClaim() {
   if (isZeroScore()) {
     startGame();
     return;
   }
+  if (!hasClaimCallback()) {
+    claimLocked = false;
+    syncClaimButton();
+    return;
+  }
   if (claimLocked) return;
   claimLocked = true;
-  dom.claimBtn.disabled = true;
+  syncClaimButton();
 
   const extra = {
     merges: state.merges,
@@ -1424,15 +1448,13 @@ async function submitClaim() {
       window.location.href = url;
     } else {
       console.log('[gem-merge] CLAIM SCORE unavailable: invalid or missing callback context', extra);
-      dom.claimBtn.textContent = COPY.claimUnavailable;
-      dom.claimBtn.disabled = true;
       claimLocked = false;
+      syncClaimButton();
     }
   } catch (e) {
     console.warn('[gem-merge] claim submit failed:', e);
     claimLocked = false;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
+    syncClaimButton();
   }
 }
 // =============================================================================

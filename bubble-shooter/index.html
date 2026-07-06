@@ -341,8 +341,26 @@
             },
         }[LANG];
         function isZeroScore() { return (Game.score | 0) <= 0; }
-        function endCtaLabel() { return isZeroScore() ? COPY.retry : COPY.claimScore; }
         const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
+        function hasClaimCallback() {
+            return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
+        }
+        function syncRestartButton() {
+            const restartBtn = document.getElementById('restart-btn');
+            if (!restartBtn) return;
+            if (isZeroScore()) {
+                restartBtn.textContent = COPY.retry;
+                restartBtn.disabled = false;
+                return;
+            }
+            if (!hasClaimCallback()) {
+                restartBtn.textContent = COPY.claimUnavailable;
+                restartBtn.disabled = true;
+                return;
+            }
+            restartBtn.textContent = COPY.claimScore;
+            restartBtn.disabled = false;
+        }
         async function buildClaimUrl(score) {
             if (!window.ClaimCallback) {
                 return null;
@@ -403,8 +421,7 @@
             const resultDesc = document.getElementById('result-desc');
             if (resultDesc) resultDesc.textContent = COPY.resultsBlurb;
             // Restart button — §6.5 CLAIM SCORE CTA
-            const restartBtn = document.getElementById('restart-btn');
-            if (restartBtn) restartBtn.textContent = endCtaLabel();
+            syncRestartButton();
             // Audio toggle label/title — see DESIGN.md §5.11
             updateMuteUI();
         }
@@ -806,6 +823,10 @@
                     if (isZeroScore()) {
                         this.reset();
                         this.start();
+                        return;
+                    }
+                    if (!hasClaimCallback()) {
+                        syncRestartButton();
                         return;
                     }
                     // CLAUDE.md ?6.5: CLAIM SCORE redirect ? no in-game retry
@@ -1763,8 +1784,7 @@
                 // §6.5 — resolve the CTA against the FINAL score: CLAIM SCORE
                 // when score > 0, RETRY only when score = 0. (Initial load runs
                 // applyCopyToDOM() while score is still 0, so re-evaluate here.)
-                document.getElementById('restart-btn').textContent = endCtaLabel();
-                document.getElementById('restart-btn').disabled = false;
+                syncRestartButton();
 
                 SoundSystem.playGameOver(victory);
 

@@ -966,6 +966,7 @@ function loadBest(){ try { return parseInt(localStorage.getItem(CONFIG.gameName+
 function saveBest(v){ try { localStorage.setItem(CONFIG.gameName+':best', String(v)); } catch(_){} }
 
 function startGame(){
+  claimLocked = false;
   // clear
   for (const t of tokens.slice()) removeToken(t);
   tokens = []; particles = []; floats = [];
@@ -1000,10 +1001,8 @@ function endRun(byTimer){
   document.getElementById('bestLine').textContent = `${COPY.best}: ${state.best}`;
   const nb = document.getElementById('newBest');
   nb.textContent = COPY.newBest; nb.classList.toggle('show', isBest);
-  const claim = document.getElementById('claimBtn');
-  claim.textContent = state.score > 0 ? COPY.claim : COPY.retry;
-  claim.disabled = false;
   claimLocked = false;
+  syncClaimButton();
   document.getElementById('overOverlay').classList.remove('hidden');
 }
 
@@ -1014,7 +1013,25 @@ function endRun(byTimer){
 // without a trailing slash so the relative path 404'd), the game must still
 // run and switch language — only the claim submit is unavailable.
 const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
-if (claimContext.pageTitle){ const t = claimContext.pageTitle.trim(); if (t) document.title = t; }
+if (window.ClaimCallback) window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle);
+function hasClaimCallback(){
+  return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, CONFIG.claimFallbackUrl));
+}
+function syncClaimButton(){
+  const claimBtn = document.getElementById('claimBtn');
+  if (state.score <= 0){
+    claimBtn.textContent = COPY.retry;
+    claimBtn.disabled = false;
+    return;
+  }
+  if (!hasClaimCallback()){
+    claimBtn.textContent = COPY.claimUnavailable;
+    claimBtn.disabled = true;
+    return;
+  }
+  claimBtn.textContent = COPY.claim;
+  claimBtn.disabled = claimLocked;
+}
 async function buildClaimUrl(){
   if (!window.ClaimCallback){ console.warn('[flag-findr] claim-callback.js not loaded'); return null; }
   return window.ClaimCallback.buildClaimUrl({
@@ -1023,26 +1040,27 @@ async function buildClaimUrl(){
   });
 }
 document.getElementById('claimBtn').addEventListener('click', async ()=>{
-  if (state.score <= 0){ startGame(); return; }   // RETRY (§6.5) — local restart for zero-score only
+  if (state.score <= 0){ startGame(); return; }
+  if (!hasClaimCallback()){
+    claimLocked = false;
+    syncClaimButton();
+    return;
+  }
   if (claimLocked) return; claimLocked = true;
-  document.getElementById('claimBtn').disabled = true;
+  syncClaimButton();
   try {
     const url = await buildClaimUrl();
     if (!url){
       console.warn('[flag-findr] claim unavailable: invalid or missing callback context');
-      const claimBtn = document.getElementById('claimBtn');
-      claimBtn.textContent = COPY.claimUnavailable;
-      claimBtn.disabled = true;
       claimLocked = false;
+      syncClaimButton();
       return;
     }
     location.href = url;
   } catch(err){
     console.warn('[flag-findr] claim failed', err);
-    const claimBtn = document.getElementById('claimBtn');
     claimLocked = false;
-    claimBtn.textContent = COPY.claimUnavailable;
-    claimBtn.disabled = true;
+    syncClaimButton();
   }
 });
 document.getElementById('endRunBtn').addEventListener('click', ()=> endRun(false));

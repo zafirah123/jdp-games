@@ -825,10 +825,9 @@ function endGame(reason){
   document.getElementById('overBest').textContent=COPY.best+': '+STATE.best;
   toggle('newBest', isBest && STATE.score>0);
   const cta=document.getElementById('ctaBtn');
-  cta.classList.remove('hidden'); cta.disabled=false;
+  cta.classList.remove('hidden');
   document.getElementById('claimNote').classList.add('hidden');
-  cta.textContent = STATE.score>0?COPY.claim:COPY.retry;
-  cta.dataset.mode=STATE.score>0?'claim':'retry';
+  syncEndCta();
   show('overModal');
 }
 
@@ -853,6 +852,27 @@ async function buildClaimUrl(payload){
     extraData: payload,
   });
 }
+function hasClaimCallback(){
+  return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
+}
+function syncEndCta(){
+  const cta=document.getElementById('ctaBtn');
+  if(STATE.score<=0){
+    cta.disabled=false;
+    cta.textContent=COPY.retry;
+    cta.dataset.mode='retry';
+    return;
+  }
+  if(!hasClaimCallback()){
+    cta.disabled=true;
+    cta.textContent=COPY.claimUnavailable;
+    cta.dataset.mode='claim';
+    return;
+  }
+  cta.disabled=STATE.submitted;
+  cta.textContent=COPY.claim;
+  cta.dataset.mode='claim';
+}
 async function submitScore(){
   if(STATE.submitted) return; STATE.submitted=true;
   const payload=buildClaimPayload(STATE.score);
@@ -861,6 +881,7 @@ async function submitScore(){
   if(!url){
     note.textContent = COPY.claimUnavailable;
     note.classList.remove('hidden');
+    syncEndCta();
     return;
   }
   location.href=url;
@@ -870,6 +891,7 @@ async function submitScore(){
 document.getElementById('ctaBtn').addEventListener('click',function(){
   sfx.ui();
   if(this.dataset.mode==='retry'){ startGame(); return; }
+  if(!hasClaimCallback()){ syncEndCta(); return; }
   this.disabled=true;
   submitScore();
 });

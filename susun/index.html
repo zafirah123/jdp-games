@@ -349,13 +349,8 @@ const dom = {
 dom.menuSub.textContent = COPY.menuSub;
 dom.menuHint.innerHTML = COPY.menuHint;
 dom.startBtn.textContent = COPY.start;
-dom.claimBtn.textContent = COPY.claim;
 dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() {
-  dom.claimBtn.disabled = false;
-  dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim;
-}
 
 // =============================================================================
 // Sandbox-safe storage
@@ -882,6 +877,7 @@ function playTick()   { playTone({ freq: 1200, type: 'sine', dur: 0.07, gain: 0.
 // Game lifecycle
 // =============================================================================
 function startGame() {
+  claimLocked = false;
   state.phase = 'PLAYING';
   state.blocks = [];
   state.cutoffs = [];
@@ -933,7 +929,7 @@ function endGame(reason) {
     `<div class="label">${COPY.statStreak}</div><div class="value">${state.bestStreak}</div>` +
     `<div class="label">${COPY.statHeight}</div><div class="value">${state.blocksPlaced} ${COPY.statHeightUnit}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
-  updateEndCta();
+  syncClaimButton();
 
   // Brief delay on miss so the death animation reads
   setTimeout(() => {
@@ -966,24 +962,27 @@ dom.claimBtn.addEventListener('click', async () => {
     startGame();
     return;
   }
+  if (!hasClaimCallback()) {
+    claimLocked = false;
+    syncClaimButton();
+    return;
+  }
   if (claimLocked) return;
   claimLocked = true;
-  dom.claimBtn.disabled = true;
+  syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
       console.warn('[susun] claim submit unavailable: invalid or missing callback context');
-      dom.claimBtn.textContent = COPY.claimUnavailable;
-      dom.claimBtn.disabled = true;
       claimLocked = false;
+      syncClaimButton();
       return;
     }
     location.href = claimUrl;
   } catch (e) {
     console.warn('[susun] claim submit failed:', e);
     claimLocked = false;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
+    syncClaimButton();
   }
 });
 
@@ -993,6 +992,27 @@ dom.claimBtn.addEventListener('click', async () => {
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+
+function hasClaimCallback() {
+  return !!window.ClaimCallback.resolveCallbackUrl(claimContext, CONFIG.CLAIM_FALLBACK_URL);
+}
+
+function syncClaimButton() {
+  if (isZeroScore()) {
+    dom.claimBtn.disabled = false;
+    dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+
+  if (!hasClaimCallback()) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
+
+  dom.claimBtn.disabled = claimLocked;
+  dom.claimBtn.textContent = COPY.claim;
+}
 
 async function buildClaimUrl() {
   return window.ClaimCallback.buildClaimUrl({

@@ -355,9 +355,8 @@ const COPY = {
   },
 }[LANG];
 function isZeroScore() { return (state.score | 0) <= 0; }
-function endCtaLabel() {
-  if (state.claimUnavailable) return COPY.claimUnavailable;
-  return isZeroScore() ? COPY.retry : COPY.claim;
+function isLiveScene(scene = state.scene) {
+  return scene === 'flashing' || scene === 'input' || scene === 'between';
 }
 
 // ============================================================
@@ -523,12 +522,13 @@ timeLbl.textContent  = COPY.timeLabel;
 // ============================================================
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
-if (claimContext.pageTitle) {
-  const t = claimContext.pageTitle.trim();
-  if (t) {
-    document.title = t;
-    COPY.title = t;
-  }
+window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'goTitle');
+if (claimContext.pageTitle && claimContext.pageTitle.trim()) {
+  COPY.title = claimContext.pageTitle.trim();
+}
+
+function hasClaimCallback() {
+  return !!window.ClaimCallback.resolveCallbackUrl(claimContext, CONFIG.claimFallbackUrl);
 }
 
 async function buildClaimUrl() {
@@ -540,8 +540,33 @@ async function buildClaimUrl() {
   });
 }
 
+function syncClaimButton() {
+  if (state.scene !== 'gameover') {
+    claimBtn.disabled = true;
+    return;
+  }
+
+  if (isZeroScore()) {
+    claimBtn.disabled = false;
+    claimBtn.textContent = COPY.retry;
+    claimBtn.setAttribute('aria-label', COPY.retry);
+    return;
+  }
+
+  if (state.claimUnavailable || !hasClaimCallback()) {
+    claimBtn.disabled = true;
+    claimBtn.textContent = COPY.claimUnavailable;
+    claimBtn.setAttribute('aria-label', COPY.claimUnavailable);
+    return;
+  }
+
+  claimBtn.disabled = claimLocked;
+  claimBtn.textContent = COPY.claim;
+  claimBtn.setAttribute('aria-label', COPY.claim);
+}
+
 function syncHud() {
-  const live = state.scene !== 'start' && state.scene !== 'gameover';
+  const live = isLiveScene();
   hudBar.classList.toggle('hidden', !live);
   if (!live) {
     timeVal.classList.remove('pulse-urgent');
@@ -559,10 +584,9 @@ function syncHud() {
 function syncGameOverUi() {
   if (state.scene !== 'gameover') {
     gameOverOverlay.classList.add('hidden');
-    claimBtn.disabled = true;
+    syncClaimButton();
     return;
   }
-  const label = endCtaLabel();
   goTitle.textContent = state.endedByTimer ? COPY.timeUp : COPY.gameOver;
   goFinalLabel.textContent = COPY.finalScore;
   goScore.textContent = String(state.score);
@@ -576,9 +600,7 @@ function syncGameOverUi() {
     goBest.textContent = '';
     goBest.classList.remove('is-new');
   }
-  claimBtn.disabled = state.claimUnavailable;
-  claimBtn.textContent = label;
-  claimBtn.setAttribute('aria-label', label);
+  syncClaimButton();
   gameOverOverlay.classList.remove('hidden');
 }
 
@@ -934,6 +956,7 @@ function startGame() {
   state.newBest = false;
   state.endedByTimer = false;
   state.claimUnavailable = false;
+  claimLocked = false;
   lastTickSec = -1;
   startRound();
 }
@@ -977,7 +1000,7 @@ function endRun(byTimer = false) {
 
 function update(dtMs) {
   const time = performance.now();
-  const live = state.scene === 'flashing' || state.scene === 'input' || state.scene === 'between';
+  const live = isLiveScene();
 
   if (live) {
     state.timerMs -= dtMs;
@@ -1063,9 +1086,15 @@ async function handleClaimTap() {
     startGame();
     return;
   }
+  if (state.claimUnavailable || !hasClaimCallback()) {
+    state.claimUnavailable = true;
+    claimLocked = false;
+    syncGameOverUi();
+    return;
+  }
   if (claimLocked) return;
   claimLocked = true;
-  claimBtn.disabled = true;
+  syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
@@ -1084,7 +1113,7 @@ async function handleClaimTap() {
   }
 }
 
-canvas.addEventListener('pointerdown', async (e) => {
+canvas.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   ensureAudio();
   const p = eventPoint(e);

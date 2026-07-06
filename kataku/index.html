@@ -125,6 +125,10 @@
     width: 100%; max-width: 330px; aspect-ratio: 5 / 6;
   }
   .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .row.is-active .tile:not(.correct):not(.present):not(.absent) {
+    border-color: #8ea6f7;
+    box-shadow: inset 0 0 0 1px rgba(142, 166, 247, 0.22);
+  }
   .tile {
     background: var(--tile-empty);
     border: 2px solid var(--tile-border);
@@ -640,14 +644,9 @@ const dom = {
 dom.menuSub.textContent = COPY.menuSub;
 dom.menuHint.textContent = COPY.menuHint;
 dom.startBtn.textContent = COPY.start;
-dom.claimBtn.textContent = COPY.claim;
 dom.skipBtn.textContent = COPY.skip;
 dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function updateEndCta() {
-  dom.claimBtn.disabled = false;
-  dom.claimBtn.textContent = isZeroScore() ? COPY.retry : COPY.claim;
-}
 
 // =============================================================================
 // Mute toggle (DESIGN.md §5.11)
@@ -696,6 +695,7 @@ function buildBoard() {
     dom.board.appendChild(row);
     state.rows.push(tiles);
   }
+  syncActiveRow();
 }
 
 const KEY_ROWS = [
@@ -703,6 +703,7 @@ const KEY_ROWS = [
   'ASDFGHJKL'.split(''),
   ['ENTER', ...'ZXCVBNM'.split(''), 'BACK'],
 ];
+const TILE_STATUS_RANK = { absent: 0, present: 1, correct: 2 };
 const keyEls = {};
 function buildKeyboard() {
   dom.keyboard.innerHTML = '';
@@ -729,6 +730,41 @@ function paintKeyboard() {
     el.classList.remove('correct', 'present', 'absent');
     const s = state.keyStatus[k];
     if (s) el.classList.add(s);
+  }
+}
+
+function upgradeKeyStatus(letter, status) {
+  const currentStatus = state.keyStatus[letter];
+  if (!currentStatus || TILE_STATUS_RANK[status] > TILE_STATUS_RANK[currentStatus]) {
+    state.keyStatus[letter] = status;
+  }
+}
+
+function renderTile(tile) {
+  tile.el.textContent = tile.ch;
+  tile.el.className = 'tile';
+  if (tile.ch) {
+    tile.el.classList.add('filled');
+  }
+  if (tile.status) {
+    tile.el.classList.add(tile.status);
+    tile.el.classList.remove('filled');
+  }
+}
+
+function syncActiveRow() {
+  Array.from(dom.board.children).forEach((rowEl, idx) => {
+    rowEl.classList.toggle('is-active', state.scene === 'play' && !state.locked && idx === state.curRow);
+  });
+}
+
+function clearBoard() {
+  for (const row of state.rows) {
+    for (const tile of row) {
+      tile.ch = '';
+      tile.status = '';
+      renderTile(tile);
+    }
   }
 }
 
@@ -787,7 +823,7 @@ function fmtTime(ms) {
 // =============================================================================
 function startRun() {
   claimLocked = false;
-  updateEndCta();
+  syncClaimButton();
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
   dom.hud.classList.remove('hidden');
@@ -846,6 +882,7 @@ function loop() {
 function endRun(reason) {
   cancelAnimationFrame(state.rafId);
   state.scene = 'over';
+  syncActiveRow();
 
   // Partial credit on timeout for any tiles already submitted in the active row
   if (reason === 'timeUp' && !state.locked && state.curRow < CONFIG.MAX_GUESSES) {
@@ -883,16 +920,10 @@ function loadNewPuzzle() {
   state.locked = false;
   state.solvedThisPuzzle = false;
   state.keyStatus = {};
-  // reset board
-  for (const row of state.rows) {
-    for (const t of row) {
-      t.ch = ''; t.status = '';
-      t.el.textContent = '';
-      t.el.className = 'tile';
-    }
-  }
+  clearBoard();
   applyClueToRow0();
   paintKeyboard();
+  syncActiveRow();
   dom.message.textContent = '';
   state.puzzleIndex++;
 }
@@ -941,25 +972,31 @@ function applyClueToRow0() {
   const found = _findClueWord(state.target, cfg);
   if (!found) return;  // no dictionary word satisfies the criteria → graceful skip
 
-  const rank = { absent: 0, present: 1, correct: 2 };
   const row = state.rows[0];
   for (let i = 0; i < CONFIG.WORD_LEN; i++) {
     const t = row[i];
+    if (found.result[i] === 'absent') {
+      t.ch = '';
+      t.status = '';
+      renderTile(t);
+      continue;
+    }
+
     t.ch = found.word[i];
     t.status = found.result[i];
-    t.el.textContent = found.word[i];
-    t.el.className = 'tile ' + found.result[i];
-    // upgrade keyboard status with the clue's revealed info
-    const cur = state.keyStatus[t.ch];
-    if (!cur || rank[found.result[i]] > rank[cur]) state.keyStatus[t.ch] = found.result[i];
+    renderTile(t);
+    upgradeKeyStatus(t.ch, found.result[i]);
   }
   // The clue counts as the player's first guess; they start typing on row 1.
   state.curRow = 1;
   state.totalGuesses++;
+  paintKeyboard();
+  syncActiveRow();
 }
 
 function lockAndAdvance() {
   state.locked = true;
+  syncActiveRow();
   // Skip-cooldown briefly to prevent double-fire
   setTimeout(() => {
     if (state.scene === 'play') loadNewPuzzle();
@@ -971,6 +1008,7 @@ function lockAndAdvance() {
 // =============================================================================
 function handleKey(k) {
   if (state.scene !== 'play' || state.locked) return;
+  if (!state.rows[state.curRow]) return;
   if (k === 'ENTER') return submitRow();
   if (k === 'BACK')  return backspace();
   if (/^[A-Z]$/.test(k)) typeLetter(k);
@@ -980,8 +1018,7 @@ function typeLetter(ch) {
   if (state.curCol >= CONFIG.WORD_LEN) return;
   const t = state.rows[state.curRow][state.curCol];
   t.ch = ch;
-  t.el.textContent = ch;
-  t.el.classList.add('filled');
+  renderTile(t);
   state.curCol++;
   sfx.type();
 }
@@ -990,8 +1027,8 @@ function backspace() {
   state.curCol--;
   const t = state.rows[state.curRow][state.curCol];
   t.ch = '';
-  t.el.textContent = '';
-  t.el.classList.remove('filled');
+  t.status = '';
+  renderTile(t);
 }
 
 function submitRow() {
@@ -1038,18 +1075,15 @@ function evaluateRow(guess) {
   sfx.submit();
   const result = _evalGuess(guess, state.target);
   // animate
-  const rank = { absent: 0, present: 1, correct: 2 };
   for (let i = 0; i < CONFIG.WORD_LEN; i++) {
     const t = state.rows[state.curRow][i];
     t.status = result[i];
+    upgradeKeyStatus(t.ch, result[i]);
     setTimeout(() => {
       t.el.classList.add('flip');
       setTimeout(() => {
         t.el.classList.add(result[i]);
         t.el.classList.remove('filled');
-        // update keyboard color (upgrade-only)
-        const cur = state.keyStatus[t.ch];
-        if (!cur || rank[result[i]] > rank[cur]) state.keyStatus[t.ch] = result[i];
         paintKeyboard();
       }, 240);
       setTimeout(() => t.el.classList.remove('flip'), 500);
@@ -1061,6 +1095,7 @@ function evaluateRow(guess) {
   const usedRow = state.curRow + 1;
   state.curRow++;
   state.curCol = 0;
+  syncActiveRow();
 
   // After flip animation completes
   setTimeout(() => {
@@ -1200,7 +1235,7 @@ function showGameOver(reason) {
     zoneRow('×2.0', zs.x20),
   ].join('');
 
-  updateEndCta();
+  syncClaimButton();
   dom.gameOver.classList.remove('hidden');
 }
 
@@ -1210,6 +1245,27 @@ function showGameOver(reason) {
 let claimLocked = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
+
+function hasClaimCallback() {
+  return !!window.ClaimCallback.resolveCallbackUrl(claimContext, CONFIG.CLAIM_URL);
+}
+
+function syncClaimButton() {
+  if (isZeroScore()) {
+    dom.claimBtn.disabled = false;
+    dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+
+  if (!hasClaimCallback()) {
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claimUnavailable;
+    return;
+  }
+
+  dom.claimBtn.disabled = claimLocked;
+  dom.claimBtn.textContent = COPY.claim;
+}
 
 async function buildClaimUrl() {
   return window.ClaimCallback.buildClaimUrl({
@@ -1231,24 +1287,27 @@ dom.claimBtn.addEventListener('click', async () => {
     startRun();
     return;
   }
+  if (!hasClaimCallback()) {
+    claimLocked = false;
+    syncClaimButton();
+    return;
+  }
   if (claimLocked) return;
   claimLocked = true;
-  dom.claimBtn.disabled = true;
+  syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
       console.warn('[kataku] claim submit unavailable: invalid or missing callback context');
-      dom.claimBtn.textContent = COPY.claimUnavailable;
-      dom.claimBtn.disabled = true;
       claimLocked = false;
+      syncClaimButton();
       return;
     }
     location.href = claimUrl;
   } catch (e) {
     console.warn('[kataku] claim submit failed:', e);
     claimLocked = false;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
+    syncClaimButton();
   }
 });
 

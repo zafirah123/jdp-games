@@ -52,6 +52,15 @@ These were settled before build. They are binding for this game.
 
 Vanilla, single file, no build step (CLAUDE.md §4, BEST-PRACTICES §01b).
 
+**Callback clarification:** for score `> 0`, expose exactly one final CTA,
+`CLAIM SCORE` / localized equivalent; for score `= 0`, expose `RETRY`.
+Resolve callback URL via query-param `callback_url` (valid `https` only),
+then platform fallback, else unavailable. Handle both
+`buildClaimUrl(...) === null` and thrown errors. Disable CLAIM SCORE
+immediately on first tap, keep it disabled during preparation, and if
+preparation fails, keep it disabled in an explicit unavailable state until
+a new run starts. Timeout and early-end flows use the same guarded
+callback behavior and must never leave the CTA tappable but inert.
 ```
 dadu-didik/
 ├── index.html      # everything: HTML, CSS, JS, CONFIG inline

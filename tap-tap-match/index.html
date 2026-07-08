@@ -200,7 +200,7 @@
     <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
-<script src="./claim-callback.js?v=20260708.1"></script>
+<script src="./claim-callback.js?v=20260708.2"></script>
 <script>
 'use strict';
 
@@ -321,6 +321,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim:    'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
+    claimFailed: 'Unable to claim score',
     retry:    'RETRY',
     // game-specific
     title:           'TAP TAP MATCH',
@@ -345,6 +346,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim:    'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
+    claimFailed: 'Tidak dapat tuntut skor',
     retry:    'RETRY',
     title:           'TAP TAP MATCH',
     tagline1:        'Perhati urutan. Ketuk semula.',
@@ -445,6 +447,7 @@ const state = {
 
   endedByTimer: false,      // true -> TIME'S UP, false -> GAME OVER (sec 6.4)
   claimUnavailable: false,
+  claimErrorMessage: '',
   muted: false,
   lastAward: 0,
   lastAwardUntil: 0,
@@ -548,6 +551,11 @@ async function buildClaimUrl() {
   });
 }
 
+function getClaimErrorMessage(error) {
+  const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+  return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
+}
+
 function syncClaimButton() {
   if (state.scene !== 'gameover') {
     claimBtn.disabled = true;
@@ -562,8 +570,9 @@ function syncClaimButton() {
     return;
   }
 
-  if (state.claimUnavailable) {
-    claimNote.textContent = COPY.claimUnavailable;
+  const noteText = state.claimErrorMessage || (state.claimUnavailable ? COPY.claimUnavailable : '');
+  if (noteText) {
+    claimNote.textContent = noteText;
     claimNote.classList.remove('hidden');
     claimBtn.disabled = true;
     claimBtn.textContent = COPY.claim;
@@ -1095,32 +1104,37 @@ async function handleClaimTap() {
   if (isZeroScore()) {
     claimLocked = false;
     state.claimUnavailable = false;
+    state.claimErrorMessage = '';
     startGame();
     return;
   }
   if (state.claimUnavailable || !hasClaimCallback()) {
     state.claimUnavailable = true;
+    state.claimErrorMessage = '';
     claimLocked = false;
     syncGameOverUi();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
+  state.claimErrorMessage = '';
   syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
       console.warn('[tap-tap-match] claim submit unavailable: invalid or missing callback context');
       state.claimUnavailable = true;
+      state.claimErrorMessage = '';
       claimLocked = false;
       syncGameOverUi();
       return;
     }
-    location.href = claimUrl;
+    window.location.assign(claimUrl);
   } catch (err) {
     console.warn('[tap-tap-match] claim submit failed:', err);
     claimLocked = false;
     state.claimUnavailable = true;
+    state.claimErrorMessage = getClaimErrorMessage(err);
     syncGameOverUi();
   }
 }

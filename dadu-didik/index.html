@@ -129,7 +129,7 @@
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260708.1"></script>
+<script src="./claim-callback.js?v=20260708.2"></script>
 <script>
 /* ============================================================================
    DADU DIDIK — vanilla JS + Canvas 2D, single file.
@@ -175,13 +175,13 @@ const ROWS = CONFIG.rows, COLS = CONFIG.cols;
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en:{ start:'START GAME', timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'CLAIM SCORE', submit:'CLAIM SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE',
+    claim:'CLAIM SCORE', submit:'CLAIM SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', claimFailed:'Unable to claim score',
     subtitle:'Merge three matching dice to grow the number. Chain them to score big!',
     end:'End', hintDrag:'Drag the pair onto the board · tap it to rotate',
     combo:'COMBO', ruby:'RUBY BURST!', claimed:'Score sent. Thank you!',
     claimFail:'Could not reach server — score saved locally.' },
   ms:{ start:'MULA MAIN', timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'TUNTUT SKOR', submit:'TUNTUT SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA',
+    claim:'TUNTUT SKOR', submit:'TUNTUT SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', claimFailed:'Tidak dapat tuntut skor',
     subtitle:'Gabungkan tiga dadu sama untuk naikkan nombor. Rangkai untuk skor tinggi!',
     end:'Tamat', hintDrag:'Seret dadu ke papan · klik untuk pusing',
     combo:'COMBO', ruby:'LETUSAN RUBY!', claimed:'Skor dihantar. Terima kasih!',
@@ -800,7 +800,7 @@ function startGame(){
   STATE.board=emptyBoard();
   STATE.score=0; STATE.timeLeftMs=CONFIG.roundMs;
   STATE.inputLocked=false; STATE.paused=false; STATE.travel=null; STATE.steps=null;
-  STATE.anims=[]; STATE.hidden=new Set(); STATE.combo=0; STATE.submitted=false; STATE.claimUnavailable=false; STATE.endReason=null; STATE.lastTickSec=null;
+  STATE.anims=[]; STATE.hidden=new Set(); STATE.combo=0; STATE.submitted=false; STATE.claimUnavailable=false; STATE.claimErrorMessage=''; STATE.endReason=null; STATE.lastTickSec=null;
   STATE.stats={placements:0,merges:0,rubies:0,bursts:0,maxChain:0,startWall:performance.now()};
   spawnPair();
   document.getElementById('score').textContent='0';
@@ -866,8 +866,9 @@ function syncEndCta(){
     cta.dataset.mode='retry';
     return;
   }
-  if(STATE.claimUnavailable){
-    note.textContent = COPY.claimUnavailable;
+  const noteText = STATE.claimErrorMessage || (STATE.claimUnavailable ? COPY.claimUnavailable : '');
+  if(noteText){
+    note.textContent = noteText;
     note.classList.remove('hidden');
     cta.disabled=true;
     cta.textContent=COPY.claim;
@@ -880,6 +881,10 @@ function syncEndCta(){
   cta.textContent=COPY.claim;
   cta.dataset.mode='claim';
 }
+function getClaimErrorMessage(error){
+  const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+  return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
+}
 async function submitScore(){
   if(STATE.submitted) return; STATE.submitted=true;
   const payload=buildClaimPayload(STATE.score);
@@ -888,16 +893,18 @@ async function submitScore(){
     const url=await buildClaimUrl(payload);
     if(!url){
       STATE.claimUnavailable=true;
+      STATE.claimErrorMessage='';
       note.textContent = COPY.claimUnavailable;
       note.classList.remove('hidden');
       syncEndCta();
       return;
     }
-    location.href=url;
+    window.location.assign(url);
   }catch(err){
     console.warn('[dadu-didik] claim submit failed:', err);
     STATE.claimUnavailable=true;
-    note.textContent = COPY.claimUnavailable;
+    STATE.claimErrorMessage=getClaimErrorMessage(err);
+    note.textContent = STATE.claimErrorMessage;
     note.classList.remove('hidden');
     syncEndCta();
   }
@@ -906,9 +913,10 @@ async function submitScore(){
 /* CTA handler */
 document.getElementById('ctaBtn').addEventListener('click',function(){
   sfx.ui();
-  if(this.dataset.mode==='retry'){ startGame(); return; }
-  if(!hasClaimCallback()){ STATE.claimUnavailable=true; syncEndCta(); return; }
+  if(this.dataset.mode==='retry'){ STATE.claimErrorMessage=''; startGame(); return; }
+  if(!hasClaimCallback()){ STATE.claimUnavailable=true; STATE.claimErrorMessage=''; syncEndCta(); return; }
   this.disabled=true;
+  STATE.claimErrorMessage='';
   submitScore();
 });
 document.getElementById('startBtn').addEventListener('click',()=>{ sfx.ui(); startGame(); });

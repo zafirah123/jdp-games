@@ -251,7 +251,8 @@ export class GameOverScene extends Phaser.Scene {
         } else if (result?.status === 'locked') {
           this._setClaimStatus(COPY.claimSubmitting);
         } else {
-          this._setClaimStatus(COPY.claimFailed, PALETTE_CSS.ruby);
+          const detail = result?.message ? `${COPY.claimFailed}: ${result.message}` : COPY.claimFailed;
+          this._setClaimStatus(detail, PALETTE_CSS.ruby);
         }
         this._setClaimButtonDisabled(true);
       });

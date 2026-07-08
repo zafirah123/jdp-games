@@ -104,20 +104,43 @@
     return btoa(bin);
   }
 
+  function getCryptoApi() {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    return window.crypto || window.msCrypto || null;
+  }
+
+  function utf8Encode(value) {
+    if (typeof TextEncoder !== 'undefined') {
+      return new TextEncoder().encode(value);
+    }
+
+    const encoded = unescape(encodeURIComponent(String(value)));
+    const bytes = new Uint8Array(encoded.length);
+    for (let i = 0; i < encoded.length; i += 1) {
+      bytes[i] = encoded.charCodeAt(i);
+    }
+
+    return bytes;
+  }
+
   async function encryptGenetPayload(aesKey, payloadObj) {
-    if (!crypto || !crypto.subtle) {
+    const cryptoApi = getCryptoApi();
+    if (!cryptoApi || !cryptoApi.subtle) {
       throw new Error('WebCrypto unavailable');
     }
 
-    const keyBytes = new TextEncoder().encode(aesKey);
+    const keyBytes = utf8Encode(aesKey);
     if (keyBytes.length !== 16) {
       throw new Error('Invalid AES key length');
     }
 
-    const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-CBC' }, false, ['encrypt']);
-    const iv = crypto.getRandomValues(new Uint8Array(16));
-    const plain = new TextEncoder().encode(JSON.stringify(payloadObj));
-    const cipher = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, plain);
+    const key = await cryptoApi.subtle.importKey('raw', keyBytes, { name: 'AES-CBC' }, false, ['encrypt']);
+    const iv = cryptoApi.getRandomValues(new Uint8Array(16));
+    const plain = utf8Encode(JSON.stringify(payloadObj));
+    const cipher = await cryptoApi.subtle.encrypt({ name: 'AES-CBC', iv }, key, plain);
 
     return {
       dd: bytesToBase64(new Uint8Array(cipher)),
@@ -126,8 +149,9 @@
   }
 
   function newToken() {
-    return (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
+    const cryptoApi = getCryptoApi();
+    return (cryptoApi && cryptoApi.randomUUID)
+      ? cryptoApi.randomUUID()
       : Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
 

@@ -260,7 +260,7 @@
         </button>
     </div>
 
-    <script src="./claim-callback.js?v=20260708.1"></script>
+    <script src="./claim-callback.js?v=20260708.2"></script>
 
     <!-- Web Audio & Core Game Engine Code -->
     <script>
@@ -294,6 +294,7 @@
                 statCombos: 'Combos Achieved',
                 claimScore: 'CLAIM SCORE',
                 claimUnavailable: 'CALLBACK UNAVAILABLE',
+                claimFailed: 'Unable to claim score',
                 retry: 'RETRY',
                 lineBreached: 'LINE BREACHED!',
                 lineBreachedDesc: 'The bubbles descended past the danger line. Clear them faster next time!',
@@ -331,6 +332,7 @@
                 statCombos: 'Kombo Dicapai',
                 claimScore: 'TUNTUT SKOR',
                 claimUnavailable: 'PANGGIL BALIK TIADA',
+                claimFailed: 'Tidak dapat tuntut skor',
                 retry: 'RETRY',
                 lineBreached: 'GARISAN DILANGGAR!',
                 lineBreachedDesc: 'Buih telah melepasi garisan bahaya. Bersihkan lebih pantas pada cubaan seterusnya!',
@@ -345,8 +347,13 @@
         function isZeroScore() { return (Game.score | 0) <= 0; }
         const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
         let claimUnavailable = false;
+        let claimErrorMessage = '';
         function hasClaimCallback() {
             return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
+        }
+        function getClaimErrorMessage(error) {
+            const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+            return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
         }
         function syncRestartButton() {
             const restartBtn = document.getElementById('restart-btn');
@@ -358,8 +365,9 @@
                 restartBtn.disabled = false;
                 return;
             }
-            if (claimUnavailable) {
-                if (claimNote) { claimNote.textContent = COPY.claimUnavailable; claimNote.classList.remove('hidden'); }
+            const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
+            if (noteText) {
+                if (claimNote) { claimNote.textContent = noteText; claimNote.classList.remove('hidden'); }
                 restartBtn.textContent = COPY.claimScore;
                 restartBtn.disabled = true;
                 return;
@@ -821,6 +829,7 @@
                     SoundSystem.init();
                     SoundSystem.playClick();
                     claimUnavailable = false;
+                    claimErrorMessage = '';
                     document.getElementById('start-overlay').classList.add('hidden');
                     this.start();
                 });
@@ -830,28 +839,33 @@
                     SoundSystem.playClick();
                     if (isZeroScore()) {
                         claimUnavailable = false;
+                        claimErrorMessage = '';
                         this.reset();
                         this.start();
                         return;
                     }
                     if (!hasClaimCallback()) {
                         claimUnavailable = true;
+                        claimErrorMessage = '';
                         syncRestartButton();
                         return;
                     }
                     // CLAUDE.md ?6.5: CLAIM SCORE redirect ? no in-game retry
                     document.getElementById('restart-btn').disabled = true;
+                    claimErrorMessage = '';
                     try {
                         const claimUrl = await buildClaimUrl(this.score);
                         if (!claimUrl) {
                             claimUnavailable = true;
+                            claimErrorMessage = '';
                             syncRestartButton();
                             return;
                         }
-                        location.href = claimUrl;
+                        window.location.assign(claimUrl);
                     } catch (e) {
                         console.warn('[bubble-shooter] claim submit failed:', e);
                         claimUnavailable = true;
+                        claimErrorMessage = getClaimErrorMessage(e);
                         syncRestartButton();
                     }
                 });

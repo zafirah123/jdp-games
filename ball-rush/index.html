@@ -235,7 +235,7 @@
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260708.1"></script>
+<script src="./claim-callback.js?v=20260708.2"></script>
 <script>
 'use strict';
 
@@ -251,6 +251,7 @@ const COPY = {
     menuHint: 'Hold <kbd class="arrow flip">►</kbd> <kbd class="arrow">►</kbd> or tap the left / right of the screen',
     claim: 'CLAIM SCORE', retry: 'RETRY', newBest: 'NEW BEST!',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
+    claimFailed: 'Unable to claim score',
     contTitle: 'CRASHED!', contSub: 'Jump back in — your time is still running.',
     contBtn: 'CONTINUE', slowmo: 'SLOW-MO!', dbl: 'DOUBLE SCORE!', combo: 'COMBO!',
     contTier: 'Tier', contLevel: 'Lv', contTimeLeft: 'Time left',
@@ -264,6 +265,7 @@ const COPY = {
     menuHint: 'Tahan <kbd class="arrow flip">►</kbd> <kbd class="arrow">►</kbd> atau ketuk kiri / kanan skrin',
     claim: 'TUNTUT SKOR', retry: 'RETRY', newBest: 'REKOD BAHARU!',
     claimUnavailable: 'PANGGIL BALIK TIADA',
+    claimFailed: 'Tidak dapat tuntut skor',
     contTitle: 'TERLANGGAR!', contSub: 'Sambung semula — masa anda masih berjalan.',
     contBtn: 'SAMBUNG', slowmo: 'PERLAHAN!', dbl: 'SKOR DUA KALI!', combo: 'KOMBO!',
     contTier: 'Tahap', contLevel: 'Lv', contTimeLeft: 'Masa tinggal',
@@ -1365,10 +1367,15 @@ dom.contEndBtn.addEventListener('click', () => endGame('crash'));
 // =============================================================================
 let claimLocked = false;
 let claimUnavailable = false;
+let claimErrorMessage = '';
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 function hasClaimCallback() {
   return !!window.ClaimCallback.resolveCallbackUrl(claimContext, CONFIG.CLAIM_FALLBACK_URL);
+}
+function getClaimErrorMessage(error) {
+  const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+  return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 function syncClaimButton() {
   if (isZeroScore()) {
@@ -1377,8 +1384,9 @@ function syncClaimButton() {
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
-  if (claimUnavailable) {
-    dom.claimNote.textContent = COPY.claimUnavailable;
+  const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
+  if (noteText) {
+    dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
     dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
@@ -1398,17 +1406,20 @@ dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
     claimUnavailable = false;
+    claimErrorMessage = '';
     startGame();
     return;
   }
   if (!hasClaimCallback()) {
     claimLocked = false;
     claimUnavailable = true;
+    claimErrorMessage = '';
     syncClaimButton();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
+  claimErrorMessage = '';
   syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
@@ -1416,14 +1427,16 @@ dom.claimBtn.addEventListener('click', async () => {
       console.warn('[ball-rush] claim submit unavailable: invalid or missing callback context');
       claimLocked = false;
       claimUnavailable = true;
+      claimErrorMessage = '';
       syncClaimButton();
       return;
     }
-    location.href = claimUrl;
+    window.location.assign(claimUrl);
   } catch (e) {
     console.warn('[ball-rush] claim failed:', e);
     claimLocked = false;
     claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(e);
     syncClaimButton();
   }
 });

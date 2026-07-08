@@ -344,7 +344,7 @@
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260708.1"></script>
+<script src="./claim-callback.js?v=20260708.2"></script>
 <script>
 'use strict';
 
@@ -363,6 +363,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
+    claimFailed: 'Unable to claim score',
     retry: 'RETRY',
     next: 'Next',
     score: 'Score',
@@ -388,6 +389,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
+    claimFailed: 'Tidak dapat tuntut skor',
     retry: 'RETRY',
     next: 'Seterusnya',
     score: 'Skor',
@@ -1282,8 +1284,9 @@ function syncClaimButton() {
     return;
   }
 
-  if (claimUnavailable) {
-    dom.claimNote.textContent = COPY.claimUnavailable;
+  const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
+  if (noteText) {
+    dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
     dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
@@ -1421,6 +1424,7 @@ function endGame(reason) {
 // =============================================================================
 let claimLocked = false;
 let claimUnavailable = false;
+let claimErrorMessage = '';
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1428,19 +1432,27 @@ function hasClaimCallback() {
   return !!window.ClaimCallback.resolveCallbackUrl(claimContext, null);
 }
 
+function getClaimErrorMessage(error) {
+  const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+  return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
+}
+
 async function submitClaim() {
   if (isZeroScore()) {
+    claimErrorMessage = '';
     startGame();
     return;
   }
   if (!hasClaimCallback()) {
     claimLocked = false;
     claimUnavailable = true;
+    claimErrorMessage = '';
     syncClaimButton();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
+  claimErrorMessage = '';
   syncClaimButton();
 
   const extra = {
@@ -1460,17 +1472,19 @@ async function submitClaim() {
   });
 
     if (url) {
-      window.location.href = url;
+      window.location.assign(url);
     } else {
       console.log('[gem-merge] CLAIM SCORE unavailable: invalid or missing callback context', extra);
       claimLocked = false;
       claimUnavailable = true;
+      claimErrorMessage = '';
       syncClaimButton();
     }
   } catch (e) {
     console.warn('[gem-merge] claim submit failed:', e);
     claimLocked = false;
     claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(e);
     syncClaimButton();
   }
 }

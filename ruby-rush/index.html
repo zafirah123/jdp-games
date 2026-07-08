@@ -227,6 +227,7 @@
     margin: 0 0 12px;
     animation: pulse 0.5s ease-in-out infinite alternate;
   }
+  .claim-note { margin: 12px 0 0; color: #ff8a8a; font-size: 12px; font-weight: 700; }
   /* Start menu uses the retro city art behind a dark scrim. Portrait art on
      phones (9:16), the wide panorama in landscape. */
   #menu {
@@ -351,10 +352,11 @@
     <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel"></span></div>
     <div id="finalStats" class="stats"></div>
     <button id="claimBtn" class="cta"></button>
+    <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260708.1"></script>
+<script src="./claim-callback.js?v=20260708.2"></script>
 <script>
 'use strict';
 
@@ -372,6 +374,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
+    claimFailed: 'Unable to claim score',
     retry: 'RETRY',
     menuSub: "Jump! Duck! Shoot!<br>Let's rush for the high score!",
     menuHint: 'Tap / <kbd>Space</kbd> jump &nbsp;·&nbsp; hold lower screen / <kbd>↓</kbd> duck &nbsp;·&nbsp; <kbd>X</kbd> shoot',
@@ -393,6 +396,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
+    claimFailed: 'Tidak dapat tuntut skor',
     retry: 'RETRY',
     menuSub: 'Lompat! Tunduk! Tembak!<br>Jom rentas untuk skor tertinggi!',
     menuHint: 'Ketuk / <kbd>Space</kbd> lompat &nbsp;·&nbsp; tahan bawah / <kbd>↓</kbd> tunduk &nbsp;·&nbsp; <kbd>X</kbd> tembak',
@@ -516,7 +520,7 @@ const dom = {
   cont: $('continue'), crashTitle: $('crashTitle'), crashSub: $('crashSub'),
   continueBtn: $('continueBtn'), giveUpBtn: $('giveUpBtn'),
   gameOver: $('gameOver'), goTitle: $('goTitle'), goNewBest: $('goNewBest'),
-  newBestLabel: $('newBestLabel'), finalStats: $('finalStats'), claimBtn: $('claimBtn'),
+  newBestLabel: $('newBestLabel'), finalStats: $('finalStats'), claimBtn: $('claimBtn'), claimNote: $('claimNote'),
 };
 
 // Localized static copy
@@ -1590,28 +1594,34 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
 // =============================================================================
 let claimLocked = false;
 let claimUnavailable = false;
+let claimErrorMessage = '';
 function hasClaimCallback() {
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
 
+function getClaimErrorMessage(error) {
+  const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+  return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
+}
+
 function syncClaimButton() {
   if ((state.score | 0) <= 0) {
+    dom.claimNote.classList.add('hidden');
     dom.claimBtn.textContent = COPY.retry;
     dom.claimBtn.disabled = false;
     return;
   }
 
-  if (!hasClaimCallback()) {
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    dom.claimBtn.disabled = true;
-    return;
-  }
-  if (claimUnavailable) {
-    dom.claimBtn.textContent = COPY.claimUnavailable;
+  const noteText = claimErrorMessage || ((!hasClaimCallback() || claimUnavailable) ? COPY.claimUnavailable : '');
+  if (noteText) {
+    dom.claimNote.textContent = noteText;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.textContent = COPY.claim;
     dom.claimBtn.disabled = true;
     return;
   }
 
+  dom.claimNote.classList.add('hidden');
   dom.claimBtn.textContent = COPY.claim;
   dom.claimBtn.disabled = claimLocked;
 }
@@ -1668,24 +1678,27 @@ function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.claimBtn.addEventListener('click', async () => {
-  if ((state.score | 0) <= 0) { claimUnavailable = false; startGame(); return; }
+  if ((state.score | 0) <= 0) { claimUnavailable = false; claimErrorMessage = ''; startGame(); return; }
   if (!hasClaimCallback()) { syncClaimButton(); return; }
   if (claimLocked) return;
   claimLocked = true;
+  claimErrorMessage = '';
   syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
     if (!claimUrl) {
       claimLocked = false;
       claimUnavailable = true;
+      claimErrorMessage = '';
       syncClaimButton();
       return;
     }
-    location.href = claimUrl;
+    window.location.assign(claimUrl);
   } catch (err) {
     console.warn('[ruby-rush] claim submit failed:', err);
     claimLocked = false;
     claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(err);
     syncClaimButton();
   }
 });

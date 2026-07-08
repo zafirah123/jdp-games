@@ -254,7 +254,7 @@
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260708.1"></script>
+<script src="./claim-callback.js?v=20260708.2"></script>
 <script>
 'use strict';
 
@@ -271,6 +271,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim: 'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
+    claimFailed: 'Unable to claim score',
     retry: 'RETRY',
     menuSub: 'Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.',
     menuHint: 'Swipe on touch, or use <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
@@ -290,6 +291,7 @@ const COPY = {
     audioOff: 'AUDIO OFF',
     claim: 'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
+    claimFailed: 'Tidak dapat tuntut skor',
     retry: 'RETRY',
     menuSub: 'Leret untuk gerakkan jubin — dua jubin dengan nombor sama akan bergabung menjadi satu. Pastikan sekurang-kurangnya satu petak kosong atau permainan tamat. Dapatkan skor setinggi mungkin dalam 3 minit.',
     menuHint: 'Leret pada skrin sentuh, atau gunakan <kbd>← ↑ → ↓</kbd> / <kbd>WASD</kbd>',
@@ -1155,11 +1157,17 @@ canvas.addEventListener('mouseup', (e) => {
 // CLAIM SCORE - supports both default callback flow (section 6.5) and Genet encrypted flow (section 6.6).
 let claimLocked = false;
 let claimUnavailable = false;
+let claimErrorMessage = '';
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
 function hasClaimCallback() {
   return !!window.ClaimCallback.resolveCallbackUrl(claimContext, CONFIG.CLAIM_FALLBACK_URL);
+}
+
+function getClaimErrorMessage(error) {
+  const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+  return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 
 function syncClaimButton() {
@@ -1170,8 +1178,9 @@ function syncClaimButton() {
     return;
   }
 
-  if (claimUnavailable) {
-    dom.claimNote.textContent = COPY.claimUnavailable;
+  const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
+  if (noteText) {
+    dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
     dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
@@ -1198,17 +1207,20 @@ dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
     claimUnavailable = false;
+    claimErrorMessage = '';
     startGame();
     return;
   }
   if (!hasClaimCallback()) {
     claimLocked = false;
     claimUnavailable = true;
+    claimErrorMessage = '';
     syncClaimButton();
     return;
   }
   if (claimLocked) return;
   claimLocked = true;
+  claimErrorMessage = '';
   syncClaimButton();
   try {
     const claimUrl = await buildClaimUrl();
@@ -1216,14 +1228,16 @@ dom.claimBtn.addEventListener('click', async () => {
       console.warn('[2048] claim submit unavailable: invalid or missing callback context');
       claimLocked = false;
       claimUnavailable = true;
+      claimErrorMessage = '';
       syncClaimButton();
       return;
     }
-    location.href = claimUrl;
+    window.location.assign(claimUrl);
   } catch (e) {
     console.warn('[2048] claim submit failed:', e);
     claimLocked = false;
     claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(e);
     syncClaimButton();
   }
 });

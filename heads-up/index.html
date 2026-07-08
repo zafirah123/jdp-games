@@ -171,20 +171,84 @@ const COPY = {
   en: {
     score:'Score', time:'Time', best:'Best', start:'START GAME',
     timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'CLAIM SCORE', retry:'RETRY', endRun:'END RUN',
+    claim:'CLAIM SCORE', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', endRun:'END RUN',
     sub:'Watch the road without tripping — while playing the dino game on your phone. Both at once.',
     hint:'◀ ▶ switch lane · TAP phone / Space to jump',
-    claiming:'Sending your score…', claimed:'Score claimed! 🎉', claimFail:'Saved. (offline)',
   },
   ms: {
     score:'Skor', time:'Masa', best:'Terbaik', start:'MULA MAIN',
     timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'TUNTUT SKOR', retry:'RETRY', endRun:'TAMAT',
+    claim:'TUNTUT SKOR', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', endRun:'TAMAT',
     sub:'Rentas jalan tanpa tersadung — sambil main permainan dino di telefon. Serentak.',
     hint:'◀ ▶ tukar lorong · KETIK telefon / Space untuk lompat',
-    claiming:'Menghantar skor…', claimed:'Skor dituntut! 🎉', claimFail:'Disimpan. (luar talian)',
   },
 }[lang];
+
+function getClaimContext(){
+  try{
+    const qs=new URLSearchParams(window.location.search);
+    const launchToken=qs.get('token');
+    const pageTitle=qs.get('page_title');
+    const jwtPayload=decodeJwtPayload(launchToken);
+    return {
+      launchToken,
+      pageTitle,
+      resKey:(jwtPayload&&typeof jwtPayload.res==='string')?jwtPayload.res:null,
+      tokenCallbackUrl:(jwtPayload&&typeof jwtPayload.callback_url==='string')?jwtPayload.callback_url:null,
+    };
+  }catch(_){
+    return { launchToken:null, pageTitle:null, resKey:null, tokenCallbackUrl:null };
+  }
+}
+function applyPageTitleToHeading(pageTitle, headingId){
+  const t=(pageTitle||'').trim();
+  if(!t) return;
+  document.title=t;
+  const el=document.getElementById(headingId||'gameTitle');
+  if(el) el.textContent=t;
+}
+function decodeJwtPayload(token){
+  if(!token||typeof token!=='string') return null;
+  const parts=token.split('.');
+  if(parts.length<2) return null;
+  try{ return JSON.parse(base64UrlDecode(parts[1])); }catch(_){ return null; }
+}
+function base64UrlDecode(input){
+  const base64=input.replace(/-/g,'+').replace(/_/g,'/');
+  const padded=base64+'='.repeat((4-(base64.length%4))%4);
+  return atob(padded);
+}
+function bytesToBase64(bytes){
+  let bin='';
+  for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+async function encryptGenetPayload(aesKey,payloadObj){
+  if(!crypto||!crypto.subtle) throw new Error('WebCrypto unavailable');
+  const keyBytes=new TextEncoder().encode(aesKey);
+  if(keyBytes.length!==16) throw new Error('Invalid AES key length');
+  const key=await crypto.subtle.importKey('raw',keyBytes,{ name:'AES-CBC' },false,['encrypt']);
+  const iv=crypto.getRandomValues(new Uint8Array(16));
+  const plain=new TextEncoder().encode(JSON.stringify(payloadObj));
+  const cipher=await crypto.subtle.encrypt({ name:'AES-CBC', iv },key,plain);
+  return { dd:bytesToBase64(new Uint8Array(cipher)), dv:bytesToBase64(iv) };
+}
+function newToken(){
+  return (typeof crypto!=='undefined'&&crypto.randomUUID)
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2)+Date.now().toString(36);
+}
+function toHttpsUrl(candidate){
+  if(!candidate||typeof candidate!=='string') return null;
+  try{
+    const target=new URL(candidate);
+    return target.protocol==='https:'?target:null;
+  }catch(_){
+    return null;
+  }
+}
+const claimContext=getClaimContext();
+applyPageTitleToHeading(claimContext.pageTitle,'gameTitle');
 
 /* ---------- Utilities ---------- */
 const clamp = (x,lo,hi)=>Math.max(lo,Math.min(hi,x));
@@ -238,7 +302,7 @@ function freshState(){
     scrollFloor:0, scrollRunner:0,
     shield:false, focusUntil:0, invulnUntil:0,
     crashTimer:0, shake:0,
-    overReason:'timeup', claimed:false, suspicious:false,
+    overReason:'timeup', claimed:false, claimUnavailable:false, suspicious:false,
   };
 }
 
@@ -1015,37 +1079,106 @@ function endGame(reason){
   if(isBest&&state.score>0) Audio_.sfx.best();
 
   const claimBtn=document.getElementById('claimBtn'), status=document.getElementById('claimStatus');
-  status.textContent=''; state.claimed=false;
-  if(state.score>0){ claimBtn.textContent=COPY.claim; claimBtn.dataset.mode='claim'; }
-  else { claimBtn.textContent=COPY.retry; claimBtn.dataset.mode='retry'; }
-  claimBtn.disabled=false;
+  status.textContent=''; state.claimed=false; state.claimUnavailable=false;
+  if(state.score>0){ claimBtn.dataset.mode='claim'; }
+  else { claimBtn.dataset.mode='retry'; }
+  syncClaimButton();
   showOverlay('overOverlay');
 }
 
 /* ---------- Callback (§6.5) ---------- */
 function resolveCallbackUrl(){
-  const qs=new URLSearchParams(location.search), c=qs.get('callback_url');
-  if(c){ try{ const u=new URL(c); if(u.protocol==='https:') return u.toString(); }catch(_){} }
-  return (typeof window!=='undefined'&&window.__JDP_CALLBACK_URL__)?window.__JDP_CALLBACK_URL__:null;
+  try{
+    const qs=new URLSearchParams(location.search), c=qs.get('callback_url');
+    if(c){
+      const u=toHttpsUrl(c);
+      if(u) return u.toString();
+    }
+  }catch(_){}
+  if(claimContext&&claimContext.tokenCallbackUrl){
+    const tokenUrl=toHttpsUrl(claimContext.tokenCallbackUrl);
+    if(tokenUrl) return tokenUrl.toString();
+  }
+  if(typeof window!=='undefined'&&window.__JDP_CALLBACK_URL__){
+    const runtimeUrl=toHttpsUrl(window.__JDP_CALLBACK_URL__);
+    if(runtimeUrl) return runtimeUrl.toString();
+  }
+  return null;
 }
 function buildClaimPayload(finalScore,extra={}){
   const token=(crypto&&crypto.randomUUID)?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36);
   return { game:GAME_NAME, score:Math.max(0,finalScore|0), token, ...extra };
 }
-function submitScore(){
-  const status=document.getElementById('claimStatus'), url=resolveCallbackUrl();
+function hasClaimCallback(){
+  return !!resolveCallbackUrl();
+}
+function syncClaimButton(){
+  const claimBtn=document.getElementById('claimBtn'), status=document.getElementById('claimStatus');
+  if(!claimBtn||!status) return;
+  status.textContent=state.claimUnavailable?COPY.claimUnavailable:'';
+  if((state.score|0)<=0){
+    claimBtn.textContent=COPY.retry;
+    claimBtn.disabled=false;
+    return;
+  }
+  if(!hasClaimCallback()||state.claimUnavailable){
+    claimBtn.textContent=COPY.claimUnavailable;
+    claimBtn.disabled=true;
+    return;
+  }
+  claimBtn.textContent=COPY.claim;
+  claimBtn.disabled=state.claimed;
+}
+async function buildClaimUrl(){
+  const score=Math.max(0,state.score|0);
+  if(score<=0) return null;
+  if(claimContext.launchToken&&claimContext.resKey&&claimContext.tokenCallbackUrl){
+    const tokenCallbackUrl=toHttpsUrl(claimContext.tokenCallbackUrl);
+    if(!tokenCallbackUrl) return null;
+    const encrypted=await encryptGenetPayload(claimContext.resKey,{
+      score,
+      is_suspicious: !!state.suspicious,
+      data:{ duration_ms:Math.round(state.elapsed) },
+    });
+    tokenCallbackUrl.searchParams.set('token',claimContext.launchToken);
+    tokenCallbackUrl.searchParams.set('dd',encrypted.dd);
+    tokenCallbackUrl.searchParams.set('dv',encrypted.dv);
+    return tokenCallbackUrl.toString();
+  }
+  const callbackUrl=resolveCallbackUrl();
+  const target=toHttpsUrl(callbackUrl);
+  if(!target) return null;
   const payload=buildClaimPayload(state.score,{ suspicious:state.suspicious, duration_ms:Math.round(state.elapsed) });
-  status.textContent=COPY.claiming;
-  if(!url){ status.textContent=COPY.claimed; return; }
-  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),keepalive:true})
-    .then(r=>{ status.textContent=r.ok?COPY.claimed:COPY.claimFail; }).catch(()=>{ status.textContent=COPY.claimFail; });
+  Object.entries(payload).forEach(([k,v])=>{
+    if(v!==undefined&&v!==null) target.searchParams.set(k,String(v));
+  });
+  return target.toString();
 }
 
 /* ---------- Buttons ---------- */
 document.getElementById('startBtn').addEventListener('click',()=>{ Audio_.init(); Audio_.resume(); Audio_.sfx.button(); startGame(); });
 document.getElementById('endRunBtn').addEventListener('click',()=>{ Audio_.sfx.button(); endGame('over'); });
-document.getElementById('claimBtn').addEventListener('click',function(){ Audio_.sfx.button();
-  if(this.dataset.mode==='retry'){ startGame(); return; } this.disabled=true; state.claimed=true; submitScore(); });
+document.getElementById('claimBtn').addEventListener('click',async function(){ Audio_.sfx.button();
+  if(this.dataset.mode==='retry'){ state.claimUnavailable=false; startGame(); return; }
+  if(!hasClaimCallback()){ state.claimUnavailable=true; syncClaimButton(); return; }
+  if(state.claimed) return;
+  state.claimed=true; syncClaimButton();
+  try{
+    const claimUrl=await buildClaimUrl();
+    if(!claimUrl){
+      state.claimed=false;
+      state.claimUnavailable=true;
+      syncClaimButton();
+      return;
+    }
+    location.href=claimUrl;
+  }catch(err){
+    console.warn('[heads-up] claim submit failed:', err);
+    state.claimed=false;
+    state.claimUnavailable=true;
+    syncClaimButton();
+  }
+});
 
 /* ---------- Copy ---------- */
 function applyCopy(){

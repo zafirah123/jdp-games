@@ -42,14 +42,21 @@
     } catch (_) {}
 
     if (claimContext && claimContext.tokenCallbackUrl) {
-      return claimContext.tokenCallbackUrl;
+      const tokenUrl = toHttpsUrl(claimContext.tokenCallbackUrl);
+      if (tokenUrl) {
+        return tokenUrl.toString();
+      }
     }
 
     if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) {
-      return window.__JDP_CALLBACK_URL__;
+      const runtimeUrl = toHttpsUrl(window.__JDP_CALLBACK_URL__);
+      if (runtimeUrl) {
+        return runtimeUrl.toString();
+      }
     }
 
-    return fallbackUrl || null;
+    const fallback = toHttpsUrl(fallbackUrl);
+    return fallback ? fallback.toString() : null;
   }
 
   function toHttpsUrl(candidate) {

@@ -29,14 +29,31 @@
       const qs = new URLSearchParams(window.location.search);
       const candidate = qs.get('callback_url');
       if (candidate) {
-        const u = new URL(candidate);
-        if (u.protocol === 'https:') return u.toString();
+        const u = toHttpsUrl(candidate);
+        if (u) return u.toString();
       }
     } catch (_) {}
 
-    if (claimContext && claimContext.tokenCallbackUrl) return claimContext.tokenCallbackUrl;
-    if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) return window.__JDP_CALLBACK_URL__;
-    return fallbackUrl || null;
+    if (claimContext && claimContext.tokenCallbackUrl) {
+      const tokenUrl = toHttpsUrl(claimContext.tokenCallbackUrl);
+      if (tokenUrl) return tokenUrl.toString();
+    }
+    if (typeof window !== 'undefined' && window.__JDP_CALLBACK_URL__) {
+      const runtimeUrl = toHttpsUrl(window.__JDP_CALLBACK_URL__);
+      if (runtimeUrl) return runtimeUrl.toString();
+    }
+    const fallback = toHttpsUrl(fallbackUrl);
+    return fallback ? fallback.toString() : null;
+  }
+
+  function toHttpsUrl(candidate) {
+    if (!candidate || typeof candidate !== 'string') return null;
+    try {
+      const target = new URL(candidate);
+      return target.protocol === 'https:' ? target : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   function decodeJwtPayload(token) {
@@ -76,39 +93,47 @@
   }
 
   async function buildClaimUrl(options) {
-    const ctx = options.claimContext || getClaimContext();
-    const score = Math.max(0, options.score | 0);
-    const extraData = options.extraData || null;
+    try {
+      const ctx = options.claimContext || getClaimContext();
+      const score = Math.max(0, options.score | 0);
+      const extraData = options.extraData || null;
 
-    if (ctx.launchToken && ctx.resKey && ctx.tokenCallbackUrl) {
-      const encrypted = await encryptGenetPayload(ctx.resKey, {
-        score,
-        is_suspicious: false,
-        ...(extraData ? { data: extraData } : {}),
-      });
-      const target = new URL(ctx.tokenCallbackUrl);
-      target.searchParams.set('token', ctx.launchToken);
-      target.searchParams.set('dd', encrypted.dd);
-      target.searchParams.set('dv', encrypted.dv);
+      if (score <= 0) return null;
+
+      if (ctx.launchToken && ctx.resKey && ctx.tokenCallbackUrl) {
+        const tokenCallbackUrl = toHttpsUrl(ctx.tokenCallbackUrl);
+        if (!tokenCallbackUrl) return null;
+
+        const encrypted = await encryptGenetPayload(ctx.resKey, {
+          score,
+          is_suspicious: false,
+          ...(extraData ? { data: extraData } : {}),
+        });
+        tokenCallbackUrl.searchParams.set('token', ctx.launchToken);
+        tokenCallbackUrl.searchParams.set('dd', encrypted.dd);
+        tokenCallbackUrl.searchParams.set('dv', encrypted.dv);
+        return tokenCallbackUrl.toString();
+      }
+
+      const callbackUrl = resolveCallbackUrl(ctx, options.fallbackUrl);
+      const target = toHttpsUrl(callbackUrl);
+      if (!target) return null;
+
+      target.searchParams.set('game', String(options.gameName || 'unknown-game'));
+      target.searchParams.set('score', String(score));
+      target.searchParams.set('token', newToken());
+
+      const extraQuery = options.extraQuery || null;
+      if (extraQuery && typeof extraQuery === 'object') {
+        Object.entries(extraQuery).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) target.searchParams.set(k, String(v));
+        });
+      }
+
       return target.toString();
+    } catch (_) {
+      return null;
     }
-
-    const callbackUrl = resolveCallbackUrl(ctx, options.fallbackUrl);
-    if (!callbackUrl) return null;
-
-    const target = new URL(callbackUrl);
-    target.searchParams.set('game', String(options.gameName || 'unknown-game'));
-    target.searchParams.set('score', String(score));
-    target.searchParams.set('token', newToken());
-
-    const extraQuery = options.extraQuery || null;
-    if (extraQuery && typeof extraQuery === 'object') {
-      Object.entries(extraQuery).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) target.searchParams.set(k, String(v));
-      });
-    }
-
-    return target.toString();
   }
 
   window.ClaimCallback = {

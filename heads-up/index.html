@@ -66,6 +66,7 @@
   .scorebox .k{ font-size:10px; letter-spacing:.1em; color:#aeb6c8; text-transform:uppercase; font-weight:600; }
   .scorebox .v{ font-size:26px; font-weight:800; color:#fff; }
   .hint{ font-size:11px; color:#9aa3b8; font-weight:500; }
+  .hint.alert{ color:#ff8a8a; font-weight:700; }
 
   .btn{
     font-weight:700; font-size:18px; cursor:pointer; border-radius:50px; padding:14px 30px; border:1px solid var(--yellow);
@@ -1116,13 +1117,14 @@ function syncClaimButton(){
   const claimBtn=document.getElementById('claimBtn'), status=document.getElementById('claimStatus');
   if(!claimBtn||!status) return;
   status.textContent=state.claimUnavailable?COPY.claimUnavailable:'';
+  status.classList.toggle('alert', !!state.claimUnavailable);
   if((state.score|0)<=0){
     claimBtn.textContent=COPY.retry;
     claimBtn.disabled=false;
     return;
   }
-  if(!hasClaimCallback()||state.claimUnavailable){
-    claimBtn.textContent=COPY.claimUnavailable;
+  if(state.claimUnavailable){
+    claimBtn.textContent=COPY.claim;
     claimBtn.disabled=true;
     return;
   }

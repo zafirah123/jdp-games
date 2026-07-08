@@ -208,6 +208,12 @@
   }
   @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
   .btn-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .claim-note {
+    margin: 12px 0 0;
+    color: #ff8a8a;
+    font-size: 12px;
+    font-weight: 700;
+  }
   @media (max-width: 420px) {
     .card h1 { font-size: 32px; }
     .card .score-big { font-size: 48px; }
@@ -259,6 +265,7 @@
       <div class="score-big" id="goScore">0</div>
       <p class="best" id="goBest">&nbsp;</p>
       <button id="claimBtn" class="cta"></button>
+      <p id="claimNote" class="claim-note hidden"></p>
     </div>
   </div>
 
@@ -406,6 +413,7 @@ const dom = {
   goNewBest: document.getElementById('goNewBest'),
   newBestLabel: document.getElementById('newBestLabel'),
   claimBtn: document.getElementById('claimBtn'),
+  claimNote: document.getElementById('claimNote'),
 };
 const ctx = dom.canvas.getContext('2d');
 
@@ -869,22 +877,21 @@ function hasClaimCallback() {
 
 function syncClaimButton() {
   if (isZeroScore()) {
+    dom.claimNote.classList.add('hidden');
     dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
 
-  if (!hasClaimCallback()) {
-    dom.claimBtn.disabled = true;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    return;
-  }
   if (claimUnavailable) {
+    dom.claimNote.textContent = COPY.claimUnavailable;
+    dom.claimNote.classList.remove('hidden');
     dom.claimBtn.disabled = true;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
+  dom.claimNote.classList.add('hidden');
   dom.claimBtn.disabled = claimLocked;
   dom.claimBtn.textContent = COPY.claim;
 }
@@ -906,6 +913,7 @@ dom.claimBtn.addEventListener('click', async () => {
   }
   if (!hasClaimCallback()) {
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
     return;
   }

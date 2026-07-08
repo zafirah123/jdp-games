@@ -175,6 +175,12 @@
   }
   .stats .label { color: rgba(255,255,255,0.7); text-align: left; }
   .stats .value { color: #FFD633; font-weight: 700; text-align: right; }
+  .claim-note {
+    margin: 12px 0 0;
+    color: #ff8a8a;
+    font-size: 12px;
+    font-weight: 700;
+  }
   .new-best {
     display: inline-block;
     background: #FFD633;
@@ -224,6 +230,7 @@
     <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
     <div id="finalStats" class="stats"></div>
     <button id="claimBtn" class="cta"></button>
+    <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
 
@@ -343,6 +350,7 @@ const dom = {
   newBestLabel: document.getElementById('newBestLabel'),
   finalStats: document.getElementById('finalStats'),
   claimBtn: document.getElementById('claimBtn'),
+  claimNote: document.getElementById('claimNote'),
 };
 
 // Apply localized copy into the DOM up front.
@@ -966,6 +974,7 @@ dom.claimBtn.addEventListener('click', async () => {
   }
   if (!hasClaimCallback()) {
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
     return;
   }
@@ -1004,22 +1013,21 @@ function hasClaimCallback() {
 
 function syncClaimButton() {
   if (isZeroScore()) {
+    dom.claimNote.classList.add('hidden');
     dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
 
-  if (!hasClaimCallback()) {
-    dom.claimBtn.disabled = true;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    return;
-  }
   if (claimUnavailable) {
+    dom.claimNote.textContent = COPY.claimUnavailable;
+    dom.claimNote.classList.remove('hidden');
     dom.claimBtn.disabled = true;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
+  dom.claimNote.classList.add('hidden');
   dom.claimBtn.disabled = claimLocked;
   dom.claimBtn.textContent = COPY.claim;
 }

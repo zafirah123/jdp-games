@@ -98,6 +98,7 @@ body{
 .newbest.show{ display:block; animation:pop .4s ease; }
 @keyframes pop{ 0%{ transform:scale(.4); opacity:0;} 60%{ transform:scale(1.15);} 100%{ transform:scale(1); opacity:1;} }
 .bestline{ font-size:12px; color:#aab6d4; }
+.claim-note{ margin:12px 0 0; color:#ff8a8a; font-size:12px; font-weight:700; }
 
 /* In-game early-end — bottom-center floating pill (matches gem-merge) */
 .endrun{ position:fixed; bottom:max(12px, env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
@@ -171,6 +172,7 @@ body{
         <div class="scorebig" id="endScore">0</div>
         <div class="bestline" id="bestLine">Best: 0</div>
         <button id="claimBtn" class="cta-primary">CLAIM SCORE</button>
+        <div id="claimNote" class="claim-note hidden"></div>
       </div>
     </div>
   </div>
@@ -1021,21 +1023,21 @@ function hasClaimCallback(){
 }
 function syncClaimButton(){
   const claimBtn = document.getElementById('claimBtn');
+  const claimNote = document.getElementById('claimNote');
   if (state.score <= 0){
+    claimNote.classList.add('hidden');
     claimBtn.textContent = COPY.retry;
     claimBtn.disabled = false;
     return;
   }
-  if (!hasClaimCallback()){
-    claimBtn.textContent = COPY.claimUnavailable;
-    claimBtn.disabled = true;
-    return;
-  }
   if (claimUnavailable){
-    claimBtn.textContent = COPY.claimUnavailable;
+    claimNote.textContent = COPY.claimUnavailable;
+    claimNote.classList.remove('hidden');
+    claimBtn.textContent = COPY.claim;
     claimBtn.disabled = true;
     return;
   }
+  claimNote.classList.add('hidden');
   claimBtn.textContent = COPY.claim;
   claimBtn.disabled = claimLocked;
 }
@@ -1050,6 +1052,7 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
   if (state.score <= 0){ startGame(); return; }
   if (!hasClaimCallback()){
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
     return;
   }

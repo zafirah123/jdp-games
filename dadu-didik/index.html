@@ -857,24 +857,25 @@ function hasClaimCallback(){
 }
 function syncEndCta(){
   const cta=document.getElementById('ctaBtn');
+  const note=document.getElementById('claimNote');
   if(STATE.score<=0){
+    note.textContent='';
+    note.classList.add('hidden');
     cta.disabled=false;
     cta.textContent=COPY.retry;
     cta.dataset.mode='retry';
     return;
   }
-  if(!hasClaimCallback()){
-    cta.disabled=true;
-    cta.textContent=COPY.claimUnavailable;
-    cta.dataset.mode='claim';
-    return;
-  }
   if(STATE.claimUnavailable){
+    note.textContent = COPY.claimUnavailable;
+    note.classList.remove('hidden');
     cta.disabled=true;
-    cta.textContent=COPY.claimUnavailable;
+    cta.textContent=COPY.claim;
     cta.dataset.mode='claim';
     return;
   }
+  note.textContent='';
+  note.classList.add('hidden');
   cta.disabled=STATE.submitted;
   cta.textContent=COPY.claim;
   cta.dataset.mode='claim';
@@ -906,7 +907,7 @@ async function submitScore(){
 document.getElementById('ctaBtn').addEventListener('click',function(){
   sfx.ui();
   if(this.dataset.mode==='retry'){ startGame(); return; }
-  if(!hasClaimCallback()){ syncEndCta(); return; }
+  if(!hasClaimCallback()){ STATE.claimUnavailable=true; syncEndCta(); return; }
   this.disabled=true;
   submitScore();
 });

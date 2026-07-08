@@ -309,6 +309,12 @@
     border-radius: 6px;
     font-weight: 900; font-size: 20px;
   }
+  .claim-note {
+    margin: 12px 0 0;
+    color: #ff8a8a;
+    font-size: 12px;
+    font-weight: 700;
+  }
 
   .new-best {
     display: inline-block; padding: 6px 12px;
@@ -390,6 +396,7 @@
     </div>
     <div id="finalStats" class="stats"></div>
     <button id="claimBtn" class="cta" type="button"></button>
+    <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
 
@@ -638,6 +645,7 @@ const dom = {
   goFinalValue: document.getElementById('goFinalValue'),
   finalStats: document.getElementById('finalStats'),
   claimBtn: document.getElementById('claimBtn'),
+  claimNote: document.getElementById('claimNote'),
 };
 
 // Apply localized strings
@@ -1254,22 +1262,21 @@ function hasClaimCallback() {
 
 function syncClaimButton() {
   if (isZeroScore()) {
+    dom.claimNote.classList.add('hidden');
     dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
 
-  if (!hasClaimCallback()) {
-    dom.claimBtn.disabled = true;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
-    return;
-  }
   if (claimUnavailable) {
+    dom.claimNote.textContent = COPY.claimUnavailable;
+    dom.claimNote.classList.remove('hidden');
     dom.claimBtn.disabled = true;
-    dom.claimBtn.textContent = COPY.claimUnavailable;
+    dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
+  dom.claimNote.classList.add('hidden');
   dom.claimBtn.disabled = claimLocked;
   dom.claimBtn.textContent = COPY.claim;
 }
@@ -1297,6 +1304,7 @@ dom.claimBtn.addEventListener('click', async () => {
   }
   if (!hasClaimCallback()) {
     claimLocked = false;
+    claimUnavailable = true;
     syncClaimButton();
     return;
   }

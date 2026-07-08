@@ -171,6 +171,12 @@
     box-shadow: none;
     transform: none;
   }
+  .claim-note {
+    margin: 12px 0 0;
+    color: #ff8a8a;
+    font-size: 12px;
+    font-weight: 700;
+  }
 </style>
 </head>
 <body>
@@ -191,6 +197,7 @@
     <div id="goScore" class="card-score">0</div>
     <p id="goBest" class="card-best"></p>
     <button id="claimBtn" class="cta" type="button"></button>
+    <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
 <script src="./claim-callback.js?v=20260624.2"></script>
@@ -507,6 +514,7 @@ const goTitle   = document.getElementById('goTitle');
 const goFinalLabel = document.getElementById('goFinalLabel');
 const goScore   = document.getElementById('goScore');
 const goBest    = document.getElementById('goBest');
+const claimNote = document.getElementById('claimNote');
 const muteBtn   = document.getElementById('muteBtn');
 const hudBar    = document.getElementById('hudBar');
 const scoreVal  = document.getElementById('scoreVal');
@@ -547,19 +555,23 @@ function syncClaimButton() {
   }
 
   if (isZeroScore()) {
+    claimNote.classList.add('hidden');
     claimBtn.disabled = false;
     claimBtn.textContent = COPY.retry;
     claimBtn.setAttribute('aria-label', COPY.retry);
     return;
   }
 
-  if (state.claimUnavailable || !hasClaimCallback()) {
+  if (state.claimUnavailable) {
+    claimNote.textContent = COPY.claimUnavailable;
+    claimNote.classList.remove('hidden');
     claimBtn.disabled = true;
-    claimBtn.textContent = COPY.claimUnavailable;
-    claimBtn.setAttribute('aria-label', COPY.claimUnavailable);
+    claimBtn.textContent = COPY.claim;
+    claimBtn.setAttribute('aria-label', COPY.claim);
     return;
   }
 
+  claimNote.classList.add('hidden');
   claimBtn.disabled = claimLocked;
   claimBtn.textContent = COPY.claim;
   claimBtn.setAttribute('aria-label', COPY.claim);

@@ -138,6 +138,7 @@
         }
         .mute:active { transform: scale(0.92); }
         .mute svg { width: 22px; height: 22px; fill: currentColor; }
+        .claim-note { margin-top: 12px; font-size: 12px; font-weight: 700; color: #ff8a8a; }
     </style>
 </head>
 <body class="overflow-hidden w-screen h-screen flex flex-col items-center justify-between p-2 md:p-4 text-white">
@@ -235,6 +236,7 @@
                 <button id="restart-btn" class="cta-primary w-full max-w-xs">
                     Claim Score
                 </button>
+                <p id="claim-note" class="claim-note hidden"></p>
             </div>
         </div>
     </div>
@@ -348,22 +350,21 @@
         }
         function syncRestartButton() {
             const restartBtn = document.getElementById('restart-btn');
+            const claimNote = document.getElementById('claim-note');
             if (!restartBtn) return;
             if (isZeroScore()) {
+                if (claimNote) { claimNote.textContent = ''; claimNote.classList.add('hidden'); }
                 restartBtn.textContent = COPY.retry;
                 restartBtn.disabled = false;
                 return;
             }
-            if (!hasClaimCallback()) {
-                restartBtn.textContent = COPY.claimUnavailable;
-                restartBtn.disabled = true;
-                return;
-            }
             if (claimUnavailable) {
-                restartBtn.textContent = COPY.claimUnavailable;
+                if (claimNote) { claimNote.textContent = COPY.claimUnavailable; claimNote.classList.remove('hidden'); }
+                restartBtn.textContent = COPY.claimScore;
                 restartBtn.disabled = true;
                 return;
             }
+            if (claimNote) { claimNote.textContent = ''; claimNote.classList.add('hidden'); }
             restartBtn.textContent = COPY.claimScore;
             restartBtn.disabled = false;
         }
@@ -834,6 +835,7 @@
                         return;
                     }
                     if (!hasClaimCallback()) {
+                        claimUnavailable = true;
                         syncRestartButton();
                         return;
                     }

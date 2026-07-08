@@ -1162,6 +1162,12 @@ claimBtn.addEventListener('click', async (e) => {
   ensureAudio();
   await handleClaimTap();
 });
+claimBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  ensureAudio();
+  if (!claimBtn.disabled) claimBtn.click();
+}, { passive: false });
 
 // ============================================================
 // MUTE BUTTON

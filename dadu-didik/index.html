@@ -919,6 +919,11 @@ document.getElementById('ctaBtn').addEventListener('click',function(){
   STATE.claimErrorMessage='';
   submitScore();
 });
+document.getElementById('ctaBtn').addEventListener('touchend',function(e){
+  e.preventDefault();
+  e.stopPropagation();
+  if(!this.disabled) this.click();
+},{ passive:false });
 document.getElementById('startBtn').addEventListener('click',()=>{ sfx.ui(); startGame(); });
 document.getElementById('endBtn').addEventListener('click',()=>{ sfx.ui(); endGame('over'); });
 

@@ -869,6 +869,11 @@
                         syncRestartButton();
                     }
                 });
+                document.getElementById('restart-btn').addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!e.currentTarget.disabled) e.currentTarget.click();
+                }, { passive: false });
 
                 // Toggle Audio — DESIGN.md §5.11
                 const muteBtn = document.getElementById('muteBtn');

@@ -1085,6 +1085,11 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
     syncClaimButton();
   }
 });
+document.getElementById('claimBtn').addEventListener('touchend', (e)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  if(!e.currentTarget.disabled) e.currentTarget.click();
+}, { passive:false });
 document.getElementById('endRunBtn').addEventListener('click', ()=> endRun(false));
 
 /* ============================================================

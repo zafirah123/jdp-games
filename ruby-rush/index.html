@@ -1702,6 +1702,11 @@ dom.claimBtn.addEventListener('click', async () => {
     syncClaimButton();
   }
 });
+dom.claimBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!dom.claimBtn.disabled) dom.claimBtn.click();
+}, { passive: false });
 dom.endBtn.addEventListener('click', () => { if (state.phase === 'PLAYING') { state.phase = 'PAUSED'; state.ducking = false; showTouch(false); dom.pause.classList.remove('hidden'); } });
 dom.resumeBtn.addEventListener('click', () => { if (state.phase === 'PAUSED') { state.phase = 'PLAYING'; showTouch(true); dom.pause.classList.add('hidden'); } });
 dom.endRunBtn.addEventListener('click', () => endGame('early'));

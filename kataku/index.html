@@ -1342,6 +1342,11 @@ dom.claimBtn.addEventListener('click', async () => {
     syncClaimButton();
   }
 });
+dom.claimBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!dom.claimBtn.disabled) dom.claimBtn.click();
+}, { passive: false });
 
 // =============================================================================
 // Dev jump: ?scene=over

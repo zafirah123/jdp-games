@@ -1531,6 +1531,11 @@ window.addEventListener('keydown', (e) => {
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
 dom.claimBtn.addEventListener('click', submitClaim);
+dom.claimBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!dom.claimBtn.disabled) dom.claimBtn.click();
+}, { passive: false });
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');

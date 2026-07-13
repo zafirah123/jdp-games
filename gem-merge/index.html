@@ -1354,6 +1354,8 @@ function updateMuteUI() {
 function startGame() {
   claimLocked = false;
   claimUnavailable = false;
+  claimErrorMessage = '';
+  claimTouchArmed = false;
   state.phase = 'PLAYING';
   state.score = 0;
   state.merges = 0;
@@ -1425,6 +1427,7 @@ function endGame(reason) {
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1531,11 +1534,19 @@ window.addEventListener('keydown', (e) => {
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
 dom.claimBtn.addEventListener('click', submitClaim);
+dom.claimBtn.addEventListener('touchstart', () => {
+  claimTouchArmed = true;
+}, { passive: true });
 dom.claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
+  if (!claimTouchArmed) return;
+  claimTouchArmed = false;
   if (!dom.claimBtn.disabled) dom.claimBtn.click();
 }, { passive: false });
+dom.claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');

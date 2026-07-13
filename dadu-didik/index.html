@@ -855,6 +855,7 @@ async function buildClaimUrl(payload){
 function hasClaimCallback(){
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
+let claimTouchArmed = false;
 function syncEndCta(){
   const cta=document.getElementById('ctaBtn');
   const note=document.getElementById('claimNote');
@@ -919,11 +920,19 @@ document.getElementById('ctaBtn').addEventListener('click',function(){
   STATE.claimErrorMessage='';
   submitScore();
 });
+document.getElementById('ctaBtn').addEventListener('touchstart',function(){
+  claimTouchArmed = true;
+},{ passive:true });
 document.getElementById('ctaBtn').addEventListener('touchend',function(e){
   e.preventDefault();
   e.stopPropagation();
+  if(!claimTouchArmed) return;
+  claimTouchArmed = false;
   if(!this.disabled) this.click();
 },{ passive:false });
+document.getElementById('ctaBtn').addEventListener('touchcancel',function(){
+  claimTouchArmed = false;
+},{ passive:true });
 document.getElementById('startBtn').addEventListener('click',()=>{ sfx.ui(); startGame(); });
 document.getElementById('endBtn').addEventListener('click',()=>{ sfx.ui(); endGame('over'); });
 

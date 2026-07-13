@@ -1537,6 +1537,8 @@ function stopMusic() { music.playing = false; if (music.timer) { clearInterval(m
 function startGame() {
   claimLocked = false;
   claimUnavailable = false;
+  claimErrorMessage = '';
+  claimTouchArmed = false;
   Object.assign(state, {
     phase: 'PLAYING', score: 0, elapsed: 0, worldDist: 0, dodged: 0,
     obstacles: [], rubies: [], bubbles: [], floaters: [], particles: [], blasts: [], deathBolts: [], pbDead: false,
@@ -1595,6 +1597,7 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 function hasClaimCallback() {
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
@@ -1702,11 +1705,19 @@ dom.claimBtn.addEventListener('click', async () => {
     syncClaimButton();
   }
 });
+dom.claimBtn.addEventListener('touchstart', () => {
+  claimTouchArmed = true;
+}, { passive: true });
 dom.claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
+  if (!claimTouchArmed) return;
+  claimTouchArmed = false;
   if (!dom.claimBtn.disabled) dom.claimBtn.click();
 }, { passive: false });
+dom.claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 dom.endBtn.addEventListener('click', () => { if (state.phase === 'PLAYING') { state.phase = 'PAUSED'; state.ducking = false; showTouch(false); dom.pause.classList.remove('hidden'); } });
 dom.resumeBtn.addEventListener('click', () => { if (state.phase === 'PAUSED') { state.phase = 'PLAYING'; showTouch(true); dom.pause.classList.add('hidden'); } });
 dom.endRunBtn.addEventListener('click', () => endGame('early'));

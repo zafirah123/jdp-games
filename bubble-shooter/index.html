@@ -348,6 +348,7 @@
         const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
         let claimUnavailable = false;
         let claimErrorMessage = '';
+        let claimTouchArmed = false;
         function hasClaimCallback() {
             return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
         }
@@ -869,11 +870,19 @@
                         syncRestartButton();
                     }
                 });
+                document.getElementById('restart-btn').addEventListener('touchstart', () => {
+                    claimTouchArmed = true;
+                }, { passive: true });
                 document.getElementById('restart-btn').addEventListener('touchend', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (!claimTouchArmed) return;
+                    claimTouchArmed = false;
                     if (!e.currentTarget.disabled) e.currentTarget.click();
                 }, { passive: false });
+                document.getElementById('restart-btn').addEventListener('touchcancel', () => {
+                    claimTouchArmed = false;
+                }, { passive: true });
 
                 // Toggle Audio — DESIGN.md §5.11
                 const muteBtn = document.getElementById('muteBtn');

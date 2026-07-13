@@ -977,7 +977,9 @@ function startGame() {
   state.newBest = false;
   state.endedByTimer = false;
   state.claimUnavailable = false;
+  state.claimErrorMessage = '';
   claimLocked = false;
+  claimTouchArmed = false;
   lastTickSec = -1;
   startRound();
 }
@@ -1138,6 +1140,7 @@ async function handleClaimTap() {
     syncGameOverUi();
   }
 }
+let claimTouchArmed = false;
 
 canvas.addEventListener('pointerdown', (e) => {
   e.preventDefault();
@@ -1162,12 +1165,22 @@ claimBtn.addEventListener('click', async (e) => {
   ensureAudio();
   await handleClaimTap();
 });
+claimBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  claimTouchArmed = true;
+  ensureAudio();
+}, { passive: false });
 claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
+  if (!claimTouchArmed) return;
+  claimTouchArmed = false;
   ensureAudio();
   if (!claimBtn.disabled) claimBtn.click();
 }, { passive: false });
+claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 
 // ============================================================
 // MUTE BUTTON

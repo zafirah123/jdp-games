@@ -889,6 +889,8 @@ function playTick()   { playTone({ freq: 1200, type: 'sine', dur: 0.07, gain: 0.
 function startGame() {
   claimLocked = false;
   claimUnavailable = false;
+  claimErrorMessage = '';
+  claimTouchArmed = false;
   state.phase = 'PLAYING';
   state.blocks = [];
   state.cutoffs = [];
@@ -1005,11 +1007,19 @@ dom.claimBtn.addEventListener('click', async () => {
     syncClaimButton();
   }
 });
+dom.claimBtn.addEventListener('touchstart', () => {
+  claimTouchArmed = true;
+}, { passive: true });
 dom.claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
+  if (!claimTouchArmed) return;
+  claimTouchArmed = false;
   if (!dom.claimBtn.disabled) dom.claimBtn.click();
 }, { passive: false });
+dom.claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 
 // =============================================================================
 // CLAIM SCORE - supports default callback flow (section 6.5) and Genet encrypted flow (section 6.6)
@@ -1017,6 +1027,7 @@ dom.claimBtn.addEventListener('touchend', (e) => {
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 

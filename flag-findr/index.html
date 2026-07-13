@@ -970,6 +970,8 @@ function saveBest(v){ try { localStorage.setItem(CONFIG.gameName+':best', String
 function startGame(){
   claimLocked = false;
   claimUnavailable = false;
+  claimErrorMessage = '';
+  claimTouchArmed = false;
   // clear
   for (const t of tokens.slice()) removeToken(t);
   tokens = []; particles = []; floats = [];
@@ -992,6 +994,7 @@ function startGame(){
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 function endRun(byTimer){
   if (state.scene !== 'play') return;
   state.scene = 'over';
@@ -1085,11 +1088,19 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
     syncClaimButton();
   }
 });
+document.getElementById('claimBtn').addEventListener('touchstart', ()=>{
+  claimTouchArmed = true;
+}, { passive:false });
 document.getElementById('claimBtn').addEventListener('touchend', (e)=>{
   e.preventDefault();
   e.stopPropagation();
+  if(!claimTouchArmed) return;
+  claimTouchArmed = false;
   if(!e.currentTarget.disabled) e.currentTarget.click();
 }, { passive:false });
+document.getElementById('claimBtn').addEventListener('touchcancel', ()=>{
+  claimTouchArmed = false;
+}, { passive:true });
 document.getElementById('endRunBtn').addEventListener('click', ()=> endRun(false));
 
 /* ============================================================

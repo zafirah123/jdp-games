@@ -1260,6 +1260,8 @@ function setMusicMuted(muted) {
 function startGame() {
   claimLocked = false;
   claimUnavailable = false;
+  claimErrorMessage = '';
+  claimTouchArmed = false;
   state.phase = 'PLAYING';
   state.theta = Math.PI / 2; state.holdDir = 0; state.ballSquash = 1;
   state.angVel = 0; state.rollTilt = 0; state.hue = CONFIG.HUES[0];
@@ -1368,6 +1370,7 @@ dom.contEndBtn.addEventListener('click', () => endGame('crash'));
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 function hasClaimCallback() {
@@ -1440,11 +1443,19 @@ dom.claimBtn.addEventListener('click', async () => {
     syncClaimButton();
   }
 });
+dom.claimBtn.addEventListener('touchstart', () => {
+  claimTouchArmed = true;
+}, { passive: true });
 dom.claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
+  if (!claimTouchArmed) return;
+  claimTouchArmed = false;
   if (!dom.claimBtn.disabled) dom.claimBtn.click();
 }, { passive: false });
+dom.claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 
 // =============================================================================
 // Mute

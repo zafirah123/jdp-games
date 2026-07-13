@@ -834,6 +834,7 @@ function fmtTime(ms) {
 function startRun() {
   claimLocked = false;
   claimUnavailable = false;
+  claimErrorMessage = '';
   syncClaimButton();
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');

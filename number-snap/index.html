@@ -809,6 +809,7 @@ dom.endBtn.addEventListener('click', () => {
 function startRound() {
   claimLocked = false;
   claimUnavailable = false;
+  claimErrorMessage = '';
   state.phase = 'PLAYING';
   state.board = emptyBoard();
   state.score = 0;

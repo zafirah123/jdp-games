@@ -926,7 +926,15 @@ document.getElementById('ctaBtn').addEventListener('touchstart',function(){
 document.getElementById('ctaBtn').addEventListener('touchend',function(e){
   e.preventDefault();
   e.stopPropagation();
-  if(!claimTouchArmed) return;
+  if(!claimTouchArmed){
+    const note = document.getElementById('claimNote');
+    const noteText = String(note.textContent || '').trim();
+    if(!this.disabled && STATE.score > 0 && note.classList.contains('hidden') && !noteText){
+      note.textContent = COPY.claimFailed;
+      note.classList.remove('hidden');
+    }
+    return;
+  }
   claimTouchArmed = false;
   if(!this.disabled) this.click();
 },{ passive:false });

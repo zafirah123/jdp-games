@@ -876,7 +876,15 @@
                 document.getElementById('restart-btn').addEventListener('touchend', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (!claimTouchArmed) return;
+                    if (!claimTouchArmed) {
+                        const claimNote = document.getElementById('claim-note');
+                        const noteText = claimNote ? String(claimNote.textContent || '').trim() : '';
+                        if (!e.currentTarget.disabled && !isZeroScore() && claimNote && claimNote.classList.contains('hidden') && !noteText) {
+                            claimNote.textContent = COPY.claimFailed;
+                            claimNote.classList.remove('hidden');
+                        }
+                        return;
+                    }
                     claimTouchArmed = false;
                     if (!e.currentTarget.disabled) e.currentTarget.click();
                 }, { passive: false });

@@ -1173,7 +1173,14 @@ claimBtn.addEventListener('touchstart', (e) => {
 claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
-  if (!claimTouchArmed) return;
+  if (!claimTouchArmed) {
+    const noteText = String(claimNote.textContent || '').trim();
+    if (!claimBtn.disabled && state.score > 0 && claimNote.classList.contains('hidden') && !noteText) {
+      claimNote.textContent = COPY.claimFailed;
+      claimNote.classList.remove('hidden');
+    }
+    return;
+  }
   claimTouchArmed = false;
   ensureAudio();
   if (!claimBtn.disabled) claimBtn.click();

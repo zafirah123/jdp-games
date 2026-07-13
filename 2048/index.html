@@ -1195,6 +1195,20 @@ function syncClaimButton() {
   dom.claimBtn.textContent = COPY.claim;
 }
 
+function showClaimNote(message) {
+  const text = String(message || '').trim();
+  if (!text) {
+    dom.claimNote.classList.add('hidden');
+    return;
+  }
+  dom.claimNote.textContent = text;
+  dom.claimNote.classList.remove('hidden');
+}
+
+function isClaimNoteDry() {
+  return dom.claimNote.classList.contains('hidden') && !String(dom.claimNote.textContent || '').trim();
+}
+
 async function buildClaimUrl() {
   return window.ClaimCallback.buildClaimUrl({
     claimContext,
@@ -1250,7 +1264,10 @@ dom.claimBtn.addEventListener('touchstart', () => {
 dom.claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
-  if (!claimTouchArmed) return;
+  if (!claimTouchArmed) {
+    if (!dom.claimBtn.disabled && !isZeroScore() && isClaimNoteDry()) showClaimNote(COPY.claimFailed);
+    return;
+  }
   claimTouchArmed = false;
   if (!dom.claimBtn.disabled) dom.claimBtn.click();
 }, { passive: false });

@@ -1449,7 +1449,14 @@ dom.claimBtn.addEventListener('touchstart', () => {
 dom.claimBtn.addEventListener('touchend', (e) => {
   e.preventDefault();
   e.stopPropagation();
-  if (!claimTouchArmed) return;
+  if (!claimTouchArmed) {
+    const noteText = String(dom.claimNote.textContent || '').trim();
+    if (!dom.claimBtn.disabled && !isZeroScore() && dom.claimNote.classList.contains('hidden') && !noteText) {
+      dom.claimNote.textContent = COPY.claimFailed;
+      dom.claimNote.classList.remove('hidden');
+    }
+    return;
+  }
   claimTouchArmed = false;
   if (!dom.claimBtn.disabled) dom.claimBtn.click();
 }, { passive: false });

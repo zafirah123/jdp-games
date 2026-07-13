@@ -1094,7 +1094,15 @@ document.getElementById('claimBtn').addEventListener('touchstart', ()=>{
 document.getElementById('claimBtn').addEventListener('touchend', (e)=>{
   e.preventDefault();
   e.stopPropagation();
-  if(!claimTouchArmed) return;
+  if(!claimTouchArmed){
+    const claimNote = document.getElementById('claimNote');
+    const noteText = String(claimNote.textContent || '').trim();
+    if(!e.currentTarget.disabled && state.score > 0 && claimNote.classList.contains('hidden') && !noteText){
+      claimNote.textContent = COPY.claimFailed;
+      claimNote.classList.remove('hidden');
+    }
+    return;
+  }
   claimTouchArmed = false;
   if(!e.currentTarget.disabled) e.currentTarget.click();
 }, { passive:false });

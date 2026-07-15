@@ -364,6 +364,7 @@ const COPY = {
     claim: 'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
+    claimPreparing: 'Preparing…',
     retry: 'RETRY',
     next: 'Next',
     score: 'Score',
@@ -390,6 +391,7 @@ const COPY = {
     claim: 'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
+    claimPreparing: 'Sedang bersedia…',
     retry: 'RETRY',
     next: 'Seterusnya',
     score: 'Skor',
@@ -1284,6 +1286,14 @@ function syncClaimButton() {
     return;
   }
 
+  if (claimPreparing) {
+    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claim;
+    return;
+  }
+
   const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
   if (noteText) {
     dom.claimNote.textContent = noteText;
@@ -1356,6 +1366,9 @@ function startGame() {
   claimUnavailable = false;
   claimErrorMessage = '';
   claimTouchArmed = false;
+  claimUrlReady = null;
+  claimPreparing = false;
+  claimPrepareSeq++;
   state.phase = 'PLAYING';
   state.score = 0;
   state.merges = 0;
@@ -1410,6 +1423,7 @@ function endGame(reason) {
     `<div class="label">${COPY.statTopGem}</div><div class="value">${topGemName}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
   syncClaimButton();
+  prepareClaimUrl();
 
   dom.endRunBtn.classList.add('hidden');
   dom.gemLadder.classList.add('hidden');
@@ -1428,6 +1442,10 @@ let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
 let claimTouchArmed = false;
+let claimUrlReady = null;
+let claimPrepareSeq = 0;
+let claimPreparing = false;
+const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1446,46 +1464,74 @@ async function submitClaim() {
     startGame();
     return;
   }
+  if (claimLocked) return;
+  if (claimUrlReady) {
+    claimLocked = true;
+    syncClaimButton();
+    window.location.assign(claimUrlReady);
+    return;
+  }
+  claimLocked = true;
+  syncClaimButton();
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
+}
+
+async function prepareClaimUrl(retry) {
+  claimUrlReady = null;
+
+  if (isZeroScore()) {
+    claimPreparing = false;
+    return;
+  }
   if (!hasClaimCallback()) {
-    claimLocked = false;
+    claimPreparing = false;
     claimUnavailable = true;
     claimErrorMessage = '';
     syncClaimButton();
     return;
   }
-  if (claimLocked) return;
-  claimLocked = true;
-  claimErrorMessage = '';
-  syncClaimButton();
 
   const extra = {
     merges: state.merges,
     top_tier: state.topTier,
     duration_ms: Math.round(elapsedSeconds() * 1000),
   };
+  const seq = ++claimPrepareSeq;
+  claimPreparing = true;
+  claimUnavailable = false;
+  claimErrorMessage = '';
+  syncClaimButton();
 
   try {
     const url = await window.ClaimCallback.buildClaimUrl({
-    claimContext,
-    score: Math.max(0, state.score | 0),
-    gameName: 'gem-merge',
-    fallbackUrl: null,
-    extraData: extra,
-    extraQuery: extra,
-  });
+      claimContext,
+      score: Math.max(0, state.score | 0),
+      gameName: 'gem-merge',
+      fallbackUrl: null,
+      extraData: extra,
+      extraQuery: extra,
+    });
 
+    if (seq !== claimPrepareSeq) return;
     if (url) {
-      window.location.assign(url);
+      claimUrlReady = url;
+      claimPreparing = false;
+      syncClaimButton();
     } else {
-      console.log('[gem-merge] CLAIM SCORE unavailable: invalid or missing callback context', extra);
-      claimLocked = false;
+      console.log('[gem-merge] claim prepare unavailable: invalid or missing callback context', extra);
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      claimPreparing = false;
       claimUnavailable = true;
-      claimErrorMessage = '';
       syncClaimButton();
     }
   } catch (e) {
-    console.warn('[gem-merge] claim submit failed:', e);
-    claimLocked = false;
+    if (seq !== claimPrepareSeq) return;
+    console.warn('[gem-merge] claim prepare failed:', e);
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    claimPreparing = false;
     claimUnavailable = true;
     claimErrorMessage = getClaimErrorMessage(e);
     syncClaimButton();
@@ -1689,15 +1735,3 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-

@@ -295,6 +295,7 @@
                 claimScore: 'CLAIM SCORE',
                 claimUnavailable: 'CALLBACK UNAVAILABLE',
                 claimFailed: 'Unable to claim score',
+                claimPreparing: 'Preparing…',
                 retry: 'RETRY',
                 lineBreached: 'LINE BREACHED!',
                 lineBreachedDesc: 'The bubbles descended past the danger line. Clear them faster next time!',
@@ -333,6 +334,7 @@
                 claimScore: 'TUNTUT SKOR',
                 claimUnavailable: 'PANGGIL BALIK TIADA',
                 claimFailed: 'Tidak dapat tuntut skor',
+                claimPreparing: 'Sedang bersedia…',
                 retry: 'RETRY',
                 lineBreached: 'GARISAN DILANGGAR!',
                 lineBreachedDesc: 'Buih telah melepasi garisan bahaya. Bersihkan lebih pantas pada cubaan seterusnya!',
@@ -349,6 +351,10 @@
         let claimUnavailable = false;
         let claimErrorMessage = '';
         let claimTouchArmed = false;
+        let claimUrlReady = null;
+        let claimPrepareSeq = 0;
+        let claimPreparing = false;
+        const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
         function hasClaimCallback() {
             return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
         }
@@ -364,6 +370,12 @@
                 if (claimNote) { claimNote.textContent = ''; claimNote.classList.add('hidden'); }
                 restartBtn.textContent = COPY.retry;
                 restartBtn.disabled = false;
+                return;
+            }
+            if (claimPreparing) {
+                if (claimNote) { claimNote.textContent = COPY.claimPreparing; claimNote.classList.remove('hidden'); }
+                restartBtn.textContent = COPY.claimScore;
+                restartBtn.disabled = true;
                 return;
             }
             const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
@@ -390,6 +402,50 @@
                     combos_achieved: Game.totalCombos || 0,
                 },
             });
+        }
+        async function prepareClaimUrl(score, retry) {
+            claimUrlReady = null;
+
+            if (Math.max(0, score | 0) <= 0) {
+                claimPreparing = false;
+                return;
+            }
+            if (!hasClaimCallback()) {
+                claimPreparing = false;
+                claimUnavailable = true;
+                claimErrorMessage = '';
+                syncRestartButton();
+                return;
+            }
+
+            const seq = ++claimPrepareSeq;
+            claimPreparing = true;
+            claimUnavailable = false;
+            claimErrorMessage = '';
+            syncRestartButton();
+
+            try {
+                const claimUrl = await buildClaimUrl(score);
+                if (seq !== claimPrepareSeq) return;
+                if (!claimUrl) {
+                    if (!retry) { setTimeout(() => prepareClaimUrl(score, true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+                    claimPreparing = false;
+                    claimUnavailable = true;
+                    syncRestartButton();
+                    return;
+                }
+                claimUrlReady = claimUrl;
+                claimPreparing = false;
+                syncRestartButton();
+            } catch (e) {
+                if (seq !== claimPrepareSeq) return;
+                console.warn('[bubble-shooter] claim prepare failed:', e);
+                if (!retry) { setTimeout(() => prepareClaimUrl(score, true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+                claimPreparing = false;
+                claimUnavailable = true;
+                claimErrorMessage = getClaimErrorMessage(e);
+                syncRestartButton();
+            }
         }
 
         // Apply COPY to static DOM strings before game boot
@@ -831,6 +887,9 @@
                     SoundSystem.playClick();
                     claimUnavailable = false;
                     claimErrorMessage = '';
+                    claimUrlReady = null;
+                    claimPreparing = false;
+                    claimPrepareSeq++;
                     document.getElementById('start-overlay').classList.add('hidden');
                     this.start();
                 });
@@ -845,30 +904,15 @@
                         this.start();
                         return;
                     }
-                    if (!hasClaimCallback()) {
-                        claimUnavailable = true;
-                        claimErrorMessage = '';
-                        syncRestartButton();
+                    if (claimUrlReady) {
+                        document.getElementById('restart-btn').disabled = true;
+                        window.location.assign(claimUrlReady);
                         return;
                     }
-                    // CLAUDE.md ?6.5: CLAIM SCORE redirect ? no in-game retry
                     document.getElementById('restart-btn').disabled = true;
-                    claimErrorMessage = '';
-                    try {
-                        const claimUrl = await buildClaimUrl(this.score);
-                        if (!claimUrl) {
-                            claimUnavailable = true;
-                            claimErrorMessage = '';
-                            syncRestartButton();
-                            return;
-                        }
-                        window.location.assign(claimUrl);
-                    } catch (e) {
-                        console.warn('[bubble-shooter] claim submit failed:', e);
-                        claimUnavailable = true;
-                        claimErrorMessage = getClaimErrorMessage(e);
-                        syncRestartButton();
-                    }
+                    await prepareClaimUrl(this.score);
+                    if (claimUrlReady) window.location.assign(claimUrlReady);
+                    else syncRestartButton();
                 });
                 document.getElementById('restart-btn').addEventListener('touchstart', () => {
                     claimTouchArmed = true;
@@ -1837,7 +1881,10 @@
                 // when score > 0, RETRY only when score = 0. (Initial load runs
                 // applyCopyToDOM() while score is still 0, so re-evaluate here.)
                 claimUnavailable = false;
+                claimUrlReady = null;
+                claimPreparing = false;
                 syncRestartButton();
+                prepareClaimUrl(this.score);
 
                 SoundSystem.playGameOver(victory);
 

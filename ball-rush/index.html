@@ -252,6 +252,7 @@ const COPY = {
     claim: 'CLAIM SCORE', retry: 'RETRY', newBest: 'NEW BEST!',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
+    claimPreparing: 'Preparing…',
     contTitle: 'CRASHED!', contSub: 'Jump back in — your time is still running.',
     contBtn: 'CONTINUE', slowmo: 'SLOW-MO!', dbl: 'DOUBLE SCORE!', combo: 'COMBO!',
     contTier: 'Tier', contLevel: 'Lv', contTimeLeft: 'Time left',
@@ -266,6 +267,7 @@ const COPY = {
     claim: 'TUNTUT SKOR', retry: 'RETRY', newBest: 'REKOD BAHARU!',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
+    claimPreparing: 'Sedang bersedia…',
     contTitle: 'TERLANGGAR!', contSub: 'Sambung semula — masa anda masih berjalan.',
     contBtn: 'SAMBUNG', slowmo: 'PERLAHAN!', dbl: 'SKOR DUA KALI!', combo: 'KOMBO!',
     contTier: 'Tahap', contLevel: 'Lv', contTimeLeft: 'Masa tinggal',
@@ -1262,6 +1264,9 @@ function startGame() {
   claimUnavailable = false;
   claimErrorMessage = '';
   claimTouchArmed = false;
+  claimUrlReady = null;
+  claimPreparing = false;
+  claimPrepareSeq++;
   state.phase = 'PLAYING';
   state.theta = Math.PI / 2; state.holdDir = 0; state.ballSquash = 1;
   state.angVel = 0; state.rollTilt = 0; state.hue = CONFIG.HUES[0];
@@ -1330,6 +1335,7 @@ function endGame(reason) {
     `<div class="label">${COPY.statSeq}</div><div class="value">${state.seqCleared}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
   syncClaimButton();
+  prepareClaimUrl();
   dom.cont.classList.add('hidden');
   dom.seqBar.classList.add('hidden');
   dom.chevL.classList.add('hidden'); dom.chevR.classList.add('hidden');
@@ -1371,6 +1377,10 @@ let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
 let claimTouchArmed = false;
+let claimUrlReady = null;
+let claimPrepareSeq = 0;
+let claimPreparing = false;
+const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 function hasClaimCallback() {
@@ -1385,6 +1395,13 @@ function syncClaimButton() {
     dom.claimNote.classList.add('hidden');
     dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+  if (claimPreparing) {
+    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claim;
     return;
   }
   const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
@@ -1405,6 +1422,51 @@ async function buildClaimUrl() {
     gameName: CONFIG.GAME_NAME, fallbackUrl: CONFIG.CLAIM_FALLBACK_URL,
   });
 }
+async function prepareClaimUrl(retry) {
+  claimUrlReady = null;
+
+  if (isZeroScore()) {
+    claimPreparing = false;
+    return;
+  }
+  if (!hasClaimCallback()) {
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = '';
+    syncClaimButton();
+    return;
+  }
+
+  const seq = ++claimPrepareSeq;
+  claimPreparing = true;
+  claimUnavailable = false;
+  claimErrorMessage = '';
+  syncClaimButton();
+
+  try {
+    const claimUrl = await buildClaimUrl();
+    if (seq !== claimPrepareSeq) return;
+    if (!claimUrl) {
+      console.warn('[ball-rush] claim prepare unavailable: invalid or missing callback context');
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      claimPreparing = false;
+      claimUnavailable = true;
+      syncClaimButton();
+      return;
+    }
+    claimUrlReady = claimUrl;
+    claimPreparing = false;
+    syncClaimButton();
+  } catch (e) {
+    if (seq !== claimPrepareSeq) return;
+    console.warn('[ball-rush] claim prepare failed:', e);
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(e);
+    syncClaimButton();
+  }
+}
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
@@ -1413,35 +1475,19 @@ dom.claimBtn.addEventListener('click', async () => {
     startGame();
     return;
   }
-  if (!hasClaimCallback()) {
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = '';
+  if (claimLocked) return;
+  if (claimUrlReady) {
+    claimLocked = true;
     syncClaimButton();
+    window.location.assign(claimUrlReady);
     return;
   }
-  if (claimLocked) return;
   claimLocked = true;
-  claimErrorMessage = '';
   syncClaimButton();
-  try {
-    const claimUrl = await buildClaimUrl();
-    if (!claimUrl) {
-      console.warn('[ball-rush] claim submit unavailable: invalid or missing callback context');
-      claimLocked = false;
-      claimUnavailable = true;
-      claimErrorMessage = '';
-      syncClaimButton();
-      return;
-    }
-    window.location.assign(claimUrl);
-  } catch (e) {
-    console.warn('[ball-rush] claim failed:', e);
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = getClaimErrorMessage(e);
-    syncClaimButton();
-  }
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;

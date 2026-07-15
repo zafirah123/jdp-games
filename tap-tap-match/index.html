@@ -322,6 +322,7 @@ const COPY = {
     claim:    'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
+    claimPreparing: 'Preparing…',
     retry:    'RETRY',
     // game-specific
     title:           'TAP TAP MATCH',
@@ -347,6 +348,7 @@ const COPY = {
     claim:    'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
+    claimPreparing: 'Sedang bersedia…',
     retry:    'RETRY',
     title:           'TAP TAP MATCH',
     tagline1:        'Perhati urutan. Ketuk semula.',
@@ -532,6 +534,10 @@ timeLbl.textContent  = COPY.timeLabel;
 // CLAIM SCORE - supports default callback flow (sec 6.5) and Genet encrypted flow (sec 6.6)
 // ============================================================
 let claimLocked = false;
+let claimUrlReady = null;
+let claimPrepareSeq = 0;
+let claimPreparing = false;
+const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'goTitle');
 if (claimContext.pageTitle && claimContext.pageTitle.trim()) {
@@ -567,6 +573,15 @@ function syncClaimButton() {
     claimBtn.disabled = false;
     claimBtn.textContent = COPY.retry;
     claimBtn.setAttribute('aria-label', COPY.retry);
+    return;
+  }
+
+  if (claimPreparing) {
+    claimNote.textContent = COPY.claimPreparing;
+    claimNote.classList.remove('hidden');
+    claimBtn.disabled = true;
+    claimBtn.textContent = COPY.claim;
+    claimBtn.setAttribute('aria-label', COPY.claim);
     return;
   }
 
@@ -623,6 +638,52 @@ function syncGameOverUi() {
   }
   syncClaimButton();
   gameOverOverlay.classList.remove('hidden');
+}
+
+async function prepareClaimUrl(retry) {
+  claimUrlReady = null;
+
+  if (isZeroScore()) {
+    claimPreparing = false;
+    return;
+  }
+  if (!hasClaimCallback()) {
+    claimPreparing = false;
+    state.claimUnavailable = true;
+    state.claimErrorMessage = '';
+    syncGameOverUi();
+    return;
+  }
+
+  const seq = ++claimPrepareSeq;
+  claimPreparing = true;
+  state.claimUnavailable = false;
+  state.claimErrorMessage = '';
+  syncClaimButton();
+
+  try {
+    const claimUrl = await buildClaimUrl();
+    if (seq !== claimPrepareSeq) return;
+    if (!claimUrl) {
+      console.warn('[tap-tap-match] claim prepare unavailable: invalid or missing callback context');
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      claimPreparing = false;
+      state.claimUnavailable = true;
+      syncGameOverUi();
+      return;
+    }
+    claimUrlReady = claimUrl;
+    claimPreparing = false;
+    syncClaimButton();
+  } catch (err) {
+    if (seq !== claimPrepareSeq) return;
+    console.warn('[tap-tap-match] claim prepare failed:', err);
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    claimPreparing = false;
+    state.claimUnavailable = true;
+    state.claimErrorMessage = getClaimErrorMessage(err);
+    syncGameOverUi();
+  }
 }
 
 function resize() {
@@ -979,6 +1040,9 @@ function startGame() {
   state.claimUnavailable = false;
   state.claimErrorMessage = '';
   claimLocked = false;
+  claimUrlReady = null;
+  claimPreparing = false;
+  claimPrepareSeq++;
   claimTouchArmed = false;
   lastTickSec = -1;
   startRound();
@@ -1019,6 +1083,7 @@ function endRun(byTimer = false) {
     state.newBest = false;
   }
   state.scene = 'gameover';
+  prepareClaimUrl();
 }
 
 function update(dtMs) {
@@ -1110,35 +1175,19 @@ async function handleClaimTap() {
     startGame();
     return;
   }
-  if (state.claimUnavailable || !hasClaimCallback()) {
-    state.claimUnavailable = true;
-    state.claimErrorMessage = '';
-    claimLocked = false;
-    syncGameOverUi();
+  if (claimLocked) return;
+  if (claimUrlReady) {
+    claimLocked = true;
+    syncClaimButton();
+    window.location.assign(claimUrlReady);
     return;
   }
-  if (claimLocked) return;
   claimLocked = true;
-  state.claimErrorMessage = '';
   syncClaimButton();
-  try {
-    const claimUrl = await buildClaimUrl();
-    if (!claimUrl) {
-      console.warn('[tap-tap-match] claim submit unavailable: invalid or missing callback context');
-      state.claimUnavailable = true;
-      state.claimErrorMessage = '';
-      claimLocked = false;
-      syncGameOverUi();
-      return;
-    }
-    window.location.assign(claimUrl);
-  } catch (err) {
-    console.warn('[tap-tap-match] claim submit failed:', err);
-    claimLocked = false;
-    state.claimUnavailable = true;
-    state.claimErrorMessage = getClaimErrorMessage(err);
-    syncGameOverUi();
-  }
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncGameOverUi();
 }
 let claimTouchArmed = false;
 
@@ -1247,13 +1296,3 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-

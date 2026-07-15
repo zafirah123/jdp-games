@@ -463,6 +463,7 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
+    claimPreparing: 'Preparing…',
     skip: 'SKIP (−15)',
     menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
     menuHint: 'Tip: green = right letter & spot, yellow = wrong spot, gray = not in the word.',
@@ -486,6 +487,7 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
+    claimPreparing: 'Sedang bersedia…',
     skip: 'LANGKAU (−15)',
     menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
     menuHint: 'Tip: hijau = huruf & tempat betul, kuning = tempat salah, kelabu = tiada dalam perkataan.',
@@ -836,6 +838,9 @@ function startRun() {
   claimUnavailable = false;
   claimErrorMessage = '';
   claimTouchArmed = false;
+  claimUrlReady = null;
+  claimPreparing = false;
+  claimPrepareSeq++;
   syncClaimButton();
   dom.menu.classList.add('hidden');
   dom.gameOver.classList.add('hidden');
@@ -1249,6 +1254,7 @@ function showGameOver(reason) {
   ].join('');
 
   syncClaimButton();
+  prepareClaimUrl();
   dom.gameOver.classList.remove('hidden');
 }
 
@@ -1259,6 +1265,10 @@ let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
 let claimTouchArmed = false;
+let claimUrlReady = null;
+let claimPrepareSeq = 0;
+let claimPreparing = false;
+const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1276,6 +1286,14 @@ function syncClaimButton() {
     dom.claimNote.classList.add('hidden');
     dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+
+  if (claimPreparing) {
+    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
@@ -1307,6 +1325,52 @@ async function buildClaimUrl() {
   });
 }
 
+async function prepareClaimUrl(retry) {
+  claimUrlReady = null;
+
+  if (isZeroScore()) {
+    claimPreparing = false;
+    return;
+  }
+  if (!hasClaimCallback()) {
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = '';
+    syncClaimButton();
+    return;
+  }
+
+  const seq = ++claimPrepareSeq;
+  claimPreparing = true;
+  claimUnavailable = false;
+  claimErrorMessage = '';
+  syncClaimButton();
+
+  try {
+    const claimUrl = await buildClaimUrl();
+    if (seq !== claimPrepareSeq) return;
+    if (!claimUrl) {
+      console.warn('[kataku] claim prepare unavailable: invalid or missing callback context');
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      claimPreparing = false;
+      claimUnavailable = true;
+      syncClaimButton();
+      return;
+    }
+    claimUrlReady = claimUrl;
+    claimPreparing = false;
+    syncClaimButton();
+  } catch (e) {
+    if (seq !== claimPrepareSeq) return;
+    console.warn('[kataku] claim prepare failed:', e);
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(e);
+    syncClaimButton();
+  }
+}
+
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
@@ -1315,35 +1379,19 @@ dom.claimBtn.addEventListener('click', async () => {
     startRun();
     return;
   }
-  if (!hasClaimCallback()) {
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = '';
+  if (claimLocked) return;
+  if (claimUrlReady) {
+    claimLocked = true;
     syncClaimButton();
+    window.location.assign(claimUrlReady);
     return;
   }
-  if (claimLocked) return;
   claimLocked = true;
-  claimErrorMessage = '';
   syncClaimButton();
-  try {
-    const claimUrl = await buildClaimUrl();
-    if (!claimUrl) {
-      console.warn('[kataku] claim submit unavailable: invalid or missing callback context');
-      claimLocked = false;
-      claimUnavailable = true;
-      claimErrorMessage = '';
-      syncClaimButton();
-      return;
-    }
-    window.location.assign(claimUrl);
-  } catch (e) {
-    console.warn('[kataku] claim submit failed:', e);
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = getClaimErrorMessage(e);
-    syncClaimButton();
-  }
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;
@@ -1386,14 +1434,3 @@ dom.claimBtn.addEventListener('touchcancel', () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-

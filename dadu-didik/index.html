@@ -175,13 +175,13 @@ const ROWS = CONFIG.rows, COLS = CONFIG.cols;
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en:{ start:'START GAME', timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'CLAIM SCORE', submit:'CLAIM SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', claimFailed:'Unable to claim score',
+    claim:'CLAIM SCORE', submit:'CLAIM SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', claimFailed:'Unable to claim score', claimPreparing:'Preparing…',
     subtitle:'Merge three matching dice to grow the number. Chain them to score big!',
     end:'End', hintDrag:'Drag the pair onto the board · tap it to rotate',
     combo:'COMBO', ruby:'RUBY BURST!', claimed:'Score sent. Thank you!',
     claimFail:'Could not reach server — score saved locally.' },
   ms:{ start:'MULA MAIN', timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'TUNTUT SKOR', submit:'TUNTUT SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', claimFailed:'Tidak dapat tuntut skor',
+    claim:'TUNTUT SKOR', submit:'TUNTUT SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', claimFailed:'Tidak dapat tuntut skor', claimPreparing:'Sedang bersedia…',
     subtitle:'Gabungkan tiga dadu sama untuk naikkan nombor. Rangkai untuk skor tinggi!',
     end:'Tamat', hintDrag:'Seret dadu ke papan · klik untuk pusing',
     combo:'COMBO', ruby:'LETUSAN RUBY!', claimed:'Skor dihantar. Terima kasih!',
@@ -801,6 +801,7 @@ function startGame(){
   STATE.score=0; STATE.timeLeftMs=CONFIG.roundMs;
   STATE.inputLocked=false; STATE.paused=false; STATE.travel=null; STATE.steps=null;
   STATE.anims=[]; STATE.hidden=new Set(); STATE.combo=0; STATE.submitted=false; STATE.claimUnavailable=false; STATE.claimErrorMessage=''; STATE.endReason=null; STATE.lastTickSec=null;
+  claimUrlReady=null; claimPreparing=false; claimPrepareSeq++;
   STATE.stats={placements:0,merges:0,rubies:0,bursts:0,maxChain:0,startWall:performance.now()};
   spawnPair();
   document.getElementById('score').textContent='0';
@@ -828,6 +829,7 @@ function endGame(reason){
   cta.classList.remove('hidden');
   document.getElementById('claimNote').classList.add('hidden');
   syncEndCta();
+  prepareClaimUrl();
   show('overModal');
 }
 
@@ -856,6 +858,10 @@ function hasClaimCallback(){
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
 let claimTouchArmed = false;
+let claimUrlReady = null;
+let claimPrepareSeq = 0;
+let claimPreparing = false;
+const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 function syncEndCta(){
   const cta=document.getElementById('ctaBtn');
   const note=document.getElementById('claimNote');
@@ -865,6 +871,14 @@ function syncEndCta(){
     cta.disabled=false;
     cta.textContent=COPY.retry;
     cta.dataset.mode='retry';
+    return;
+  }
+  if(claimPreparing){
+    note.textContent=COPY.claimPreparing;
+    note.classList.remove('hidden');
+    cta.disabled=true;
+    cta.textContent=COPY.claim;
+    cta.dataset.mode='claim';
     return;
   }
   const noteText = STATE.claimErrorMessage || (STATE.claimUnavailable ? COPY.claimUnavailable : '');
@@ -886,27 +900,49 @@ function getClaimErrorMessage(error){
   const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
-async function submitScore(){
-  if(STATE.submitted) return; STATE.submitted=true;
+async function prepareClaimUrl(retry){
+  claimUrlReady=null;
+
+  if(STATE.score<=0){
+    claimPreparing=false;
+    return;
+  }
+  if(!hasClaimCallback()){
+    claimPreparing=false;
+    STATE.claimUnavailable=true;
+    STATE.claimErrorMessage='';
+    syncEndCta();
+    return;
+  }
+
+  const seq=++claimPrepareSeq;
+  claimPreparing=true;
+  STATE.claimUnavailable=false;
+  STATE.claimErrorMessage='';
+  syncEndCta();
+
   const payload=buildClaimPayload(STATE.score);
-  const note=document.getElementById('claimNote');
   try{
     const url=await buildClaimUrl(payload);
+    if(seq!==claimPrepareSeq) return;
     if(!url){
+      if(!retry) { setTimeout(()=>prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
       STATE.claimUnavailable=true;
       STATE.claimErrorMessage='';
-      note.textContent = COPY.claimUnavailable;
-      note.classList.remove('hidden');
+      claimPreparing=false;
       syncEndCta();
       return;
     }
-    window.location.assign(url);
+    claimUrlReady=url;
+    claimPreparing=false;
+    syncEndCta();
   }catch(err){
-    console.warn('[dadu-didik] claim submit failed:', err);
+    if(seq!==claimPrepareSeq) return;
+    console.warn('[dadu-didik] claim prepare failed:', err);
+    if(!retry) { setTimeout(()=>prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     STATE.claimUnavailable=true;
     STATE.claimErrorMessage=getClaimErrorMessage(err);
-    note.textContent = STATE.claimErrorMessage;
-    note.classList.remove('hidden');
+    claimPreparing=false;
     syncEndCta();
   }
 }
@@ -915,10 +951,20 @@ async function submitScore(){
 document.getElementById('ctaBtn').addEventListener('click',function(){
   sfx.ui();
   if(this.dataset.mode==='retry'){ STATE.claimErrorMessage=''; startGame(); return; }
-  if(!hasClaimCallback()){ STATE.claimUnavailable=true; STATE.claimErrorMessage=''; syncEndCta(); return; }
-  this.disabled=true;
-  STATE.claimErrorMessage='';
-  submitScore();
+  if(STATE.submitted) return;
+  if(claimUrlReady){
+    STATE.submitted=true;
+    syncEndCta();
+    window.location.assign(claimUrlReady);
+    return;
+  }
+  STATE.submitted=true;
+  syncEndCta();
+  prepareClaimUrl().then(()=>{
+    STATE.submitted=false;
+    if(claimUrlReady) window.location.assign(claimUrlReady);
+    else syncEndCta();
+  });
 });
 document.getElementById('ctaBtn').addEventListener('touchstart',function(){
   claimTouchArmed = true;

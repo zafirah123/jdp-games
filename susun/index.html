@@ -255,6 +255,7 @@ const COPY = {
     claim: 'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
+    claimPreparing: 'Preparing…',
     retry: 'RETRY',
     newBest: 'NEW BEST!',
     streak: 'STREAK',
@@ -279,6 +280,7 @@ const COPY = {
     claim: 'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
+    claimPreparing: 'Sedang bersedia…',
     retry: 'RETRY',
     newBest: 'REKOD BAHARU!',
     streak: 'RENTETAN',
@@ -891,6 +893,9 @@ function startGame() {
   claimUnavailable = false;
   claimErrorMessage = '';
   claimTouchArmed = false;
+  claimUrlReady = null;
+  claimPreparing = false;
+  claimPrepareSeq++;
   state.phase = 'PLAYING';
   state.blocks = [];
   state.cutoffs = [];
@@ -943,6 +948,7 @@ function endGame(reason) {
     `<div class="label">${COPY.statHeight}</div><div class="value">${state.blocksPlaced} ${COPY.statHeightUnit}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
   syncClaimButton();
+  prepareClaimUrl();
 
   // Brief delay on miss so the death animation reads
   setTimeout(() => {
@@ -977,35 +983,19 @@ dom.claimBtn.addEventListener('click', async () => {
     startGame();
     return;
   }
-  if (!hasClaimCallback()) {
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = '';
+  if (claimLocked) return;
+  if (claimUrlReady) {
+    claimLocked = true;
     syncClaimButton();
+    window.location.assign(claimUrlReady);
     return;
   }
-  if (claimLocked) return;
   claimLocked = true;
-  claimErrorMessage = '';
   syncClaimButton();
-  try {
-    const claimUrl = await buildClaimUrl();
-    if (!claimUrl) {
-      console.warn('[susun] claim submit unavailable: invalid or missing callback context');
-      claimLocked = false;
-      claimUnavailable = true;
-      claimErrorMessage = '';
-      syncClaimButton();
-      return;
-    }
-    window.location.assign(claimUrl);
-  } catch (e) {
-    console.warn('[susun] claim submit failed:', e);
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = getClaimErrorMessage(e);
-    syncClaimButton();
-  }
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;
@@ -1035,6 +1025,10 @@ let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
 let claimTouchArmed = false;
+let claimUrlReady = null;
+let claimPrepareSeq = 0;
+let claimPreparing = false;
+const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1051,6 +1045,14 @@ function syncClaimButton() {
     dom.claimNote.classList.add('hidden');
     dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+
+  if (claimPreparing) {
+    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
@@ -1075,6 +1077,51 @@ async function buildClaimUrl() {
     gameName: CONFIG.GAME_NAME,
     fallbackUrl: CONFIG.CLAIM_FALLBACK_URL,
   });
+}
+async function prepareClaimUrl(retry) {
+  claimUrlReady = null;
+
+  if (isZeroScore()) {
+    claimPreparing = false;
+    return;
+  }
+  if (!hasClaimCallback()) {
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = '';
+    syncClaimButton();
+    return;
+  }
+
+  const seq = ++claimPrepareSeq;
+  claimPreparing = true;
+  claimUnavailable = false;
+  claimErrorMessage = '';
+  syncClaimButton();
+
+  try {
+    const claimUrl = await buildClaimUrl();
+    if (seq !== claimPrepareSeq) return;
+    if (!claimUrl) {
+      console.warn('[susun] claim prepare unavailable: invalid or missing callback context');
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      claimPreparing = false;
+      claimUnavailable = true;
+      syncClaimButton();
+      return;
+    }
+    claimUrlReady = claimUrl;
+    claimPreparing = false;
+    syncClaimButton();
+  } catch (e) {
+    if (seq !== claimPrepareSeq) return;
+    console.warn('[susun] claim prepare failed:', e);
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(e);
+    syncClaimButton();
+  }
 }
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
@@ -1143,14 +1190,3 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-

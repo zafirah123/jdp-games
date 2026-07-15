@@ -375,6 +375,7 @@ const COPY = {
     claim: 'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
+    claimPreparing: 'Preparing…',
     retry: 'RETRY',
     menuSub: "Jump! Duck! Shoot!<br>Let's rush for the high score!",
     menuHint: 'Tap / <kbd>Space</kbd> jump &nbsp;·&nbsp; hold lower screen / <kbd>↓</kbd> duck &nbsp;·&nbsp; <kbd>X</kbd> shoot',
@@ -397,6 +398,7 @@ const COPY = {
     claim: 'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
+    claimPreparing: 'Sedang bersedia…',
     retry: 'RETRY',
     menuSub: 'Lompat! Tunduk! Tembak!<br>Jom rentas untuk skor tertinggi!',
     menuHint: 'Ketuk / <kbd>Space</kbd> lompat &nbsp;·&nbsp; tahan bawah / <kbd>↓</kbd> tunduk &nbsp;·&nbsp; <kbd>X</kbd> tembak',
@@ -1539,6 +1541,9 @@ function startGame() {
   claimUnavailable = false;
   claimErrorMessage = '';
   claimTouchArmed = false;
+  claimUrlReady = null;
+  claimPreparing = false;
+  claimPrepareSeq++;
   Object.assign(state, {
     phase: 'PLAYING', score: 0, elapsed: 0, worldDist: 0, dodged: 0,
     obstacles: [], rubies: [], bubbles: [], floaters: [], particles: [], blasts: [], deathBolts: [], pbDead: false,
@@ -1581,6 +1586,7 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
     `<div class="label">${COPY.statTime}</div><div class="value">${fmtTime(state.elapsed)}</div>` +
     `<div class="label">${COPY.statBest}</div><div class="value">${state.best}</div>`;
   syncClaimButton();
+  prepareClaimUrl();
 
   stopMusic();
   playGameOver();
@@ -1598,6 +1604,10 @@ let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
 let claimTouchArmed = false;
+let claimUrlReady = null;
+let claimPrepareSeq = 0;
+let claimPreparing = false;
+const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 function hasClaimCallback() {
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
@@ -1612,6 +1622,14 @@ function syncClaimButton() {
     dom.claimNote.classList.add('hidden');
     dom.claimBtn.textContent = COPY.retry;
     dom.claimBtn.disabled = false;
+    return;
+  }
+
+  if (claimPreparing) {
+    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.textContent = COPY.claim;
+    dom.claimBtn.disabled = true;
     return;
   }
 
@@ -1644,6 +1662,52 @@ async function buildClaimUrl() {
       jumps: state.jumps,
     },
   });
+}
+
+async function prepareClaimUrl(retry) {
+  claimUrlReady = null;
+
+  if ((state.score | 0) <= 0) {
+    claimPreparing = false;
+    return;
+  }
+  if (!hasClaimCallback()) {
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = '';
+    syncClaimButton();
+    return;
+  }
+
+  const seq = ++claimPrepareSeq;
+  claimPreparing = true;
+  claimUnavailable = false;
+  claimErrorMessage = '';
+  syncClaimButton();
+
+  try {
+    const claimUrl = await buildClaimUrl();
+    if (seq !== claimPrepareSeq) return;
+    if (!claimUrl) {
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      claimPreparing = false;
+      claimUnavailable = true;
+      claimErrorMessage = '';
+      syncClaimButton();
+      return;
+    }
+    claimUrlReady = claimUrl;
+    claimPreparing = false;
+    syncClaimButton();
+  } catch (err) {
+    if (seq !== claimPrepareSeq) return;
+    console.warn('[ruby-rush] claim prepare failed:', err);
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(err);
+    syncClaimButton();
+  }
 }
 
 // =============================================================================
@@ -1682,28 +1746,19 @@ function showTouch(on) { dom.touchControls.classList.toggle('active', on); }
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
 dom.claimBtn.addEventListener('click', async () => {
   if ((state.score | 0) <= 0) { claimUnavailable = false; claimErrorMessage = ''; startGame(); return; }
-  if (!hasClaimCallback()) { syncClaimButton(); return; }
   if (claimLocked) return;
-  claimLocked = true;
-  claimErrorMessage = '';
-  syncClaimButton();
-  try {
-    const claimUrl = await buildClaimUrl();
-    if (!claimUrl) {
-      claimLocked = false;
-      claimUnavailable = true;
-      claimErrorMessage = '';
-      syncClaimButton();
-      return;
-    }
-    window.location.assign(claimUrl);
-  } catch (err) {
-    console.warn('[ruby-rush] claim submit failed:', err);
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = getClaimErrorMessage(err);
+  if (claimUrlReady) {
+    claimLocked = true;
     syncClaimButton();
+    window.location.assign(claimUrlReady);
+    return;
   }
+  claimLocked = true;
+  syncClaimButton();
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;

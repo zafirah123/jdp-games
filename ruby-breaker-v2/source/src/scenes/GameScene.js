@@ -290,7 +290,7 @@ export default class GameScene extends Phaser.Scene {
       panel.lineStyle(1.5, border, 0.95);
       panel.strokeRoundedRect(x, y, w, h, 7);
     };
-    chip(6, 7, 140, 36, P.MAROON, P.GOLD);     // RUBY (currency)
+    chip(6, 7, 140, 36, 0x10204a, P.GOLD);     // RUBY (currency) — navy fill so the red gem + gold number stand out (was MAROON, too close to the ruby icon)
     chip(150, 7, 84, 36, 0x10204a, P.BLUE_LT); // ROUND
     chip(238, 7, 98, 36, 0x10204a, P.BLUE_LT); // TIME
 
@@ -335,8 +335,9 @@ export default class GameScene extends Phaser.Scene {
       color: '#ffc72c', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(0.5).setAlpha(0).setDepth(20);
 
-    this.ballCountTx = this.add.text(W - 10, H - 14, '', {
-      fontSize: '7px', fontFamily: '"Press Start 2P", monospace', color: '#aaaaff',
+    this.ballCountTx = this.add.text(W - 12, H - 16, '', {
+      fontSize: '13px', fontFamily: '"Press Start 2P", monospace',
+      color: '#ffc72c', stroke: '#000000', strokeThickness: 4,
     }).setOrigin(1, 1).setDepth(20);
 
     this.buildControls(W);

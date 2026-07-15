@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#020d26">
 <title>Kataku</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&family=Roboto+Mono:wght@700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@500;600;700;800;900&family=Roboto+Mono:wght@700&display=swap');
 
   :root {
     --navy: #020d26;
@@ -337,6 +337,169 @@
     .key { height: 44px; font-size: 13px; }
     .key.wide { font-size: 10px; }
   }
+
+  /* ============================================================
+     STANDARDIZED JDP START SCREEN (portable template)
+     Roll this block + the #menu markup into any JDP game. Only the
+     copy (#menuTitle text, #menuSub) and the two "Powered by" images
+     change per game. Layout is adaptive from 360px phones to tablets.
+     ============================================================ */
+  #menu.jdp-start {
+    padding: 0;
+    background: #04122c;
+    align-items: stretch;
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+  .jdp-frame {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* small reserve so the orange splash stays clear of content on tall-content screens */
+    padding-bottom: clamp(96px, 24vw, 132px);
+    /* body copy on this screen uses Poppins (title overrides to Bebas Neue) */
+    font-family: 'Poppins', system-ui, sans-serif;
+    /* red-grid + navy background art (shared template asset) */
+    background: #071733 url("assets/start/bg.webp") no-repeat top center / cover;
+    overflow: hidden;
+  }
+  /* Gem placement mirrors the template (1080x1920): positions are % of the
+     frame so they scale. Bokeh = soft blurred gems behind content (z1);
+     sharp gems in front (z2, still behind the title/panel/logos at z3). */
+  .jdp-bokeh { position: absolute; z-index: 1; pointer-events: none; opacity: 0.85; }
+  .jdp-bokeh img { display: block; width: 100%; height: auto; }
+  .jdp-bk1 { width: clamp(120px, 34vw, 180px); top: 44%;  right: -9%; }  /* top-right blur */
+  .jdp-bk2 { width: clamp(130px, 38vw, 200px); top: 70%;  left: -11%; }  /* bottom-left blur */
+  .jdp-gem { position: absolute; z-index: 4; pointer-events: none; }  /* in front of logos/mascot, behind title+panel */
+  .jdp-gem img { display: block; width: 100%; height: auto; }
+  /* two faceted rubies — top corners of the red band */
+  .jdp-g1 { width: clamp(56px, 15vw, 74px);  top: 4.5%;  left: 1.5%;  transform: rotate(-8deg); }
+  .jdp-g2 { width: clamp(58px, 15.5vw, 76px);top: 4.5%;  right: 1.5%; transform: rotate(10deg); }
+  /* eight kelapa-sawit pebbles */
+  .jdp-g3 { width: clamp(24px, 7vw, 32px);   top: 2.5%;  left: 25%;  }  /* top, left of centre */
+  .jdp-g4 { width: clamp(26px, 7.5vw, 34px); top: 4%;    right: 23%; }  /* top, right of centre */
+  .jdp-g5 { width: clamp(26px, 7.5vw, 34px); top: 9%;    left: 55%;  }  /* red band, lower centre */
+  .jdp-g6 { width: clamp(28px, 8vw, 40px);   top: 45.5%; left: 24%;  }  /* beside "Powered by", left */
+  .jdp-g7 { width: clamp(28px, 8vw, 40px);   top: 45.5%; right: 23%; }  /* beside "Powered by", right */
+  .jdp-g8 { width: clamp(26px, 7.5vw, 36px); top: 53.5%; left: 4%;   }  /* far left, by MPOC */
+  .jdp-g9 { width: clamp(22px, 6.5vw, 30px); top: 66.5%; left: 43%;  }  /* below MPOC, centre */
+  .jdp-g10{ width: clamp(28px, 8vw, 38px);   top: 72.5%; right: 8%;  }  /* bottom right, by mascot */
+  /* title — Bebas Neue, gold gradient fill (180°: #ffb000→#ffd80b) */
+  .jdp-title {
+    position: relative; z-index: 5; isolation: isolate;
+    margin: clamp(58px, 14vw, 92px) 0 0;
+    padding: 0 14px;
+    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    font-weight: 400;
+    font-size: clamp(44px, 15vw, 78px);
+    line-height: 0.92;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    color: #52c5ff;   /* solid fallback if gradient-clip unsupported */
+    background: linear-gradient(90deg, #52c5ff 0%, #4459a1 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  /* gold gradient outline behind the letters (180°: #ffb000→#ffd80b) */
+  .jdp-title::before {
+    content: attr(data-text);
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    z-index: -1; padding: inherit;
+    color: transparent;
+    background: linear-gradient(180deg, #ffb000 0%, #ffd80b 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    /* uniform, close shadow offset (same for every letter) */
+    transform: translate(2px, 3px);
+    filter: drop-shadow(0 0 4px rgba(255,200,20,0.45));
+  }
+  /* instructions panel */
+  .jdp-panel {
+    position: relative; z-index: 5;
+    width: min(84%, 356px);
+    margin: clamp(16px, 5vw, 30px) 0 0;
+    padding: 20px 22px 24px;
+    background: rgba(11, 32, 74, 0.5);
+    border: 1.5px solid rgba(255,255,255,0.85);
+    border-radius: 22px;
+    text-align: center;
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  }
+  .jdp-panel .jdp-panel-head {
+    font-weight: 800; color: #fff;
+    font-size: clamp(15px, 4.4vw, 18px); margin: 0 0 10px;
+  }
+  #menu.jdp-start .sub {
+    color: rgba(255,255,255,0.9);
+    font-size: clamp(13px, 3.8vw, 15px);
+    margin: 0; line-height: 1.5;
+  }
+  /* powered-by row */
+  /* bottom margin guarantees a minimum gap between the logos and the CTA below */
+  .jdp-powered { position: relative; z-index: 3; margin: clamp(12px, 4vw, 24px) 0 clamp(14px, 4.5vw, 26px); text-align: center; }
+  .jdp-powered .lbl { color: #fff; font-size: 15px; font-weight: 600; margin: 0 0 14px; }
+  .jdp-logos { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .jdp-logos img { width: auto; object-fit: contain; }
+  /* purple→navy gradient circle behind the MPOC mark (matches the template) */
+  .jdp-mpoc-ring {
+    display: flex; align-items: center; justify-content: center;
+    width: clamp(120px, 36vw, 168px); height: clamp(120px, 36vw, 168px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%, #4b3fd0 0%, #2a2aa8 42%, #131a72 100%);
+    border: 1.5px solid rgba(255,255,255,0.28);
+    box-shadow: inset 0 2px 10px rgba(255,255,255,0.15), 0 6px 18px rgba(0,0,0,0.35);
+  }
+  .jdp-mpoc   { height: clamp(104px, 32vw, 150px); }  /* fills most of the ring, close to its edge */
+  .jdp-mascot { height: clamp(104px, 33vw, 148px); }
+  /* orange CTA */
+  #menu.jdp-start .jdp-cta {
+    position: relative; z-index: 3;
+    margin: 0;   /* flows directly under the logos; gap comes from .jdp-powered's bottom margin */
+    width: min(56%, 236px);
+    padding: 12px 20px;
+    border: 3px solid #FFD21E;
+    border-radius: 36px;
+    background: linear-gradient(180deg, #ff8f22 0%, #f26f0c 100%);
+    color: #fff; font-weight: 800; letter-spacing: 0.5px;
+    font-size: clamp(15px, 4.2vw, 19px);
+    text-transform: none;
+    box-shadow: 0 8px 0 rgba(150,60,0,0.45), 0 14px 26px rgba(0,0,0,0.35);
+    cursor: pointer;
+  }
+  #menu.jdp-start .jdp-cta:active { transform: translateY(3px); box-shadow: 0 5px 0 rgba(150,60,0,0.45), 0 8px 16px rgba(0,0,0,0.35); }
+  /* bottom orange liquid blob (shared template asset) */
+  .jdp-blob {
+    position: absolute; z-index: 1; left: 0; right: 0; bottom: -1px;
+    width: 100%; pointer-events: none;
+  }
+  .jdp-blob img { display: block; width: 100%; height: auto; }
+  /* controls line inside the instructions panel */
+  #menu.jdp-start .jdp-panel .hint {
+    margin: 12px 0 0; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.18);
+    font-size: clamp(11px, 3.2vw, 13px);
+    color: rgba(255,255,255,0.72); line-height: 1.9;
+  }
+  #menu.jdp-start .jdp-panel .hint kbd {
+    background: rgba(255,214,51,0.16); border: 1px solid rgba(255,214,51,0.35);
+    padding: 2px 7px; border-radius: 5px; color: #FFD633;
+    font-family: inherit; font-size: 0.92em; white-space: nowrap;
+  }
+  /* device-adaptive controls: keyboard by default, touch on coarse pointers */
+  #menu.jdp-start .jdp-panel .hint-touch { display: none; }
+  @media (hover: none) and (pointer: coarse) {
+    #menu.jdp-start .jdp-panel .hint-keys  { display: none; }
+    #menu.jdp-start .jdp-panel .hint-touch { display: inline; }
+  }
+  /* hide only the best-score line on this screen (controls now shown above) */
+  #menu.jdp-start .best { display: none; }
+
 </style>
 </head>
 <body>
@@ -372,13 +535,42 @@
   <div id="keyboard" class="hidden"></div>
 </div>
 
-<div id="menu" class="overlay">
-  <div class="card">
-    <h1 id="menuTitle">KATAKU</h1>
-    <p id="menuSub"></p>
+<!-- Start menu — standardized JDP template (see .jdp-* CSS above) -->
+<div id="menu" class="overlay jdp-start">
+  <div class="jdp-frame">
+    <span class="jdp-bokeh jdp-bk1"><img src="assets/start/gem-bokeh.webp" alt=""></span>
+    <span class="jdp-bokeh jdp-bk2"><img src="assets/start/gem-bokeh.webp" alt=""></span>
+    <span class="jdp-gem jdp-g1"><img src="assets/start/gem-ruby.webp" alt=""></span>
+    <span class="jdp-gem jdp-g2"><img src="assets/start/gem-ruby.webp" alt=""></span>
+    <span class="jdp-gem jdp-g3"><img src="assets/start/gem-a.webp" alt=""></span>
+    <span class="jdp-gem jdp-g4"><img src="assets/start/gem-b.webp" alt=""></span>
+    <span class="jdp-gem jdp-g5"><img src="assets/start/gem-a.webp" alt=""></span>
+    <span class="jdp-gem jdp-g6"><img src="assets/start/gem-b.webp" alt=""></span>
+    <span class="jdp-gem jdp-g7"><img src="assets/start/gem-a.webp" alt=""></span>
+    <span class="jdp-gem jdp-g8"><img src="assets/start/gem-b.webp" alt=""></span>
+    <span class="jdp-gem jdp-g9"><img src="assets/start/gem-a.webp" alt=""></span>
+    <span class="jdp-gem jdp-g10"><img src="assets/start/gem-b.webp" alt=""></span>
+
+    <h1 id="menuTitle" class="jdp-title" data-text="KATAKU">KATAKU</h1>
+
+    <div class="jdp-panel">
+      <div class="jdp-panel-head">How to Play</div>
+      <p class="sub" id="menuSub"></p>
+      <p class="hint" id="menuHint"></p>
+    </div>
+
+    <div class="jdp-powered">
+      <p class="lbl">Powered by</p>
+      <div class="jdp-logos">
+        <span class="jdp-mpoc-ring"><img class="jdp-mpoc" src="assets/start/mpoc.webp" alt="MPOC"></span>
+        <img class="jdp-mascot" src="assets/start/mascot.webp" alt="">
+      </div>
+    </div>
+
     <p class="best" id="bestText">&nbsp;</p>
-    <button id="startBtn" class="cta" type="button"></button>
-    <p id="menuHint" style="font-size:12px;margin-top:14px;"></p>
+    <button id="startBtn" class="jdp-cta" type="button"></button>
+
+    <div class="jdp-blob"><img src="assets/start/blob.webp" alt=""></div>
   </div>
 </div>
 
@@ -466,7 +658,8 @@ const COPY = {
     claimPreparing: 'Preparing…',
     skip: 'SKIP (−15)',
     menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
-    menuHint: 'Tip: green = right letter & spot, yellow = wrong spot, gray = not in the word.',
+    hintKeys:  'Type letters · <kbd>Enter</kbd> submit · <kbd>⌫</kbd> delete',
+    hintTouch: 'Tap the on-screen keyboard to guess',
     best: 'Best',
     final: 'Final score',
     solved: 'Puzzles solved',
@@ -490,7 +683,8 @@ const COPY = {
     claimPreparing: 'Sedang bersedia…',
     skip: 'LANGKAU (−15)',
     menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
-    menuHint: 'Tip: hijau = huruf & tempat betul, kuning = tempat salah, kelabu = tiada dalam perkataan.',
+    hintKeys:  'Taip huruf · <kbd>Enter</kbd> hantar · <kbd>⌫</kbd> padam',
+    hintTouch: 'Ketuk papan kekunci pada skrin',
     best: 'Terbaik',
     final: 'Skor akhir',
     solved: 'Teka selesai',
@@ -654,7 +848,9 @@ const dom = {
 
 // Apply localized strings
 dom.menuSub.textContent = COPY.menuSub;
-dom.menuHint.textContent = COPY.menuHint;
+dom.menuHint.innerHTML =
+  '<span class="hint-touch">' + COPY.hintTouch + '</span>' +
+  '<span class="hint-keys">'  + COPY.hintKeys  + '</span>';
 dom.startBtn.textContent = COPY.start;
 dom.skipBtn.textContent = COPY.skip;
 dom.newBestLabel.textContent = COPY.newBest;

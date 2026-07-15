@@ -1090,7 +1090,7 @@ document.getElementById('claimBtn').addEventListener('click', async ()=>{
 });
 document.getElementById('claimBtn').addEventListener('touchstart', ()=>{
   claimTouchArmed = true;
-}, { passive:false });
+}, { passive:true });
 document.getElementById('claimBtn').addEventListener('touchend', (e)=>{
   e.preventDefault();
   e.stopPropagation();

@@ -548,6 +548,14 @@ missing, expired, malformed, or invalid, keep the CTA disabled and show the
 standard unavailable copy instead of leaving the CTA apparently tappable:
 `CALLBACK UNAVAILABLE` (en) / `PANGGIL BALIK TIADA` (ms).
 
+If claim URL generation depends on async work, prefer a two-step handoff:
+prepare the final URL as soon as the end-of-game state is shown, cache it,
+and then perform a synchronous `window.location.assign(...)` /
+`location.href = ...` inside the final tap handler. This is especially
+important for Safari / WKWebView, where awaiting WebCrypto or other async
+work inside the tap handler can cause the later navigation to be dropped as a
+stale user gesture with no visible error.
+
 Timeout handling follows the same rule: if a player times out and then taps
 `CLAIM SCORE`, either the callback still resolves and the page redirects, or
 the CTA transitions into the unavailable state above. It must never remain a
@@ -609,6 +617,8 @@ single-CTA claim flow and do not offer in-page restart.
   accept only valid `https` URLs.
 - Make claim-preparation helpers fail closed and return `null` / unavailable
   instead of throwing where possible.
+- If claim URL generation is async, prepare it before the final tap and keep
+  the tap handler to a synchronous navigation commit.
 - Disable the CTA immediately on tap and keep it disabled during preparation
   and redirect.
 - On missing, expired, malformed, or invalid callback context, keep the CTA

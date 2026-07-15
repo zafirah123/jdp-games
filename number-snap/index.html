@@ -283,6 +283,7 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
+    claimPreparing: 'Preparing…',
     menuSub: 'Drag tiles to the grid. Build a connected path of 3–5 consecutive numbers to clear it. Chain clears for combos.',
     bestPrefix: 'Best',
     gridLocked: 'GRID LOCKED!',
@@ -296,6 +297,7 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
+    claimPreparing: 'Sedang bersedia…',
     menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3–5 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
     bestPrefix: 'Terbaik',
     gridLocked: 'GRID TERSEKAT!',
@@ -323,6 +325,7 @@ const CONFIG = {
   REROLL_MAX_BANK: 3,
   REROLL_START_BANK: 1,
   CLAIM_FALLBACK_URL: null,
+  CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
   STORAGE_KEY_BEST: 'number-snap:best',
   STORAGE_KEY_MUTE: 'number-snap:mute',
   URGENCY_SECONDS: 10,
@@ -811,6 +814,9 @@ function startRound() {
   claimUnavailable = false;
   claimErrorMessage = '';
   claimTouchArmed = false;
+  claimUrlReady = null;
+  claimPreparing = false;
+  claimPrepareSeq++; // invalidate any in-flight prepare from the previous round
   state.phase = 'PLAYING';
   state.board = emptyBoard();
   state.score = 0;
@@ -860,6 +866,7 @@ function endRound(titleKey) {
   dom.goBest.textContent = `${COPY.bestPrefix}: ${state.best}`;
   dom.goNewBest.classList.toggle('hidden', !isBest);
   syncClaimButton();
+  prepareClaimUrl(); // fire-and-forget — resolves well before the user taps claim
   dom.gameOver.classList.remove('hidden');
   dom.fabRow.classList.add('hidden');
   dom.timeVal.classList.remove('pulse-urgent');
@@ -874,6 +881,9 @@ let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
 let claimTouchArmed = false;
+let claimUrlReady = null;   // pre-built URL, resolved ahead of the tap (see prepareClaimUrl)
+let claimPrepareSeq = 0;    // guards against a stale prepare() resolving after a new round started
+let claimPreparing = false; // true while prepareClaimUrl() is in flight — button stays disabled
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -891,6 +901,14 @@ function syncClaimButton() {
     dom.claimNote.classList.add('hidden');
     dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
+    return;
+  }
+
+  if (claimPreparing) {
+    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.disabled = true;
+    dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
@@ -916,6 +934,56 @@ async function buildClaimUrl() {
     fallbackUrl: CONFIG.CLAIM_FALLBACK_URL,
   });
 }
+
+async function prepareClaimUrl(retry) {
+  claimUrlReady = null;
+
+  if (isZeroScore()) {
+    claimPreparing = false;
+    return; // no claim to prepare — syncClaimButton() shows the retry state instead
+  }
+
+  if (!hasClaimCallback()) {
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = '';
+    syncClaimButton();
+    return;
+  }
+
+  const seq = ++claimPrepareSeq;
+  claimPreparing = true;
+  claimUnavailable = false;
+  claimErrorMessage = '';
+  syncClaimButton(); // shows "Preparing…" and disables the button right away
+
+  try {
+    const url = await buildClaimUrl();
+    if (seq !== claimPrepareSeq) return; // superseded by a newer round/prepare
+
+    if (!url) {
+      console.warn('[number-snap] claim prepare returned no url');
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; } // one retry, e.g. transient WebCrypto/context issue
+      claimPreparing = false;
+      claimUnavailable = true;
+      syncClaimButton();
+      return;
+    }
+
+    claimUrlReady = url;
+    claimPreparing = false;
+    syncClaimButton(); // enables the button now that the URL is ready
+  } catch (e) {
+    if (seq !== claimPrepareSeq) return;
+    console.warn('[number-snap] claim prepare failed:', e);
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    claimPreparing = false;
+    claimUnavailable = true;
+    claimErrorMessage = getClaimErrorMessage(e);
+    syncClaimButton();
+  }
+}
+
 dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
     claimLocked = false;
@@ -924,35 +992,27 @@ dom.claimBtn.addEventListener('click', async () => {
     startRound();
     return;
   }
-  if (!hasClaimCallback()) {
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = '';
+  if (claimLocked) return;
+
+  if (claimUrlReady) {
+    // Fast path: already resolved ahead of time, so this is a synchronous
+    // commit in the same tick as the tap — safe on iOS WebKit.
+    claimLocked = true;
     syncClaimButton();
+    window.location.assign(claimUrlReady);
     return;
   }
-  if (claimLocked) return;
+
+  // Defensive only: syncClaimButton() keeps the button disabled whenever
+  // claimUrlReady is null, so this shouldn't normally be reachable. If state
+  // somehow got out of sync, re-run the one prepare flow (rather than
+  // duplicating its build/error handling here) and commit if it resolves.
   claimLocked = true;
-  claimErrorMessage = '';
   syncClaimButton();
-  try {
-    const claimUrl = await buildClaimUrl();
-    if (!claimUrl) {
-      console.warn('[number-snap] claim submit unavailable: invalid or missing callback context');
-      claimLocked = false;
-      claimUnavailable = true;
-      claimErrorMessage = '';
-      syncClaimButton();
-      return;
-    }
-    window.location.assign(claimUrl);
-  } catch (e) {
-    console.warn('[number-snap] claim submit failed:', e);
-    claimLocked = false;
-    claimUnavailable = true;
-    claimErrorMessage = getClaimErrorMessage(e);
-    syncClaimButton();
-  }
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;
@@ -1306,14 +1366,3 @@ requestAnimationFrame(tick);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-

@@ -98,6 +98,10 @@ single-file games alike.
    - Guard the submit handler when building the callback URL. On tap, disable
      the claim CTA immediately and keep it disabled while preparation /
      submission is in progress. If redirect succeeds, the page navigates away.
+   - If claim URL generation depends on async work (for example WebCrypto
+     encryption), resolve it before the final tap when practical and keep the
+     tap handler to a synchronous `window.location.assign(...)` / `location.href`
+     commit. This avoids gesture-loss issues in Safari / WKWebView.
    - If claim preparation fails because callback context is missing, expired,
      malformed, or invalid, leave the CTA disabled and show an explicit
      unavailable/error state instead of making it clickable again. Standard

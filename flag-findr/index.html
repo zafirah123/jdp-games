@@ -193,6 +193,7 @@ const CONFIG = {
   rampCompleteAt: 0.85,
   urgentSecs: 10,
   claimFallbackUrl: null,
+  claimPrepareRetryDelayMs: 1500,
   // bubble look ramps ({start,end}) over the round — peak by rampCompleteAt
   tokenRadius: { start: 38, end: 25 },
   rotJitter:   { start: 0.25, end: 1.0 },
@@ -1001,7 +1002,6 @@ let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 function endRun(byTimer){
   if (state.scene !== 'play') return;
   state.scene = 'over';
@@ -1098,7 +1098,7 @@ async function prepareClaimUrl(retry){
     if (seq !== claimPrepareSeq) return;
     if (!url){
       console.warn('[flag-findr] claim prepare unavailable: invalid or missing callback context');
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
       claimPreparing = false;
       claimUnavailable = true;
       syncClaimButton();
@@ -1110,7 +1110,7 @@ async function prepareClaimUrl(retry){
   } catch(err){
     if (seq !== claimPrepareSeq) return;
     console.warn('[flag-findr] claim prepare failed', err);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
     claimPreparing = false;
     claimUnavailable = true;
     claimErrorMessage = getClaimErrorMessage(err);

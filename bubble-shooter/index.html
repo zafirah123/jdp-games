@@ -354,7 +354,6 @@
         let claimUrlReady = null;
         let claimPrepareSeq = 0;
         let claimPreparing = false;
-        const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
         function hasClaimCallback() {
             return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
         }
@@ -428,7 +427,7 @@
                 const claimUrl = await buildClaimUrl(score);
                 if (seq !== claimPrepareSeq) return;
                 if (!claimUrl) {
-                    if (!retry) { setTimeout(() => prepareClaimUrl(score, true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+                    if (!retry) { setTimeout(() => prepareClaimUrl(score, true), Game.claimPrepareRetryDelayMs); return; }
                     claimPreparing = false;
                     claimUnavailable = true;
                     syncRestartButton();
@@ -440,7 +439,7 @@
             } catch (e) {
                 if (seq !== claimPrepareSeq) return;
                 console.warn('[bubble-shooter] claim prepare failed:', e);
-                if (!retry) { setTimeout(() => prepareClaimUrl(score, true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+                if (!retry) { setTimeout(() => prepareClaimUrl(score, true), Game.claimPrepareRetryDelayMs); return; }
                 claimPreparing = false;
                 claimUnavailable = true;
                 claimErrorMessage = getClaimErrorMessage(e);
@@ -786,6 +785,7 @@
             // Game State
             isPlaying: false,
             isPaused: false,
+            claimPrepareRetryDelayMs: 1500,
             timer: 180, // 3 Minutes = 180 seconds
             timerInterval: null,
             

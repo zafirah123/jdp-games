@@ -457,6 +457,7 @@ const CONFIG = {
   SCORE_AWARD_BRAKE_START: 460,
   SCORE_AWARD_BRAKE_FULL:  540,
   SCORE_AWARD_BRAKE_MAX:   0.9,
+  CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
 
   // Tiny cooldown between drops — just enough to debounce a stray double-tap.
   DROP_COOLDOWN_S: 0.08,
@@ -1445,7 +1446,6 @@ let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1522,7 +1522,7 @@ async function prepareClaimUrl(retry) {
       syncClaimButton();
     } else {
       console.log('[gem-merge] claim prepare unavailable: invalid or missing callback context', extra);
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
       claimPreparing = false;
       claimUnavailable = true;
       syncClaimButton();
@@ -1530,7 +1530,7 @@ async function prepareClaimUrl(retry) {
   } catch (e) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[gem-merge] claim prepare failed:', e);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     claimPreparing = false;
     claimUnavailable = true;
     claimErrorMessage = getClaimErrorMessage(e);

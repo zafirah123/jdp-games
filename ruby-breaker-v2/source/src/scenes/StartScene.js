@@ -12,24 +12,17 @@ export default class StartScene extends Phaser.Scene {
 
     const W = GAME_W, H = GAME_H;
     this.add.image(W / 2, H / 2, 'background');
-
-    this.spawnFloatingGems(W, H);
-    this.buildTitle(W);
-    this.buildMascot(W, H);
-    this.buildButtons(W, H);
-    this.buildFooter(W, H);
-
     this.cameras.main.fadeIn(400, 0, 0, 0);
     AudioManager.playBGM();
 
-    // mute button
-    const muteBtn = this.add.text(W - 12, 12, '🔊', {
-      fontSize: '22px',
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
-    muteBtn.on('pointerdown', () => {
-      const isMuted = AudioManager.toggleMute();
-      muteBtn.setText(isMuted ? '🔇' : '🔊');
-    });
+    // The visible start menu is the standardized JDP DOM overlay in index.html.
+    // Expose the hook its START button calls to launch the game. (The old native
+    // Phaser menu — logo/mascot/buttons/footer/mute — is intentionally not drawn.)
+    window.__jdpStartGame = () => {
+      AudioManager.play('click');
+      AudioManager.stopBGM();
+      this.scene.start('GameScene', { level: 1, score: 0, lives: 3 });
+    };
   }
 
   buildTitle(W) {

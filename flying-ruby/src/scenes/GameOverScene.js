@@ -1,6 +1,6 @@
-import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.1';
-import { addMuteButton } from '../muteButton.js?v=20260717.1';
-import { COPY } from '../copy.js?v=20260717.1';
+import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.2';
+import { addMuteButton } from '../muteButton.js?v=20260717.2';
+import { COPY } from '../copy.js?v=20260717.2';
 import { canClaimScore, claimScore } from '../claimScore.js?v=20260708.1';
 
 const BEST_KEY = 'flying-ruby:best';

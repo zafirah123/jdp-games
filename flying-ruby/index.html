@@ -256,17 +256,27 @@
     </div>
   </div>
   <script>
+    // Gate the Phaser game behind the DOM start screen. StartScene exposes
+    // window.__jdpStartGame once Boot completes; poll for readiness (no click
+    // spin-loop) and only launch when it's actually available.
     document.addEventListener('DOMContentLoaded', function () {
       var ov  = document.getElementById('startOverlay');
       var btn = document.getElementById('jdpStartBtn');
-      btn.addEventListener('click', function go() {
-        if (window.__jdpStartGame) { ov.classList.add('hidden'); window.__jdpStartGame(); }
-        else { setTimeout(function(){ btn.click(); }, 80); }
+      var ready = (typeof window.__jdpStartGame === 'function');
+      if (!ready) {
+        var poll = setInterval(function () {
+          if (typeof window.__jdpStartGame === 'function') { ready = true; clearInterval(poll); }
+        }, 60);
+      }
+      btn.addEventListener('click', function () {
+        if (!ready) return;            // game not booted yet — ignore, user can tap again
+        ov.classList.add('hidden');
+        window.__jdpStartGame();
       });
     });
   </script>
 
   <script src="./vendor/phaser.min.js"></script>
-  <script type="module" src="./src/main.js?v=20260717.1"></script>
+  <script type="module" src="./src/main.js?v=20260717.2"></script>
 </body>
 </html>

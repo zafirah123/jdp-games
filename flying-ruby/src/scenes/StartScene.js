@@ -1,6 +1,6 @@
-import { PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.1';
-import { addMuteButton } from '../muteButton.js?v=20260717.1';
-import { COPY } from '../copy.js?v=20260717.1';
+import { PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.2';
+import { addMuteButton } from '../muteButton.js?v=20260717.2';
+import { COPY } from '../copy.js?v=20260717.2';
 
 export class StartScene extends Phaser.Scene {
   constructor() {
@@ -16,11 +16,16 @@ export class StartScene extends Phaser.Scene {
     // button/mute and start-bgm are intentionally not created here.
     this._drawBackground(width, height);
 
-    // Hook the DOM START button calls to launch the game. Unlock Phaser audio
-    // here since the call originates from the DOM click (a real user gesture).
+    // Hook the DOM START button calls to launch the game. Try to nudge the
+    // audio context (the call comes from a real DOM click gesture), but never
+    // let audio issues block the scene transition. Phaser also unlocks audio
+    // naturally on the first in-game tap (the flap).
     window.__jdpStartGame = () => {
-      if (this.sound && this.sound.context && this.sound.context.state === 'suspended') this.sound.context.resume();
-      if (this.sound && this.sound.unlock) this.sound.unlock();
+      try {
+        if (this.sound && this.sound.context && this.sound.context.state === 'suspended') {
+          this.sound.context.resume();
+        }
+      } catch (e) { /* ignore — audio unlocks on first flap anyway */ }
       this.scene.start('GameScene', { score: 0, timeUsedMs: 0 });
     };
   }

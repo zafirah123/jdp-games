@@ -692,6 +692,7 @@ const CONFIG = {
   RESUME_INVULN_SEC: 1.6,       // grace window after a Continue
   STORAGE_KEY_BEST: 'ruby-rush:best',
   STORAGE_KEY_MUTE: 'ruby-rush:mute',
+  CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
 };
 
 // Touch devices get a gentler combat balance — enemies fall in 2 orbs and the
@@ -1809,7 +1810,6 @@ let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 function hasClaimCallback() {
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
@@ -1891,7 +1891,7 @@ async function prepareClaimUrl(retry) {
     const claimUrl = await buildClaimUrl();
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
       claimPreparing = false;
       claimUnavailable = true;
       claimErrorMessage = '';
@@ -1904,7 +1904,7 @@ async function prepareClaimUrl(retry) {
   } catch (err) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[ruby-rush] claim prepare failed:', err);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     claimPreparing = false;
     claimUnavailable = true;
     claimErrorMessage = getClaimErrorMessage(err);

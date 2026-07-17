@@ -526,6 +526,7 @@ const CONFIG = {
   STORAGE_KEY_MUTE: 'susun:mute',
   GAME_NAME: 'susun',
   CLAIM_FALLBACK_URL: null,
+  CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
 };
 
 const COS30 = Math.cos(Math.PI / 6);
@@ -1230,7 +1231,6 @@ let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1306,7 +1306,7 @@ async function prepareClaimUrl(retry) {
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[susun] claim prepare unavailable: invalid or missing callback context');
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
       claimPreparing = false;
       claimUnavailable = true;
       syncClaimButton();
@@ -1318,7 +1318,7 @@ async function prepareClaimUrl(retry) {
   } catch (e) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[susun] claim prepare failed:', e);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     claimPreparing = false;
     claimUnavailable = true;
     claimErrorMessage = getClaimErrorMessage(e);

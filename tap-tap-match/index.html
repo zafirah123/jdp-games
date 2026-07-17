@@ -305,6 +305,7 @@ const CONFIG = {
   // CLAIM SCORE - CLAUDE.md section 6.5
   gameName: 'tap-tap-match',
   claimFallbackUrl: null,
+  claimPrepareRetryDelayMs: 1500,
 };
 
 // ============================================================
@@ -537,7 +538,6 @@ let claimLocked = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'goTitle');
 if (claimContext.pageTitle && claimContext.pageTitle.trim()) {
@@ -666,7 +666,7 @@ async function prepareClaimUrl(retry) {
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[tap-tap-match] claim prepare unavailable: invalid or missing callback context');
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
       claimPreparing = false;
       state.claimUnavailable = true;
       syncGameOverUi();
@@ -678,7 +678,7 @@ async function prepareClaimUrl(retry) {
   } catch (err) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[tap-tap-match] claim prepare failed:', err);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
     claimPreparing = false;
     state.claimUnavailable = true;
     state.claimErrorMessage = getClaimErrorMessage(err);

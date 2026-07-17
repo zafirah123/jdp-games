@@ -339,6 +339,7 @@
 /* ----------------------------- CONFIG ------------------------------------- */
 const CONFIG = {
   gameName: 'dadu-didik',
+  claimPrepareRetryDelayMs: 1500,
   cols: 5, rows: 5,
   roundMs: 3 * 60 * 1000,
   rampCompleteAt: 0.85,
@@ -1062,7 +1063,6 @@ let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-const CLAIM_PREPARE_RETRY_DELAY_MS = 1500;
 function syncEndCta(){
   const cta=document.getElementById('ctaBtn');
   const note=document.getElementById('claimNote');
@@ -1127,7 +1127,7 @@ async function prepareClaimUrl(retry){
     const url=await buildClaimUrl(payload);
     if(seq!==claimPrepareSeq) return;
     if(!url){
-      if(!retry) { setTimeout(()=>prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+      if(!retry) { setTimeout(()=>prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
       STATE.claimUnavailable=true;
       STATE.claimErrorMessage='';
       claimPreparing=false;
@@ -1140,7 +1140,7 @@ async function prepareClaimUrl(retry){
   }catch(err){
     if(seq!==claimPrepareSeq) return;
     console.warn('[dadu-didik] claim prepare failed:', err);
-    if(!retry) { setTimeout(()=>prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
+    if(!retry) { setTimeout(()=>prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
     STATE.claimUnavailable=true;
     STATE.claimErrorMessage=getClaimErrorMessage(err);
     claimPreparing=false;

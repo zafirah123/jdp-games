@@ -521,6 +521,7 @@ const CONFIG = {
   GAME_NAME: 'susun',
   CLAIM_FALLBACK_URL: null,
   CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
+  CLAIM_PREPARE_TIMEOUT_MS: 8000,
 };
 
 const COS30 = Math.cos(Math.PI / 6);
@@ -1236,6 +1237,16 @@ function getClaimErrorMessage(error) {
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
 function syncClaimButton() {
   if (isZeroScore()) {
     dom.claimNote.classList.add('hidden');
@@ -1296,7 +1307,7 @@ async function prepareClaimUrl(retry) {
   syncClaimButton();
 
   try {
-    const claimUrl = await buildClaimUrl();
+    const claimUrl = await withTimeout(buildClaimUrl(), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[susun] claim prepare unavailable: invalid or missing callback context');

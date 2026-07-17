@@ -507,6 +507,7 @@ const CONFIG = {
   GAME_NAME: 'ball-rush',
   CLAIM_FALLBACK_URL: null,
   CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
+  CLAIM_PREPARE_TIMEOUT_MS: 8000,
   HUES: [212, 268, 330, 158, 28, 192, 96, 240],
 };
 
@@ -1586,6 +1587,15 @@ function getClaimErrorMessage(error) {
   const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
 function syncClaimButton() {
   if (isZeroScore()) {
     dom.claimNote.classList.add('hidden');
@@ -1640,7 +1650,7 @@ async function prepareClaimUrl(retry) {
   syncClaimButton();
 
   try {
-    const claimUrl = await buildClaimUrl();
+    const claimUrl = await withTimeout(buildClaimUrl(), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[ball-rush] claim prepare unavailable: invalid or missing callback context');

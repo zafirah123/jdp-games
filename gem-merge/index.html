@@ -653,6 +653,7 @@ const CONFIG = {
   SCORE_AWARD_BRAKE_FULL:  540,
   SCORE_AWARD_BRAKE_MAX:   0.9,
   CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
+  CLAIM_PREPARE_TIMEOUT_MS: 8000,
 
   // Tiny cooldown between drops — just enough to debounce a stray double-tap.
   DROP_COOLDOWN_S: 0.08,
@@ -1655,6 +1656,16 @@ function getClaimErrorMessage(error) {
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
 async function submitClaim() {
   if (isZeroScore()) {
     claimErrorMessage = '';
@@ -1703,14 +1714,14 @@ async function prepareClaimUrl(retry) {
   syncClaimButton();
 
   try {
-    const url = await window.ClaimCallback.buildClaimUrl({
+    const url = await withTimeout(window.ClaimCallback.buildClaimUrl({
       claimContext,
       score: Math.max(0, state.score | 0),
       gameName: 'gem-merge',
       fallbackUrl: null,
       extraData: extra,
       extraQuery: extra,
-    });
+    }), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
 
     if (seq !== claimPrepareSeq) return;
     if (url) {

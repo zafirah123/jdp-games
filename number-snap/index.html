@@ -523,6 +523,7 @@ const CONFIG = {
   REROLL_START_BANK: 1,
   CLAIM_FALLBACK_URL: null,
   CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
+  CLAIM_PREPARE_TIMEOUT_MS: 8000,
   STORAGE_KEY_BEST: 'number-snap:best',
   STORAGE_KEY_MUTE: 'number-snap:mute',
   URGENCY_SECONDS: 10,
@@ -1097,6 +1098,16 @@ function getClaimErrorMessage(error) {
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
 function syncClaimButton() {
   if (isZeroScore()) {
     dom.claimNote.classList.add('hidden');
@@ -1159,7 +1170,7 @@ async function prepareClaimUrl(retry) {
   syncClaimButton(); // shows "Preparing…" and disables the button right away
 
   try {
-    const url = await buildClaimUrl();
+    const url = await withTimeout(buildClaimUrl(), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
     if (seq !== claimPrepareSeq) return; // superseded by a newer round/prepare
 
     if (!url) {

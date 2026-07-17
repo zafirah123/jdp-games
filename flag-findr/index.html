@@ -194,6 +194,7 @@ const CONFIG = {
   urgentSecs: 10,
   claimFallbackUrl: null,
   claimPrepareRetryDelayMs: 1500,
+  claimPrepareTimeoutMs: 8000,
   // bubble look ramps ({start,end}) over the round — peak by rampCompleteAt
   tokenRadius: { start: 38, end: 25 },
   rotJitter:   { start: 0.25, end: 1.0 },
@@ -1037,6 +1038,15 @@ function getClaimErrorMessage(error){
   const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
+function withTimeout(promise, ms){
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
 function syncClaimButton(){
   const claimBtn = document.getElementById('claimBtn');
   const claimNote = document.getElementById('claimNote');
@@ -1094,7 +1104,7 @@ async function prepareClaimUrl(retry){
   syncClaimButton();
 
   try {
-    const url = await buildClaimUrl();
+    const url = await withTimeout(buildClaimUrl(), CONFIG.claimPrepareTimeoutMs);
     if (seq !== claimPrepareSeq) return;
     if (!url){
       console.warn('[flag-findr] claim prepare unavailable: invalid or missing callback context');

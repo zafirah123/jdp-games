@@ -306,6 +306,7 @@ const CONFIG = {
   gameName: 'tap-tap-match',
   claimFallbackUrl: null,
   claimPrepareRetryDelayMs: 1500,
+  claimPrepareTimeoutMs: 8000,
 };
 
 // ============================================================
@@ -640,6 +641,16 @@ function syncGameOverUi() {
   gameOverOverlay.classList.remove('hidden');
 }
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
 async function prepareClaimUrl(retry) {
   claimUrlReady = null;
 
@@ -662,7 +673,7 @@ async function prepareClaimUrl(retry) {
   syncClaimButton();
 
   try {
-    const claimUrl = await buildClaimUrl();
+    const claimUrl = await withTimeout(buildClaimUrl(), CONFIG.claimPrepareTimeoutMs);
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[tap-tap-match] claim prepare unavailable: invalid or missing callback context');

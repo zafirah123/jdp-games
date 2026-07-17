@@ -644,6 +644,7 @@ const CONFIG = {
   // not a public hardcoded URL in the game bundle.
   CLAIM_URL: null,
   CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
+  CLAIM_PREPARE_TIMEOUT_MS: 8000,
 };
 
 // =============================================================================
@@ -1476,6 +1477,15 @@ function getClaimErrorMessage(error) {
   const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
 
 function syncClaimButton() {
   if (isZeroScore()) {
@@ -1543,7 +1553,7 @@ async function prepareClaimUrl(retry) {
   syncClaimButton();
 
   try {
-    const claimUrl = await buildClaimUrl();
+    const claimUrl = await withTimeout(buildClaimUrl(), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[kataku] claim prepare unavailable: invalid or missing callback context');

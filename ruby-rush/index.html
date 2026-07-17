@@ -687,6 +687,7 @@ const CONFIG = {
   STORAGE_KEY_BEST: 'ruby-rush:best',
   STORAGE_KEY_MUTE: 'ruby-rush:mute',
   CLAIM_PREPARE_RETRY_DELAY_MS: 1500,
+  CLAIM_PREPARE_TIMEOUT_MS: 8000,
 };
 
 // Touch devices get a gentler combat balance — enemies fall in 2 orbs and the
@@ -1813,6 +1814,16 @@ function getClaimErrorMessage(error) {
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timed out')), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); }
+    );
+  });
+}
+
 function syncClaimButton() {
   if ((state.score | 0) <= 0) {
     dom.claimNote.classList.add('hidden');
@@ -1882,7 +1893,7 @@ async function prepareClaimUrl(retry) {
   syncClaimButton();
 
   try {
-    const claimUrl = await buildClaimUrl();
+    const claimUrl = await withTimeout(buildClaimUrl(), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }

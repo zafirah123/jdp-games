@@ -354,12 +354,22 @@
         let claimUrlReady = null;
         let claimPrepareSeq = 0;
         let claimPreparing = false;
+        const CLAIM_PREPARE_TIMEOUT_MS = 8000;
         function hasClaimCallback() {
             return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
         }
         function getClaimErrorMessage(error) {
             const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
             return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
+        }
+        function withTimeout(promise, ms) {
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => reject(new Error('timed out')), ms);
+                promise.then(
+                    (value) => { clearTimeout(timer); resolve(value); },
+                    (error) => { clearTimeout(timer); reject(error); }
+                );
+            });
         }
         function syncRestartButton() {
             const restartBtn = document.getElementById('restart-btn');
@@ -424,7 +434,7 @@
             syncRestartButton();
 
             try {
-                const claimUrl = await buildClaimUrl(score);
+                const claimUrl = await withTimeout(buildClaimUrl(score), CLAIM_PREPARE_TIMEOUT_MS);
                 if (seq !== claimPrepareSeq) return;
                 if (!claimUrl) {
                     if (!retry) { setTimeout(() => prepareClaimUrl(score, true), Game.claimPrepareRetryDelayMs); return; }

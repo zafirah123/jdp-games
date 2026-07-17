@@ -7,7 +7,7 @@
 <title>Ball Rush — JDP Games</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   html, body {
@@ -239,30 +239,42 @@
     position: relative; z-index: 5; isolation: isolate;
     margin: clamp(58px, 14vw, 92px) 0 0;
     padding: 0 14px;
-    font-family: 'Bebas Neue', 'Arial Narrow', sans-serif;
+    /* heavy condensed display face (matches the arcade title reference) */
+    font-family: 'Anton', 'Bebas Neue', sans-serif;
     font-weight: 400;
-    font-size: clamp(44px, 15vw, 78px);
-    line-height: 0.92;
-    letter-spacing: 2px;
+    font-size: clamp(42px, 14vw, 74px);
+    line-height: 1.0;
+    letter-spacing: 1px;
     text-transform: uppercase;
     text-align: center;
-    color: #52c5ff;   /* solid fallback if gradient-clip unsupported */
-    background: linear-gradient(90deg, #52c5ff 0%, #4459a1 100%);
-    -webkit-background-clip: text; background-clip: text;
+    /* the visible face is the ::after gradient; the real <h1> is transparent and just
+       carries layout + the neon glow (background-clip:text only paints on the pseudo here) */
+    color: #ffd23f;   /* solid fallback if background-clip:text unsupported */
     -webkit-text-fill-color: transparent;
+    /* faint cool glow only — the dark drop shadow is the separate ::before layer below,
+       kept OFF the gold face so the letters keep their bright colour */
+    text-shadow: 0 0 12px rgba(120,180,255,0.22);
   }
-  /* gold gradient outline behind the letters (180°: #ffb000→#ffd80b) */
+  /* dark letter-shaped shadow BEHIND the gold — offset copy, doesn't tint the face */
   .jdp-title::before {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
     z-index: -1; padding: inherit;
-    color: transparent;
+    font-family: 'Anton', 'Bebas Neue', sans-serif !important;
+    color: rgba(0,0,0,0.55); -webkit-text-fill-color: rgba(0,0,0,0.55);
+    transform: translate(3px, 5px);
+    filter: blur(0.6px);
+  }
+  /* golden linear-gradient face — 180°: #ffb000 → #ffd80b (per reference) */
+  .jdp-title::after {
+    content: attr(data-text);
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    z-index: 1; padding: inherit;
+    font-family: 'Anton', 'Bebas Neue', sans-serif !important;
     background: linear-gradient(180deg, #ffb000 0%, #ffd80b 100%);
     -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
-    /* uniform, close shadow offset (same for every letter) */
-    transform: translate(2px, 3px);
-    filter: drop-shadow(0 0 4px rgba(255,200,20,0.45));
+    color: transparent; -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1px #d99500;
   }
   /* instructions panel */
   .jdp-panel {
@@ -289,19 +301,13 @@
   /* bottom margin guarantees a minimum gap between the logos and the CTA below */
   .jdp-powered { position: relative; z-index: 3; margin: clamp(12px, 4vw, 24px) 0 clamp(14px, 4.5vw, 26px); text-align: center; }
   .jdp-powered .lbl { color: #fff; font-size: 15px; font-weight: 600; margin: 0 0 14px; }
-  .jdp-logos { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  /* bare logos on the background — no shared panel */
+  .jdp-logos { display: inline-flex; align-items: center; justify-content: center; gap: clamp(10px, 4vw, 26px); }
   .jdp-logos img { width: auto; object-fit: contain; }
-  /* purple→navy gradient circle behind the MPOC mark (matches the template) */
-  .jdp-mpoc-ring {
-    display: flex; align-items: center; justify-content: center;
-    width: clamp(120px, 36vw, 168px); height: clamp(120px, 36vw, 168px);
-    border-radius: 50%;
-    background: radial-gradient(circle at 38% 32%, #4b3fd0 0%, #2a2aa8 42%, #131a72 100%);
-    border: 1.5px solid rgba(255,255,255,0.28);
-    box-shadow: inset 0 2px 10px rgba(255,255,255,0.15), 0 6px 18px rgba(0,0,0,0.35);
-  }
-  .jdp-mpoc   { height: clamp(104px, 32vw, 150px); }  /* fills most of the ring, close to its edge */
-  .jdp-mascot { height: clamp(104px, 33vw, 148px); }
+  /* MPOC mark sits directly on the background — no circle frame */
+  .jdp-mpoc-ring { display: inline-flex; align-items: center; justify-content: center; }
+  .jdp-mpoc   { height: clamp(84px, 26vw, 118px); }
+  .jdp-mascot { height: clamp(108px, 34vw, 152px); }
   /* orange CTA */
   #menu.jdp-start .jdp-cta {
     position: relative; z-index: 3;

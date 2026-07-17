@@ -1,6 +1,6 @@
-import { PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260624.2';
-import { addMuteButton } from '../muteButton.js?v=20260624.2';
-import { COPY } from '../copy.js?v=20260624.2';
+import { PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.1';
+import { addMuteButton } from '../muteButton.js?v=20260717.1';
+import { COPY } from '../copy.js?v=20260717.1';
 
 export class StartScene extends Phaser.Scene {
   constructor() {
@@ -11,17 +11,18 @@ export class StartScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.pageTitle = new URLSearchParams(window.location.search).get('page_title') || '';
 
+    // Only the background is drawn in the canvas — the visible start menu is the
+    // standardized JDP DOM overlay (index.html). The native logo/mascot/play
+    // button/mute and start-bgm are intentionally not created here.
     this._drawBackground(width, height);
-    this._drawLogo(width, height);
-    this._drawMascot(width, height);
-    this._drawPlayButton(width, height);
 
-    // start-screen music — loops until the player leaves for the game
-    this.startBgm = this.sound.add('start-bgm', { loop: true, volume: 0.5 });
-    this.startBgm.play();
-    this.events.once('shutdown', () => this.startBgm.stop());
-
-    addMuteButton(this, width - 34, 38);
+    // Hook the DOM START button calls to launch the game. Unlock Phaser audio
+    // here since the call originates from the DOM click (a real user gesture).
+    window.__jdpStartGame = () => {
+      if (this.sound && this.sound.context && this.sound.context.state === 'suspended') this.sound.context.resume();
+      if (this.sound && this.sound.unlock) this.sound.unlock();
+      this.scene.start('GameScene', { score: 0, timeUsedMs: 0 });
+    };
   }
 
   // ---------------------------------------------------------------------

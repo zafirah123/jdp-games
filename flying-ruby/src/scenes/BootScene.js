@@ -1,5 +1,5 @@
-import { PALETTE, PALETTE_CSS } from '../config.js?v=20260624.2';
-import { applyMutePreference } from '../muteButton.js?v=20260624.2';
+import { PALETTE, PALETTE_CSS } from '../config.js?v=20260717.1';
+import { applyMutePreference } from '../muteButton.js?v=20260717.1';
 
 // BootScene preloads any assets the game needs and then hands off to StartScene.
 // For now we generate placeholder textures at runtime so the game runs before

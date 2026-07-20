@@ -176,6 +176,11 @@ Two exceptions:
    narration.
 7. **Don't fabricate features.** Implement what was asked; flag scope
    creep instead of expanding silently.
+8. **Bump versioned asset/script URLs when shipped files change.** If a game
+   references local JS/CSS or static art directly from `index.html`
+   (for example `claim-callback.js?v=...` or `assets/start/*.webp?v=...`),
+   update the version token when those shipped files change so cached
+   WebViews pick up the new code and visuals.
 
 ## Adding a game
 

@@ -584,9 +584,12 @@ function prepareClaim(finalScore, extra = {}) {
 
 When shipping claim-flow changes, bump the versioned script or module URL
 used by the game (for example `claim-callback.js?v=...` or `main.js?v=...`,
-plus any ES-module imports behind it). Some in-app WebViews cache old JS
-aggressively, so a version bump is the safest way to ensure the updated
-claim behavior is actually what runs.
+plus any ES-module imports behind it). Likewise, if a single-file game's
+start screen or HUD references shipped images directly (for example
+`assets/start/bg.webp`, mascot art, gem art, or other static `<img src>` /
+CSS `url(...)` assets), bump those asset URLs too. Some in-app WebViews cache
+old JS and static assets aggressively, so a version bump is the safest way to
+ensure the updated behavior and art are actually what runs.
 
 **Early end is required.** In addition to the final end-of-game modal, every
 game must provide a player-accessible way to end the run early and submit the
@@ -661,6 +664,9 @@ callback contract instead of the generic `game/score/token` payload in §6.5.
   where applicable.
 - Version static JS/CSS includes in `index.html` and bump monotonically
   (`YYYYMMDD.N`) on edits.
+- If `index.html` references shipped static art directly (for example
+  `assets/start/*.webp` in `<img>` tags or CSS `url(...)` rules), version
+  those URLs too and bump them in the same pass as the related visual change.
 
 Example:
 

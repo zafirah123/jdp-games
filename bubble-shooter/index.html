@@ -138,10 +138,7 @@
         }
         .mute:active { transform: scale(0.92); }
         .mute svg { width: 22px; height: 22px; fill: currentColor; }
-        #restart-btn { display: inline-block; text-decoration: none; }
-        #restart-btn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; cursor: default; }
         .claim-note { margin-top: 12px; font-size: 12px; font-weight: 700; color: #ff8a8a; }
-        .claim-note.pending { color: #FFD633; }
 
   /* ===== Standardized JDP start screen (Batch C) ===== */
   #start-overlay.jdp-start {
@@ -429,7 +426,9 @@
                     </div>
                 </div>
 
-                <a id="restart-btn" class="cta-primary w-full max-w-xs" href="#" aria-disabled="true">Claim Score</a>
+                <button id="restart-btn" class="cta-primary w-full max-w-xs">
+                    Claim Score
+                </button>
                 <p id="claim-note" class="claim-note hidden"></p>
             </div>
         </div>
@@ -490,8 +489,6 @@
                 claimUnavailable: 'CALLBACK UNAVAILABLE',
                 claimFailed: 'Unable to claim score',
                 claimPreparing: 'Preparing…',
-                claimOpening: 'Claiming score...',
-                claimRetryHint: 'If nothing happens, please try again.',
                 retry: 'RETRY',
                 lineBreached: 'LINE BREACHED!',
                 lineBreachedDesc: 'The bubbles descended past the danger line. Clear them faster next time!',
@@ -531,8 +528,6 @@
                 claimUnavailable: 'PANGGIL BALIK TIADA',
                 claimFailed: 'Tidak dapat tuntut skor',
                 claimPreparing: 'Sedang bersedia…',
-                claimOpening: 'Sedang tuntut skor...',
-                claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
                 retry: 'RETRY',
                 lineBreached: 'GARISAN DILANGGAR!',
                 lineBreachedDesc: 'Buih telah melepasi garisan bahaya. Bersihkan lebih pantas pada cubaan seterusnya!',
@@ -548,11 +543,10 @@
         const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
         let claimUnavailable = false;
         let claimErrorMessage = '';
-        let claimLocked = false;
+        let claimTouchArmed = false;
         let claimUrlReady = null;
         let claimPrepareSeq = 0;
         let claimPreparing = false;
-        let claimNavRecoveryTimer = 0;
         const CLAIM_PREPARE_TIMEOUT_MS = 8000;
         function hasClaimCallback() {
             return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
@@ -570,79 +564,32 @@
                 );
             });
         }
-        function setRestartDisabled(disabled) {
-            const restartBtn = document.getElementById('restart-btn');
-            if (restartBtn) restartBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-        }
-        function setRestartHref(url) {
-            const restartBtn = document.getElementById('restart-btn');
-            if (restartBtn) restartBtn.setAttribute('href', url || '#');
-        }
-        function clearClaimNavRecoveryTimer() {
-            if (!claimNavRecoveryTimer) return;
-            clearTimeout(claimNavRecoveryTimer);
-            claimNavRecoveryTimer = 0;
-        }
-        function showClaimNote(message, pending) {
-            const claimNote = document.getElementById('claim-note');
-            if (!claimNote) return;
-            const text = String(message || '').trim();
-            claimNote.classList.remove('pending');
-            if (!text) {
-                claimNote.textContent = '';
-                claimNote.classList.add('hidden');
-                return;
-            }
-            if (pending) claimNote.classList.add('pending');
-            claimNote.textContent = text;
-            claimNote.classList.remove('hidden');
-        }
-        function unlockClaimAfterFailedNavigation() {
-            clearClaimNavRecoveryTimer();
-            if (!claimLocked) return;
-            claimLocked = false;
-            showClaimNote(COPY.claimRetryHint, false);
-            syncRestartButton();
-        }
-        function armClaimNavRecovery() {
-            clearClaimNavRecoveryTimer();
-            claimNavRecoveryTimer = setTimeout(() => {
-                claimNavRecoveryTimer = 0;
-                unlockClaimAfterFailedNavigation();
-            }, 3000);
-        }
         function syncRestartButton() {
             const restartBtn = document.getElementById('restart-btn');
+            const claimNote = document.getElementById('claim-note');
             if (!restartBtn) return;
             if (isZeroScore()) {
-                clearClaimNavRecoveryTimer();
-                showClaimNote('', false);
+                if (claimNote) { claimNote.textContent = ''; claimNote.classList.add('hidden'); }
                 restartBtn.textContent = COPY.retry;
-                setRestartDisabled(false);
-                setRestartHref(null);
+                restartBtn.disabled = false;
                 return;
             }
             if (claimPreparing) {
-                clearClaimNavRecoveryTimer();
-                showClaimNote(COPY.claimPreparing, false);
+                if (claimNote) { claimNote.textContent = COPY.claimPreparing; claimNote.classList.remove('hidden'); }
                 restartBtn.textContent = COPY.claimScore;
-                setRestartDisabled(true);
-                setRestartHref(null);
+                restartBtn.disabled = true;
                 return;
             }
             const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
             if (noteText) {
-                clearClaimNavRecoveryTimer();
-                showClaimNote(noteText, false);
+                if (claimNote) { claimNote.textContent = noteText; claimNote.classList.remove('hidden'); }
                 restartBtn.textContent = COPY.claimScore;
-                setRestartDisabled(true);
-                setRestartHref(null);
+                restartBtn.disabled = true;
                 return;
             }
-            showClaimNote('', false);
+            if (claimNote) { claimNote.textContent = ''; claimNote.classList.add('hidden'); }
             restartBtn.textContent = COPY.claimScore;
-            setRestartDisabled(claimLocked);
-            setRestartHref(claimLocked ? null : claimUrlReady);
+            restartBtn.disabled = false;
         }
         async function buildClaimUrl(score) {
             if (!window.ClaimCallback) {
@@ -1143,47 +1090,54 @@
                     SoundSystem.playClick();
                     claimUnavailable = false;
                     claimErrorMessage = '';
-                    claimLocked = false;
                     claimUrlReady = null;
                     claimPreparing = false;
-                    clearClaimNavRecoveryTimer();
                     claimPrepareSeq++;
                     document.getElementById('start-overlay').classList.add('hidden');
                     this.start();
                 });
 
-                document.getElementById('restart-btn').addEventListener('click', (e) => {
+                document.getElementById('restart-btn').addEventListener('click', async () => {
                     SoundSystem.init();
                     SoundSystem.playClick();
-                    const restartBtn = document.getElementById('restart-btn');
-                    if (restartBtn.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
                     if (isZeroScore()) {
-                        e.preventDefault();
-                        claimLocked = false;
                         claimUnavailable = false;
                         claimErrorMessage = '';
-                        clearClaimNavRecoveryTimer();
                         this.reset();
                         this.start();
                         return;
                     }
-                    if (claimLocked) { e.preventDefault(); return; }
-                    const href = restartBtn.getAttribute('href');
-                    if (claimUrlReady && href === claimUrlReady) {
-                        claimLocked = true;
-                        setRestartDisabled(true);
-                        showClaimNote(COPY.claimOpening, true);
-                        armClaimNavRecovery();
+                    if (claimUrlReady) {
+                        document.getElementById('restart-btn').disabled = true;
+                        window.location.assign(claimUrlReady);
                         return;
                     }
-                    e.preventDefault();
-                    claimLocked = true;
-                    syncRestartButton();
-                    prepareClaimUrl(this.score).then(() => {
-                        claimLocked = false;
-                        syncRestartButton();
-                    });
+                    document.getElementById('restart-btn').disabled = true;
+                    await prepareClaimUrl(this.score);
+                    if (claimUrlReady) window.location.assign(claimUrlReady);
+                    else syncRestartButton();
                 });
+                document.getElementById('restart-btn').addEventListener('touchstart', () => {
+                    claimTouchArmed = true;
+                }, { passive: true });
+                document.getElementById('restart-btn').addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!claimTouchArmed) {
+                        const claimNote = document.getElementById('claim-note');
+                        const noteText = claimNote ? String(claimNote.textContent || '').trim() : '';
+                        if (!e.currentTarget.disabled && !isZeroScore() && claimNote && claimNote.classList.contains('hidden') && !noteText) {
+                            claimNote.textContent = COPY.claimFailed;
+                            claimNote.classList.remove('hidden');
+                        }
+                        return;
+                    }
+                    claimTouchArmed = false;
+                    if (!e.currentTarget.disabled) e.currentTarget.click();
+                }, { passive: false });
+                document.getElementById('restart-btn').addEventListener('touchcancel', () => {
+                    claimTouchArmed = false;
+                }, { passive: true });
 
                 // Toggle Audio — DESIGN.md §5.11
                 const muteBtn = document.getElementById('muteBtn');

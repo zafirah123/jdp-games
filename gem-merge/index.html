@@ -245,15 +245,7 @@
     text-transform: uppercase;
     margin: 4px 0;
   }
-  a.cta { display: inline-block; text-decoration: none; }
   .cta:active { transform: translateY(6px); box-shadow: 0 2px 0 #DE9D00; }
-  .cta[aria-disabled="true"] {
-    opacity: 0.7;
-    cursor: default;
-    box-shadow: none;
-    transform: none;
-    pointer-events: none;
-  }
   .cta.secondary {
     background: rgba(255,255,255,0.08);
     color: rgba(255,255,255,0.7);
@@ -278,7 +270,6 @@
     font-size: 12px;
     font-weight: 700;
   }
-  .claim-note.pending { color: var(--jdp-light-yellow); }
   .new-best {
     display: inline-block;
     background: var(--jdp-light-yellow);
@@ -563,7 +554,7 @@
     <h2 id="goTitle">GAME OVER</h2>
     <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
     <div id="finalStats" class="stats"></div>
-    <a id="claimBtn" class="cta" href="#" aria-disabled="true">CLAIM SCORE</a>
+    <button id="claimBtn" class="cta">CLAIM SCORE</button>
     <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
@@ -597,9 +588,7 @@ const COPY = {
     claim: 'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
-    claimPreparing: 'Preparing...',
-    claimOpening: 'Claiming score...',
-    claimRetryHint: 'If nothing happens, please try again.',
+    claimPreparing: 'Preparing…',
     retry: 'RETRY',
     next: 'Next',
     score: 'Score',
@@ -627,9 +616,7 @@ const COPY = {
     claim: 'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
-    claimPreparing: 'Sedang bersedia...',
-    claimOpening: 'Sedang tuntut skor...',
-    claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
+    claimPreparing: 'Sedang bersedia…',
     retry: 'RETRY',
     next: 'Seterusnya',
     score: 'Skor',
@@ -1521,52 +1508,33 @@ dom.newBestLabel.textContent = COPY.newBest;
 dom.nextLabel.textContent = COPY.next;
 document.querySelector('.jdp-pill .pill-label').textContent = COPY.score;
 function isZeroScore() { return (state.score | 0) <= 0; }
-function setClaimDisabled(disabled) {
-  dom.claimBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-}
-function setClaimHref(url) {
-  dom.claimBtn.setAttribute('href', url || '#');
-}
-function showClaimNote(message, pending) {
-  if (!message) {
-    dom.claimNote.textContent = '';
-    dom.claimNote.classList.add('hidden');
-    dom.claimNote.classList.remove('pending');
-    return;
-  }
-  dom.claimNote.textContent = message;
-  dom.claimNote.classList.remove('hidden');
-  dom.claimNote.classList.toggle('pending', !!pending);
-}
 function syncClaimButton() {
   if (isZeroScore()) {
-    showClaimNote('', false);
-    setClaimDisabled(false);
-    setClaimHref('#');
+    dom.claimNote.classList.add('hidden');
+    dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
 
   if (claimPreparing) {
-    showClaimNote(COPY.claimPreparing, true);
-    setClaimDisabled(true);
-    setClaimHref('#');
+    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
   const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
   if (noteText) {
-    showClaimNote(noteText, false);
-    setClaimDisabled(true);
-    setClaimHref('#');
+    dom.claimNote.textContent = noteText;
+    dom.claimNote.classList.remove('hidden');
+    dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
-  showClaimNote('', false);
-  setClaimDisabled(claimLocked);
-  setClaimHref(claimLocked ? '#' : claimUrlReady);
+  dom.claimNote.classList.add('hidden');
+  dom.claimBtn.disabled = claimLocked;
   dom.claimBtn.textContent = COPY.claim;
 }
 
@@ -1627,6 +1595,7 @@ function startGame() {
   claimLocked = false;
   claimUnavailable = false;
   claimErrorMessage = '';
+  claimTouchArmed = false;
   claimUrlReady = null;
   claimPreparing = false;
   claimPrepareSeq++;
@@ -1702,10 +1671,10 @@ function endGame(reason) {
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-let claimNavRecoveryTimer = 0;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1735,26 +1704,18 @@ async function submitClaim() {
     return;
   }
   if (claimLocked) return;
-  if (claimUrlReady && dom.claimBtn.getAttribute('href') === claimUrlReady) {
+  if (claimUrlReady) {
     claimLocked = true;
     syncClaimButton();
-    showClaimNote(COPY.claimOpening, true);
-    clearTimeout(claimNavRecoveryTimer);
-    claimNavRecoveryTimer = setTimeout(() => {
-      claimNavRecoveryTimer = 0;
-      if (document.visibilityState === 'hidden') return;
-      if (state.phase !== 'GAME_OVER' || isZeroScore() || !claimUrlReady) return;
-      claimLocked = false;
-      syncClaimButton();
-      showClaimNote(COPY.claimRetryHint, false);
-    }, 3000);
+    window.location.assign(claimUrlReady);
     return;
   }
   claimLocked = true;
   syncClaimButton();
   await prepareClaimUrl();
   claimLocked = false;
-  syncClaimButton();
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 }
 
 async function prepareClaimUrl(retry) {
@@ -1857,16 +1818,27 @@ window.addEventListener('keydown', (e) => {
 });
 
 dom.startBtn.addEventListener('click', () => { ensureAudio(); startGame(); });
-dom.claimBtn.addEventListener('click', (e) => {
-  if (dom.claimBtn.getAttribute('aria-disabled') === 'true') {
-    e.preventDefault();
+dom.claimBtn.addEventListener('click', submitClaim);
+dom.claimBtn.addEventListener('touchstart', () => {
+  claimTouchArmed = true;
+}, { passive: true });
+dom.claimBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!claimTouchArmed) {
+    const noteText = String(dom.claimNote.textContent || '').trim();
+    if (!dom.claimBtn.disabled && !isZeroScore() && dom.claimNote.classList.contains('hidden') && !noteText) {
+      dom.claimNote.textContent = COPY.claimFailed;
+      dom.claimNote.classList.remove('hidden');
+    }
     return;
   }
-  if (!isZeroScore() && !(claimUrlReady && dom.claimBtn.getAttribute('href') === claimUrlReady)) {
-    e.preventDefault();
-  }
-  submitClaim();
-});
+  claimTouchArmed = false;
+  if (!dom.claimBtn.disabled) dom.claimBtn.click();
+}, { passive: false });
+dom.claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');

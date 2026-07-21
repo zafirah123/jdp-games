@@ -1,8 +1,7 @@
 const GAME_NAME = 'flying-ruby';
 const CLAIMS_KEY = 'flying-ruby:claims';
 
-let claimPreparing = false;
-let claimCommitted = false;
+let claimLocked = false;
 const claimContext = getClaimContext();
 if (claimContext.pageTitle) {
   try { document.title = claimContext.pageTitle; } catch (_) {}
@@ -134,9 +133,12 @@ function getClaimErrorMessage(error) {
   return detail || null;
 }
 
-function buildClaimPayload(score, { timeUsedMs, cause } = {}) {
+export async function claimScore(score, { timeUsedMs, cause } = {}) {
+  if (claimLocked) return { status: 'locked', payload: null };
+  claimLocked = true;
+
   const token = newToken();
-  return {
+  const payload = {
     game: GAME_NAME,
     score: Math.max(0, score | 0),
     token,
@@ -144,36 +146,26 @@ function buildClaimPayload(score, { timeUsedMs, cause } = {}) {
     cause: cause ?? null,
     claimedAt: Date.now(),
   };
-}
-
-export function releaseClaimNavigation() {
-  claimCommitted = false;
-}
-
-export async function prepareClaimSubmission(score, { timeUsedMs, cause } = {}) {
-  if (claimPreparing || claimCommitted) return { status: 'locked', prepared: null, payload: null };
-  claimPreparing = true;
-
-  const payload = buildClaimPayload(score, { timeUsedMs, cause });
+  recordClaim(payload);
 
   try {
     if (payload.score <= 0) {
-      claimPreparing = false;
-      return { status: 'missing_callback', prepared: null, payload };
+      claimLocked = false;
+      return { status: 'missing_callback', payload };
     }
 
     const callbackUrl = resolveCallbackUrl();
     if (!callbackUrl) {
       console.info('[flying-ruby] claimScore (no callback_url configured):', payload);
-      claimPreparing = false;
-      return { status: 'missing_callback', prepared: null, payload };
+      claimLocked = false;
+      return { status: 'missing_callback', payload };
     }
 
     if (claimContext.launchToken && claimContext.resKey && claimContext.tokenCallbackUrl) {
       const tokenCallbackUrl = toHttpsUrl(claimContext.tokenCallbackUrl);
       if (!tokenCallbackUrl) {
-        claimPreparing = false;
-        return { status: 'missing_callback', prepared: null, payload };
+        claimLocked = false;
+        return { status: 'missing_callback', payload };
       }
 
       const encrypted = await encryptGenetPayload(claimContext.resKey, {
@@ -188,34 +180,17 @@ export async function prepareClaimSubmission(score, { timeUsedMs, cause } = {}) 
       tokenCallbackUrl.searchParams.set('token', claimContext.launchToken);
       tokenCallbackUrl.searchParams.set('dd', encrypted.dd);
       tokenCallbackUrl.searchParams.set('dv', encrypted.dv);
-      claimPreparing = false;
-      return {
-        status: 'prepared',
-        prepared: { url: tokenCallbackUrl.toString(), payload },
-        payload,
-      };
+      window.location.assign(tokenCallbackUrl.toString());
+      return { status: 'redirecting', payload };
     }
 
-    claimPreparing = false;
-    return {
-      status: 'prepared',
-      prepared: { url: buildClaimUrl(callbackUrl, payload), payload },
-      payload,
-    };
+    window.location.assign(buildClaimUrl(callbackUrl, payload));
+    return { status: 'redirecting', payload };
   } catch (e) {
     console.warn('[flying-ruby] claim submit failed:', e);
-    claimPreparing = false;
-    return { status: 'failed', prepared: null, payload, error: e, message: getClaimErrorMessage(e) };
+    claimLocked = false;
+    return { status: 'failed', payload, error: e, message: getClaimErrorMessage(e) };
   }
-}
-
-export function commitPreparedClaim(prepared) {
-  if (claimCommitted) return { status: 'locked', payload: prepared?.payload ?? null };
-  if (!prepared?.url) return { status: 'failed', payload: prepared?.payload ?? null, message: null };
-  claimCommitted = true;
-  recordClaim(prepared.payload);
-  window.location.assign(prepared.url);
-  return { status: 'redirecting', payload: prepared.payload };
 }
 
 export function getRecordedClaims() {

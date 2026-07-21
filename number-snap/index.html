@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#031034">
-<title>Number Snap  -  JDP Games</title>
+<title>Number Snap — JDP Games</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
   }
   .hidden { display: none !important; }
 
-  /* ===== Top HUD bar  -  DESIGN.md Sec.5.12 ===== */
+  /* ===== Top HUD bar — DESIGN.md §5.12 ===== */
   .hud-bar {
     position: fixed; left: 0; right: 0; top: 0;
     display: flex; justify-content: center;
@@ -73,7 +73,7 @@
   }
   .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
 
-  /* Audio toggle  -  DESIGN.md Sec.5.11 */
+  /* Audio toggle — DESIGN.md §5.11 */
   .mute {
     flex-shrink: 0;
     width: 44px; height: 44px;
@@ -208,9 +208,6 @@
   }
   @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
   .btn-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-  #claimBtn { display: inline-block; text-decoration: none; }
-  #claimBtn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; cursor: default; }
-  .claim-note.pending { color: #FFD633; }
   .claim-note {
     margin: 12px 0 0;
     color: #ff8a8a;
@@ -261,7 +258,7 @@
   .jdp-bk2 { width: clamp(130px, 38vw, 200px); top: 70%;  left: -11%; }  /* bottom-left blur */
   .jdp-gem { position: absolute; z-index: 4; pointer-events: none; }  /* in front of logos/mascot, behind title+panel */
   .jdp-gem img { display: block; width: 100%; height: auto; }
-  /* two faceted rubies  -  top corners of the red band */
+  /* two faceted rubies — top corners of the red band */
   .jdp-g1 { width: clamp(56px, 15vw, 74px);  top: 4.5%;  left: 1.5%;  transform: rotate(-8deg); }
   .jdp-g2 { width: clamp(58px, 15.5vw, 76px);top: 4.5%;  right: 1.5%; transform: rotate(10deg); }
   /* eight kelapa-sawit pebbles */
@@ -273,7 +270,7 @@
   .jdp-g8 { width: clamp(26px, 7.5vw, 36px); top: 53.5%; left: 4%;   }  /* far left, by MPOC */
   .jdp-g9 { width: clamp(22px, 6.5vw, 30px); top: 66.5%; left: 43%;  }  /* below MPOC, centre */
   .jdp-g10{ width: clamp(28px, 8vw, 38px);   top: 72.5%; right: 8%;  }  /* bottom right, by mascot */
-  /* title  -  Bebas Neue, gold gradient fill (180deg: #ffb000->#ffd80b) */
+  /* title — Bebas Neue, gold gradient fill (180°: #ffb000→#ffd80b) */
   .jdp-title {
     position: relative; z-index: 5; isolation: isolate;
     margin: clamp(58px, 14vw, 92px) 0 0;
@@ -290,11 +287,11 @@
        carries layout + the neon glow (background-clip:text only paints on the pseudo here) */
     color: #ffd23f;   /* solid fallback if background-clip:text unsupported */
     -webkit-text-fill-color: transparent;
-    /* faint cool glow only  -  the dark drop shadow is the separate ::before layer below,
+    /* faint cool glow only — the dark drop shadow is the separate ::before layer below,
        kept OFF the gold face so the letters keep their bright colour */
     text-shadow: 0 0 12px rgba(120,180,255,0.22);
   }
-  /* dark letter-shaped shadow BEHIND the gold  -  offset copy, doesn't tint the face */
+  /* dark letter-shaped shadow BEHIND the gold — offset copy, doesn't tint the face */
   .jdp-title::before {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -304,7 +301,7 @@
     transform: translate(3px, 5px);
     filter: blur(0.6px);
   }
-  /* golden linear-gradient face  -  180deg: #ffb000 -> #ffd80b (per reference) */
+  /* golden linear-gradient face — 180°: #ffb000 → #ffd80b (per reference) */
   .jdp-title::after {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -340,10 +337,10 @@
   /* bottom margin guarantees a minimum gap between the logos and the CTA below */
   .jdp-powered { position: relative; z-index: 3; margin: clamp(12px, 4vw, 24px) 0 clamp(14px, 4.5vw, 26px); text-align: center; }
   .jdp-powered .lbl { color: #fff; font-size: 15px; font-weight: 600; margin: 0 0 14px; }
-  /* bare logos on the background  -  no shared panel */
+  /* bare logos on the background — no shared panel */
   .jdp-logos { display: inline-flex; align-items: center; justify-content: center; gap: clamp(10px, 4vw, 26px); }
   .jdp-logos img { width: auto; object-fit: contain; }
-  /* MPOC mark sits directly on the background  -  no circle frame */
+  /* MPOC mark sits directly on the background — no circle frame */
   .jdp-mpoc-ring { display: inline-flex; align-items: center; justify-content: center; }
   .jdp-mpoc   { height: clamp(84px, 26vw, 118px); }
   .jdp-mascot { height: clamp(108px, 34vw, 152px); }
@@ -436,7 +433,7 @@
     <button id="rerollBtn" class="fab reroll" disabled><span id="rerollLabel">REROLL</span><span class="count" id="rerollCount">0</span></button>
   </div>
 
-  <!-- Start menu  -  standardized JDP template (see .jdp-* CSS above) -->
+  <!-- Start menu — standardized JDP template (see .jdp-* CSS above) -->
   <div id="menu" class="overlay jdp-start">
     <div class="jdp-frame">
       <span class="jdp-bokeh jdp-bk1"><img src="assets/start/gem-bokeh.webp?v=20260720.1" alt=""></span>
@@ -492,7 +489,7 @@
       <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
       <div class="score-big" id="goScore">0</div>
       <p class="best" id="goBest">&nbsp;</p>
-      <a id="claimBtn" class="cta" href="#" aria-disabled="true"></a>
+      <button id="claimBtn" class="cta"></button>
       <p id="claimNote" class="claim-note hidden"></p>
     </div>
   </div>
@@ -502,7 +499,7 @@
 'use strict';
 
 // ===========================================================================
-// i18n  -  ?lang=ms switches the game's copy to Bahasa Melayu (CLAUDE.md Sec.6.4)
+// i18n — ?lang=ms switches the game's copy to Bahasa Melayu (CLAUDE.md §6.4)
 // ===========================================================================
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
@@ -511,10 +508,8 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
-    claimPreparing: 'Preparing\u2026',
-    claimOpening: 'Claiming score\u2026',
-    claimRetryHint: 'If nothing happens, please try again.',
-    menuSub: 'Drag tiles to the grid. Build a connected path of 3\u20135 consecutive numbers to clear it. Chain clears for combos.',
+    claimPreparing: 'Preparing…',
+    menuSub: 'Drag tiles to the grid. Build a connected path of 3–5 consecutive numbers to clear it. Chain clears for combos.',
     hintKeys:  'Click &amp; drag tiles onto the grid',
     hintTouch: 'Drag tiles onto the grid',
     bestPrefix: 'Best',
@@ -529,10 +524,8 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
-    claimPreparing: 'Sedang bersedia\u2026',
-    claimOpening: 'Sedang tuntut skor\u2026',
-    claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
-    menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3\u20135 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
+    claimPreparing: 'Sedang bersedia…',
+    menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3–5 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
     hintKeys:  'Klik &amp; seret jubin ke grid',
     hintTouch: 'Seret jubin ke grid',
     bestPrefix: 'Terbaik',
@@ -545,7 +538,7 @@ const COPY = {
 }[LANG];
 
 // ===========================================================================
-// CONFIG  -  all tunables here
+// CONFIG — all tunables here
 // ===========================================================================
 const CONFIG = {
   GAME_NAME: 'number-snap',
@@ -555,7 +548,7 @@ const CONFIG = {
   MIN_SEQ: 3, MAX_SEQ: 5,
   COMBO_WINDOW_MS: 1500,
   COMBO_CAP: 4,
-  SCORE_CAP_SOFT: 500,        // soft target  -  display is never clamped (CLAUDE.md Sec.1.4)
+  SCORE_CAP_SOFT: 500,        // soft target — display is never clamped (CLAUDE.md §1.4)
   TAPER_START: 430,
   REROLL_INTERVAL_SEC: 60,
   REROLL_MAX_BANK: 3,
@@ -568,7 +561,7 @@ const CONFIG = {
   URGENCY_SECONDS: 10,
 };
 
-// Number palette  -  low->high reads cool->warm. JDP yellow border + dark plate
+// Number palette — low→high reads cool→warm. JDP yellow border + dark plate
 // chrome stays consistent across all tiles.
 const TILE_COLORS = {
   1: { fill: '#102457', text: '#FFFFFF' },
@@ -582,7 +575,7 @@ const TILE_COLORS = {
   9: { fill: '#6D0E1D', text: '#FFD633' },
 };
 
-// Mute icon paths  -  DESIGN.md Sec.5.11
+// Mute icon paths — DESIGN.md §5.11
 const SVG_ICON_ON  = 'M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z';
 const SVG_ICON_OFF = 'M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z';
 
@@ -597,8 +590,8 @@ function storageSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 // ===========================================================================
 const state = {
   phase: 'MENU',              // MENU | PLAYING | CONTINUE_OFFER | GAME_OVER
-  // Initialised to a real 6x6 grid so the renderer can run safely before the
-  // first startRound()  -  otherwise drawPlacedTiles reads state.board[0][0] on
+  // Initialised to a real 6×6 grid so the renderer can run safely before the
+  // first startRound() — otherwise drawPlacedTiles reads state.board[0][0] on
   // an empty array and the rAF loop dies before the player ever sees a hand.
   board: Array.from({ length: 6 }, () => Array(6).fill(null)),
   hand: [],                   // current hand (up to HAND_SIZE)
@@ -674,7 +667,7 @@ dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
 
 function refreshBestText() {
-  dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : '\u00a0';
+  dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : ' ';
 }
 refreshBestText();
 
@@ -688,7 +681,7 @@ function updateMuteIcon() {
 updateMuteIcon();
 
 // ===========================================================================
-// Audio  -  Web Audio synthesis (no asset files)
+// Audio — Web Audio synthesis (no asset files)
 // ===========================================================================
 let audioCtx = null;
 function ensureAudio() {
@@ -738,7 +731,7 @@ dom.muteBtn.addEventListener('click', () => {
 });
 
 // ===========================================================================
-// Canvas sizing  -  DPR-aware, recomputes layout on every resize
+// Canvas sizing — DPR-aware, recomputes layout on every resize
 // ===========================================================================
 let viewW = 0, viewH = 0, dpr = 1;
 const grid = { x: 0, y: 0, cell: 0, size: 0, pad: 8 };
@@ -752,7 +745,7 @@ function resize() {
   dom.canvas.height = Math.round(viewH * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // Layout  -  reserve top space for HUD (~64) and bottom for hand + FAB (~140)
+  // Layout — reserve top space for HUD (~64) and bottom for hand + FAB (~140)
   const topReserve = 64;
   const bottomReserve = 150;
   const margin = 10;
@@ -777,12 +770,12 @@ window.addEventListener('resize', resize);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 
 // ===========================================================================
-// Tile distribution  -  uniform 1-9 with mild early/late bias + cap taper.
-// Soft cap (Sec.1.4): tile mix biases away from sequence endpoints near 500 so
+// Tile distribution — uniform 1–9 with mild early/late bias + cap taper.
+// Soft cap (§1.4): tile mix biases away from sequence endpoints near 500 so
 // the world calms down; the score counter itself is never clamped.
 // ===========================================================================
 function tileWeights() {
-  const t = (CONFIG.GAME_DURATION_SEC - state.timer) / CONFIG.GAME_DURATION_SEC; // 0->1
+  const t = (CONFIG.GAME_DURATION_SEC - state.timer) / CONFIG.GAME_DURATION_SEC; // 0→1
   const w = [0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
   const early = Math.max(0, 1 - t * 5);                                          // 1 at t=0, 0 at t=0.2
   for (let n = 1; n <= 4; n++) w[n] += early * 0.6;
@@ -797,7 +790,7 @@ function tileWeights() {
 }
 // Saturation guard: never draw a digit when its combined board+hand count
 // already exceeds 3. Counting the hand prevents the hand from carrying extra
-// copies of a digit that's already saturated on the grid  -  those copies would
+// copies of a digit that's already saturated on the grid — those copies would
 // otherwise tip the board past 3 the moment they're placed. Late-game the
 // combined count can be dense enough that every digit is over the threshold;
 // in that case fall back to the digit with the lowest grid count so the hand
@@ -839,7 +832,7 @@ function refillHand() {
 
 // ===========================================================================
 // Sequence detection
-// Path of orthogonally adjacent cells with consecutive values (each step +/-1).
+// Path of orthogonally adjacent cells with consecutive values (each step ±1).
 // Length must be in [MIN_SEQ, MAX_SEQ]. Longest valid wins.
 // ===========================================================================
 const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
@@ -881,18 +874,18 @@ function findLongestSequenceAt(r, c) {
 
 // ===========================================================================
 // Placement + scoring
-// 3-tile = sum; 4-tile = sum x 2; 5-tile = sum x 3. Combo multiplier (x2..x4)
+// 3-tile = sum; 4-tile = sum × 2; 5-tile = sum × 3. Combo multiplier (×2..×4)
 // stacks on top when chains land within COMBO_WINDOW_MS.
 // ===========================================================================
 function sumOfPath(path) { let s = 0; for (const [, , v] of path) s += v; return s; }
 function scoreForClear(path) {
   const sum = sumOfPath(path);
   // prefix shows the raw tile sum (`+30`) so players see the arithmetic at a
-  // glance; suffix shows the length multiplier (`x2`/`x3`)  -  the renderer
+  // glance; suffix shows the length multiplier (`×2`/`×3`) — the renderer
   // colors prefix yellow and suffix red so they read as two facts, not one.
   if (path.length === 3) return { base: sum,     prefix: `+${sum}`, suffix: '' };
-  if (path.length === 4) return { base: sum * 2, prefix: `+${sum}`, suffix: ' \u00d72' };
-  return                       { base: sum * 3, prefix: `+${sum}`, suffix: ' \u00d73' };
+  if (path.length === 4) return { base: sum * 2, prefix: `+${sum}`, suffix: ' ×2' };
+  return                       { base: sum * 3, prefix: `+${sum}`, suffix: ' ×3' };
 }
 function cellCenter(r, c) {
   return {
@@ -931,13 +924,13 @@ function resolveClear(seq) {
   const added = base * state.comboMult;
   state.score += added;
 
-  // Float text above sequence centroid. `+N` reads yellow, the `x2 / \u00d73`
+  // Float text above sequence centroid. `+N` reads yellow, the `×2 / ×3`
   // length multiplier reads red, and the combo tail (chained clears) stays
   // yellow so it never gets confused with the length multiplier.
   let cx = 0, cy = 0;
   for (const [r, c] of seq) { const p = cellCenter(r, c); cx += p.x; cy += p.y; }
   cx /= seq.length; cy /= seq.length;
-  const comboTail = state.comboMult > 1 ? ` \u00d7${state.comboMult}!` : '';
+  const comboTail = state.comboMult > 1 ? ` ×${state.comboMult}!` : '';
   state.floats.push({ x: cx, y: cy, prefix, suffix, comboTail, born: now, life: 1200 });
 
   // Sparkles per cleared cell
@@ -962,7 +955,7 @@ function resolveClear(seq) {
 
   // A single placement might have bridged two disjoint sequences; the
   // longest-first rule only cleared one. Sweep once more for any sequence
-  // still hiding on the board  -  counts as the next combo step.
+  // still hiding on the board — counts as the next combo step.
   scanForChainedClear();
 }
 
@@ -1024,7 +1017,7 @@ dom.contEndBtn.addEventListener('click', () => {
 });
 
 // ===========================================================================
-// Reroll  -  one aid power-up; banks one per REROLL_INTERVAL_SEC, up to MAX_BANK
+// Reroll — one aid power-up; banks one per REROLL_INTERVAL_SEC, up to MAX_BANK
 // ===========================================================================
 function updateRerollUi() {
   dom.rerollCount.textContent = state.rerollBank;
@@ -1040,7 +1033,7 @@ dom.rerollBtn.addEventListener('click', () => {
 });
 
 // ===========================================================================
-// End run (player-triggered early end  -  CLAUDE.md Sec.6.5)
+// End run (player-triggered early end — CLAUDE.md §6.5)
 // ===========================================================================
 dom.endBtn.addEventListener('click', () => {
   if (state.phase !== 'PLAYING') return;
@@ -1054,6 +1047,7 @@ function startRound() {
   claimLocked = false;
   claimUnavailable = false;
   claimErrorMessage = '';
+  claimTouchArmed = false;
   claimUrlReady = null;
   claimPreparing = false;
   claimPrepareSeq++; // invalidate any in-flight prepare from the previous round
@@ -1106,7 +1100,7 @@ function endRound(titleKey) {
   dom.goBest.textContent = `${COPY.bestPrefix}: ${state.best}`;
   dom.goNewBest.classList.toggle('hidden', !isBest);
   syncClaimButton();
-  prepareClaimUrl(); // fire-and-forget  -  resolves well before the user taps claim
+  prepareClaimUrl(); // fire-and-forget — resolves well before the user taps claim
   dom.gameOver.classList.remove('hidden');
   dom.fabRow.classList.add('hidden');
   dom.timeVal.classList.remove('pulse-urgent');
@@ -1120,10 +1114,10 @@ dom.startBtn.addEventListener('click', () => { startRound(); ensureAudio(); });
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 let claimUrlReady = null;   // pre-built URL, resolved ahead of the tap (see prepareClaimUrl)
 let claimPrepareSeq = 0;    // guards against a stale prepare() resolving after a new round started
-let claimPreparing = false;
-let claimNavRecoveryTimer = 0;
+let claimPreparing = false; // true while prepareClaimUrl() is in flight — button stays disabled
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1134,39 +1128,6 @@ function hasClaimCallback() {
 function getClaimErrorMessage(error) {
   const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
-}
-
-
-
-
-function setClaimDisabled(disabled) {
-  dom.claimBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-}
-
-function setClaimHref(url) {
-  dom.claimBtn.setAttribute('href', url || '#');
-}
-
-function clearClaimNavRecoveryTimer() {
-  if (!claimNavRecoveryTimer) return;
-  clearTimeout(claimNavRecoveryTimer);
-  claimNavRecoveryTimer = 0;
-}
-
-function unlockClaimAfterFailedNavigation() {
-  clearClaimNavRecoveryTimer();
-  if (!claimLocked) return;
-  claimLocked = false;
-  showClaimNote(COPY.claimRetryHint);
-  syncClaimButton();
-}
-
-function armClaimNavRecovery() {
-  clearClaimNavRecoveryTimer();
-  claimNavRecoveryTimer = setTimeout(() => {
-    claimNavRecoveryTimer = 0;
-    unlockClaimAfterFailedNavigation();
-  }, 3000);
 }
 
 function withTimeout(promise, ms) {
@@ -1181,63 +1142,32 @@ function withTimeout(promise, ms) {
 
 function syncClaimButton() {
   if (isZeroScore()) {
-    clearClaimNavRecoveryTimer();
     dom.claimNote.classList.add('hidden');
-    setClaimDisabled(false);
-    setClaimHref(null);
+    dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
+
   if (claimPreparing) {
-    clearClaimNavRecoveryTimer();
     dom.claimNote.textContent = COPY.claimPreparing;
     dom.claimNote.classList.remove('hidden');
-    dom.claimNote.classList.remove('pending');
-    setClaimDisabled(true);
-    setClaimHref(null);
+    dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
+
   const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
   if (noteText) {
-    clearClaimNavRecoveryTimer();
     dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
-    dom.claimNote.classList.remove('pending');
-    setClaimDisabled(true);
-    setClaimHref(null);
+    dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
+
   dom.claimNote.classList.add('hidden');
-  dom.claimNote.classList.remove('pending');
-  setClaimDisabled(claimLocked);
-  setClaimHref(claimLocked ? null : claimUrlReady);
+  dom.claimBtn.disabled = claimLocked;
   dom.claimBtn.textContent = COPY.claim;
-}
-
-function showClaimNote(message) {
-  const text = String(message || '').trim();
-  if (!text) {
-    dom.claimNote.classList.remove('pending');
-    dom.claimNote.classList.add('hidden');
-    return;
-  }
-  dom.claimNote.classList.remove('pending');
-  dom.claimNote.textContent = text;
-  dom.claimNote.classList.remove('hidden');
-}
-
-function showClaimPendingNote(message) {
-  const text = String(message || '').trim();
-  if (!text) {
-    dom.claimNote.classList.remove('pending');
-    dom.claimNote.classList.add('hidden');
-    return;
-  }
-  dom.claimNote.textContent = text;
-  dom.claimNote.classList.add('pending');
-  dom.claimNote.classList.remove('hidden');
 }
 
 async function buildClaimUrl() {
@@ -1254,7 +1184,7 @@ async function prepareClaimUrl(retry) {
 
   if (isZeroScore()) {
     claimPreparing = false;
-    return; // no claim to prepare  -  syncClaimButton() shows the retry state instead
+    return; // no claim to prepare — syncClaimButton() shows the retry state instead
   }
 
   if (!hasClaimCallback()) {
@@ -1269,7 +1199,7 @@ async function prepareClaimUrl(retry) {
   claimPreparing = true;
   claimUnavailable = false;
   claimErrorMessage = '';
-  syncClaimButton(); // shows "Preparing..." and disables the button right away
+  syncClaimButton(); // shows "Preparing…" and disables the button right away
 
   try {
     const url = await withTimeout(buildClaimUrl(), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
@@ -1298,36 +1228,59 @@ async function prepareClaimUrl(retry) {
   }
 }
 
-dom.claimBtn.addEventListener('click', (e) => {
-  if (dom.claimBtn.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
-    e.preventDefault();
     claimLocked = false;
     claimUnavailable = false;
     claimErrorMessage = '';
     startRound();
     return;
   }
-  if (claimLocked) { e.preventDefault(); return; }
-  const href = dom.claimBtn.getAttribute('href');
-  if (claimUrlReady && href === claimUrlReady) {
+  if (claimLocked) return;
+
+  if (claimUrlReady) {
+    // Fast path: already resolved ahead of time, so this is a synchronous
+    // commit in the same tick as the tap — safe on iOS WebKit.
     claimLocked = true;
-    setClaimDisabled(true);
-    showClaimPendingNote(COPY.claimOpening);
-    armClaimNavRecovery();
+    syncClaimButton();
+    window.location.assign(claimUrlReady);
     return;
   }
-  e.preventDefault();
+
+  // Defensive only: syncClaimButton() keeps the button disabled whenever
+  // claimUrlReady is null, so this shouldn't normally be reachable. If state
+  // somehow got out of sync, re-run the one prepare flow (rather than
+  // duplicating its build/error handling here) and commit if it resolves.
   claimLocked = true;
   syncClaimButton();
-  prepareClaimUrl().then(() => {
-    claimLocked = false;
-    syncClaimButton();
-  });
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 });
+dom.claimBtn.addEventListener('touchstart', () => {
+  claimTouchArmed = true;
+}, { passive: true });
+dom.claimBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!claimTouchArmed) {
+    const noteText = String(dom.claimNote.textContent || '').trim();
+    if (!dom.claimBtn.disabled && !isZeroScore() && dom.claimNote.classList.contains('hidden') && !noteText) {
+      dom.claimNote.textContent = COPY.claimFailed;
+      dom.claimNote.classList.remove('hidden');
+    }
+    return;
+  }
+  claimTouchArmed = false;
+  if (!dom.claimBtn.disabled) dom.claimBtn.click();
+}, { passive: false });
+dom.claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 
 // ===========================================================================
-// Pointer input  -  drag from hand to grid
+// Pointer input — drag from hand to grid
 // ===========================================================================
 function pointerPos(e) {
   const r = dom.canvas.getBoundingClientRect();

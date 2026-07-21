@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -45,7 +45,7 @@
     display: flex; flex-direction: column;
     padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
   }
-  /* Top HUD bar  -  DESIGN.md Sec.5.12 (Score ? Time ? Audio) */
+  /* Top HUD bar — DESIGN.md §5.12 (Score · Time · Audio) */
   #hud {
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
     padding: 4px 0 8px;
@@ -88,7 +88,7 @@
   }
   .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
 
-  /* Audio toggle  -  DESIGN.md Sec.5.11 (in-row variant per Sec.5.12) */
+  /* Audio toggle — DESIGN.md §5.11 (in-row variant per §5.12) */
   .mute {
     flex-shrink: 0;
     width: 44px; height: 44px;
@@ -103,7 +103,7 @@
   .mute:active { transform: scale(0.92); }
   .mute svg { width: 22px; height: 22px; fill: currentColor; }
 
-  /* Multiplier badge  -  secondary state, sits below the HUD row */
+  /* Multiplier badge — secondary state, sits below the HUD row */
   #multRow {
     display: flex; justify-content: center;
     padding: 0 0 6px;
@@ -309,9 +309,6 @@
     border-radius: 6px;
     font-weight: 900; font-size: 20px;
   }
-  #claimBtn { display: inline-block; text-decoration: none; }
-  #claimBtn[aria-disabled="true"] { opacity: 0.55; pointer-events: none; cursor: default; }
-  .claim-note.pending { color: #FFD633; }
   .claim-note {
     margin: 12px 0 0;
     color: #ff8a8a;
@@ -380,7 +377,7 @@
   .jdp-bk2 { width: clamp(130px, 38vw, 200px); top: 70%;  left: -11%; }  /* bottom-left blur */
   .jdp-gem { position: absolute; z-index: 4; pointer-events: none; }  /* in front of logos/mascot, behind title+panel */
   .jdp-gem img { display: block; width: 100%; height: auto; }
-  /* two faceted rubies  -  top corners of the red band */
+  /* two faceted rubies — top corners of the red band */
   .jdp-g1 { width: clamp(56px, 15vw, 74px);  top: 4.5%;  left: 1.5%;  transform: rotate(-8deg); }
   .jdp-g2 { width: clamp(58px, 15.5vw, 76px);top: 4.5%;  right: 1.5%; transform: rotate(10deg); }
   /* eight kelapa-sawit pebbles */
@@ -392,7 +389,7 @@
   .jdp-g8 { width: clamp(26px, 7.5vw, 36px); top: 53.5%; left: 4%;   }  /* far left, by MPOC */
   .jdp-g9 { width: clamp(22px, 6.5vw, 30px); top: 66.5%; left: 43%;  }  /* below MPOC, centre */
   .jdp-g10{ width: clamp(28px, 8vw, 38px);   top: 72.5%; right: 8%;  }  /* bottom right, by mascot */
-  /* title  -  Bebas Neue, gold gradient fill (180deg: #ffb000->#ffd80b) */
+  /* title — Bebas Neue, gold gradient fill (180°: #ffb000→#ffd80b) */
   .jdp-title {
     position: relative; z-index: 5; isolation: isolate;
     margin: clamp(58px, 14vw, 92px) 0 0;
@@ -409,11 +406,11 @@
        carries layout + the neon glow (background-clip:text only paints on the pseudo here) */
     color: #ffd23f;   /* solid fallback if background-clip:text unsupported */
     -webkit-text-fill-color: transparent;
-    /* faint cool glow only  -  the dark drop shadow is the separate ::before layer below,
+    /* faint cool glow only — the dark drop shadow is the separate ::before layer below,
        kept OFF the gold face so the letters keep their bright colour */
     text-shadow: 0 0 12px rgba(120,180,255,0.22);
   }
-  /* dark letter-shaped shadow BEHIND the gold  -  offset copy, doesn't tint the face */
+  /* dark letter-shaped shadow BEHIND the gold — offset copy, doesn't tint the face */
   .jdp-title::before {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -423,7 +420,7 @@
     transform: translate(3px, 5px);
     filter: blur(0.6px);
   }
-  /* golden linear-gradient face  -  180deg: #ffb000 -> #ffd80b (per reference) */
+  /* golden linear-gradient face — 180°: #ffb000 → #ffd80b (per reference) */
   .jdp-title::after {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -459,10 +456,10 @@
   /* bottom margin guarantees a minimum gap between the logos and the CTA below */
   .jdp-powered { position: relative; z-index: 3; margin: clamp(12px, 4vw, 24px) 0 clamp(14px, 4.5vw, 26px); text-align: center; }
   .jdp-powered .lbl { color: #fff; font-size: 15px; font-weight: 600; margin: 0 0 14px; }
-  /* bare logos on the background  -  no shared panel */
+  /* bare logos on the background — no shared panel */
   .jdp-logos { display: inline-flex; align-items: center; justify-content: center; gap: clamp(10px, 4vw, 26px); }
   .jdp-logos img { width: auto; object-fit: contain; }
-  /* MPOC mark sits directly on the background  -  no circle frame */
+  /* MPOC mark sits directly on the background — no circle frame */
   .jdp-mpoc-ring { display: inline-flex; align-items: center; justify-content: center; }
   .jdp-mpoc   { height: clamp(84px, 26vw, 118px); }
   .jdp-mascot { height: clamp(108px, 34vw, 152px); }
@@ -554,7 +551,7 @@
     </button>
   </header>
   <div id="multRow" class="hidden">
-    <div class="mult-badge" id="multBadge">&times;1.0</div>
+    <div class="mult-badge" id="multBadge">×1.0</div>
   </div>
 
   <div id="board-wrap" class="hidden">
@@ -570,7 +567,7 @@
   <div id="keyboard" class="hidden"></div>
 </div>
 
-<!-- Start menu  -  standardized JDP template (see .jdp-* CSS above) -->
+<!-- Start menu — standardized JDP template (see .jdp-* CSS above) -->
 <div id="menu" class="overlay jdp-start">
   <div class="jdp-frame">
     <span class="jdp-bokeh jdp-bk1"><img src="assets/start/gem-bokeh.webp?v=20260720.1" alt=""></span>
@@ -622,7 +619,7 @@
       <div class="final-score-value" id="goFinalValue">0</div>
     </div>
     <div id="finalStats" class="stats"></div>
-    <a id="claimBtn" class="cta" href="#" aria-disabled="true"></a>
+    <button id="claimBtn" class="cta" type="button"></button>
     <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
@@ -633,7 +630,7 @@
 'use strict';
 
 // =============================================================================
-// CONFIG  -  all tuning lives here
+// CONFIG — all tuning lives here
 // =============================================================================
 const CONFIG = {
   GAME_NAME: 'kataku',
@@ -642,7 +639,7 @@ const CONFIG = {
   MAX_GUESSES: 6,
   STORAGE_KEY_BEST: 'kataku:best',
   STORAGE_KEY_MUTE: 'kataku:mute',
-  // Base score by guess number (1..6)  -  doubled for easier scoring
+  // Base score by guess number (1..6) — doubled for easier scoring
   BASE_BY_GUESS: { 1: 200, 2: 140, 3: 100, 4: 60, 5: 40, 6: 20 },
   // Streak: +10 per consecutive solve, cap at +50
   STREAK_BONUS_STEP: 10,
@@ -661,12 +658,12 @@ const CONFIG = {
   // Time multiplier zones: applied based on time REMAINING at solve
   // (time elapsed from start: 0..90 -> x1, 90..120 -> x1.2, 120..150 -> x1.5, 150..180 -> x2)
   MULT_ZONES: [
-    { fromRemMs: 180000, toRemMs: 90000, mult: 1.0, label: '\u00d71.0', cls: '' },
-    { fromRemMs: 90000,  toRemMs: 60000, mult: 1.2, label: '\u00d71.2', cls: 'x12' },
-    { fromRemMs: 60000,  toRemMs: 30000, mult: 1.5, label: '\u00d71.5', cls: 'x15' },
-    { fromRemMs: 30000,  toRemMs: 0,     mult: 2.0, label: '\u00d72.0', cls: 'x20' },
+    { fromRemMs: 180000, toRemMs: 90000, mult: 1.0, label: '×1.0', cls: '' },
+    { fromRemMs: 90000,  toRemMs: 60000, mult: 1.2, label: '×1.2', cls: 'x12' },
+    { fromRemMs: 60000,  toRemMs: 30000, mult: 1.5, label: '×1.5', cls: 'x15' },
+    { fromRemMs: 30000,  toRemMs: 0,     mult: 2.0, label: '×2.0', cls: 'x20' },
   ],
-  // Difficulty ramp  -  question pool selected by time ELAPSED at puzzle load.
+  // Difficulty ramp — question pool selected by time ELAPSED at puzzle load.
   // Only easy/medium/hard are asked as questions; super/ultra stay in DICT so
   // players may still GUESS them, but they are never picked as the target.
   POOL_WINDOWS: [
@@ -692,12 +689,10 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
-    claimPreparing: 'Preparing\u2026',
-    claimOpening: 'Claiming score\u2026',
-    claimRetryHint: 'If nothing happens, please try again.',
-    skip: 'SKIP (\u221215)',
+    claimPreparing: 'Preparing…',
+    skip: 'SKIP (−15)',
     menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
-    hintKeys:  'Type letters &bull; <kbd>&#x23CE;</kbd> submit &bull; <kbd>&#x232B;</kbd> delete',
+    hintKeys:  'Type letters · <kbd>Enter</kbd> submit · <kbd>⌫</kbd> delete',
     hintTouch: 'Tap the on-screen keyboard to guess',
     best: 'Best',
     final: 'Final score',
@@ -719,12 +714,10 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
-    claimPreparing: 'Sedang bersedia\u2026',
-    claimOpening: 'Sedang tuntut skor\u2026',
-    claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
-    skip: 'LANGKAU (\u221215)',
+    claimPreparing: 'Sedang bersedia…',
+    skip: 'LANGKAU (−15)',
     menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
-    hintKeys:  'Taip huruf &bull; <kbd>&#x23CE;</kbd> hantar &bull; <kbd>&#x232B;</kbd> padam',
+    hintKeys:  'Taip huruf · <kbd>Enter</kbd> hantar · <kbd>⌫</kbd> padam',
     hintTouch: 'Ketuk papan kekunci pada skrin',
     best: 'Terbaik',
     final: 'Skor akhir',
@@ -777,17 +770,7 @@ const POOLS = {
   super:  _dec(_W.s).split(','),
   ultra:  _dec(_W.u).split(','),
 };
-const BLOCKED_WORDS = new Set([
-  'BUNUH',
-  'GANJA',
-  'PELIR',
-  'ROGOL',
-  'SELIR',
-]);
-for (const poolName of Object.keys(POOLS)) {
-  POOLS[poolName] = POOLS[poolName].filter((word) => !BLOCKED_WORDS.has(word));
-}
-// Combined dictionary for guess validation  -  any word in any pool is acceptable
+// Combined dictionary for guess validation — any word in any pool is acceptable
 const DICT = new Set([...POOLS.easy, ...POOLS.medium, ...POOLS.hard, ...POOLS.super, ...POOLS.ultra]);
 
 // =============================================================================
@@ -845,7 +828,7 @@ const state = {
   bestPuzzle: 0,
   skipped: 0,
   zoneStats: { x10: 0, x12: 0, x15: 0, x20: 0 },
-  curMultLabel: '\u00d71.0',
+  curMultLabel: '×1.0',
   prevZoneIdx: 0,
   puzzleIndex: 0,   // 0-based counter of puzzles loaded this run (drives the clue table)
   solvedThisPuzzle: false,  // true once the current target has been guessed correctly
@@ -908,7 +891,7 @@ dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
 
 // =============================================================================
-// Mute toggle (DESIGN.md Sec.5.11)
+// Mute toggle (DESIGN.md §5.11)
 // =============================================================================
 const MUTE_ICON_ON  = '<path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-9v2.1a7 7 0 0 1 0 13.8V21a9 9 0 0 0 0-18z"/>';
 const MUTE_ICON_OFF = '<path d="M3 9v6h4l5 4V5L7 9H3zm16.6 3 2.5-2.5-1.4-1.4L18.2 10.6 15.7 8.1l-1.4 1.4L16.8 12l-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4z"/>';
@@ -930,7 +913,7 @@ updateMuteUI();
 // Menu
 // =============================================================================
 function showMenuBest() {
-  dom.bestText.textContent = state.best > 0 ? `${COPY.best}: ${state.best}` : '\u00a0';
+  dom.bestText.textContent = state.best > 0 ? `${COPY.best}: ${state.best}` : ' ';
 }
 showMenuBest();
 
@@ -973,7 +956,7 @@ function buildKeyboard() {
       const b = document.createElement('button');
       b.className = 'key';
       if (k === 'ENTER' || k === 'BACK') b.classList.add('wide');
-      b.textContent = k === 'ENTER' ? '\u23ce' : k === 'BACK' ? '\u232b' : k;
+      b.textContent = k === 'ENTER' ? '⏎' : k === 'BACK' ? '⌫' : k;
       b.dataset.key = k;
       b.addEventListener('click', (e) => { e.preventDefault(); ensureAudio(); handleKey(k); });
       div.appendChild(b);
@@ -1084,6 +1067,7 @@ function startRun() {
   claimLocked = false;
   claimUnavailable = false;
   claimErrorMessage = '';
+  claimTouchArmed = false;
   claimUrlReady = null;
   claimPreparing = false;
   claimPrepareSeq++;
@@ -1130,7 +1114,7 @@ function loop() {
   if (z.idx !== state.prevZoneIdx) {
     state.prevZoneIdx = z.idx;
     sfx.zoneUp();
-    flashMessage('\u00d7' + z.mult.toFixed(1).replace('.0','') + (lang==='ms' ? ' zon!' : ' zone!'));
+    flashMessage('×' + z.mult.toFixed(1).replace('.0','') + (lang==='ms' ? ' zon!' : ' zone!'));
   }
   updateMultBadge(z);
   updateTimerCls(state.remainingMs, z);
@@ -1152,7 +1136,7 @@ function endRun(reason) {
   if (reason === 'timeUp' && !state.locked && state.curRow < CONFIG.MAX_GUESSES) {
     // Look at the last submitted row (curRow - 1 if any guesses made on this puzzle and not yet solved/failed)
     // Per spec: "last submitted guess in the active puzzle"
-    // We award per the CURRENT multiplier (which is the timeUp zone -> x2.0 by definition).
+    // We award per the CURRENT multiplier (which is the timeUp zone → ×2.0 by definition).
     let lastRow = -1;
     for (let r = state.curRow - 1; r >= 0; r--) {
       if (state.rows[r] && state.rows[r][0].status) { lastRow = r; break; }
@@ -1193,7 +1177,7 @@ function loadNewPuzzle() {
 }
 
 // =============================================================================
-// Clue (first 3 puzzles of each run)  -  finds a real dictionary word that,
+// Clue (first 3 puzzles of each run) — finds a real dictionary word that,
 // when matched against the target, satisfies the criteria, then occupies row 0.
 // =============================================================================
 function _shuffle(a) {
@@ -1234,7 +1218,7 @@ function applyClueToRow0() {
   if (!cfg) return;  // puzzle 4+: no clue
 
   const found = _findClueWord(state.target, cfg);
-  if (!found) return;  // no dictionary word satisfies the criteria -> graceful skip
+  if (!found) return;  // no dictionary word satisfies the criteria → graceful skip
 
   const row = state.rows[0];
   for (let i = 0; i < CONFIG.WORD_LEN; i++) {
@@ -1416,7 +1400,7 @@ dom.skipBtn.addEventListener('click', () => {
   state.streak = 0;
   updateScore();
   sfx.skip();
-  flashMessage(`\u2212${CONFIG.SKIP_COST}  ${COPY.answerWas} ${state.target}`);
+  flashMessage(`−${CONFIG.SKIP_COST}  ${COPY.answerWas} ${state.target}`);
   lockAndAdvance();
 });
 
@@ -1481,7 +1465,7 @@ function showGameOver(reason) {
 
   const avg = state.solvedCount > 0
     ? (state.totalGuesses / state.solvedCount).toFixed(1)
-    : '\u2014';
+    : '—';
 
   const zs = state.zoneStats;
   const zoneRow = (label, val) =>
@@ -1493,10 +1477,10 @@ function showGameOver(reason) {
     zoneRow(COPY.bestPuzzle, state.bestPuzzle),
     zoneRow(COPY.streak, state.longestStreak),
     zoneRow(COPY.skipped, state.skipped),
-    zoneRow('\u00d71.0', zs.x10),
-    zoneRow('\u00d71.2', zs.x12),
-    zoneRow('\u00d71.5', zs.x15),
-    zoneRow('\u00d72.0', zs.x20),
+    zoneRow('×1.0', zs.x10),
+    zoneRow('×1.2', zs.x12),
+    zoneRow('×1.5', zs.x15),
+    zoneRow('×2.0', zs.x20),
   ].join('');
 
   syncClaimButton();
@@ -1510,10 +1494,10 @@ function showGameOver(reason) {
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
+let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-let claimNavRecoveryTimer = 0;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1524,39 +1508,6 @@ function hasClaimCallback() {
 function getClaimErrorMessage(error) {
   const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
-}
-
-
-
-
-function setClaimDisabled(disabled) {
-  dom.claimBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-}
-
-function setClaimHref(url) {
-  dom.claimBtn.setAttribute('href', url || '#');
-}
-
-function clearClaimNavRecoveryTimer() {
-  if (!claimNavRecoveryTimer) return;
-  clearTimeout(claimNavRecoveryTimer);
-  claimNavRecoveryTimer = 0;
-}
-
-function unlockClaimAfterFailedNavigation() {
-  clearClaimNavRecoveryTimer();
-  if (!claimLocked) return;
-  claimLocked = false;
-  showClaimNote(COPY.claimRetryHint);
-  syncClaimButton();
-}
-
-function armClaimNavRecovery() {
-  clearClaimNavRecoveryTimer();
-  claimNavRecoveryTimer = setTimeout(() => {
-    claimNavRecoveryTimer = 0;
-    unlockClaimAfterFailedNavigation();
-  }, 3000);
 }
 function withTimeout(promise, ms) {
   return new Promise((resolve, reject) => {
@@ -1570,63 +1521,32 @@ function withTimeout(promise, ms) {
 
 function syncClaimButton() {
   if (isZeroScore()) {
-    clearClaimNavRecoveryTimer();
     dom.claimNote.classList.add('hidden');
-    setClaimDisabled(false);
-    setClaimHref(null);
+    dom.claimBtn.disabled = false;
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
+
   if (claimPreparing) {
-    clearClaimNavRecoveryTimer();
     dom.claimNote.textContent = COPY.claimPreparing;
     dom.claimNote.classList.remove('hidden');
-    dom.claimNote.classList.remove('pending');
-    setClaimDisabled(true);
-    setClaimHref(null);
+    dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
+
   const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
   if (noteText) {
-    clearClaimNavRecoveryTimer();
     dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
-    dom.claimNote.classList.remove('pending');
-    setClaimDisabled(true);
-    setClaimHref(null);
+    dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
+
   dom.claimNote.classList.add('hidden');
-  dom.claimNote.classList.remove('pending');
-  setClaimDisabled(claimLocked);
-  setClaimHref(claimLocked ? null : claimUrlReady);
+  dom.claimBtn.disabled = claimLocked;
   dom.claimBtn.textContent = COPY.claim;
-}
-
-function showClaimNote(message) {
-  const text = String(message || '').trim();
-  if (!text) {
-    dom.claimNote.classList.remove('pending');
-    dom.claimNote.classList.add('hidden');
-    return;
-  }
-  dom.claimNote.classList.remove('pending');
-  dom.claimNote.textContent = text;
-  dom.claimNote.classList.remove('hidden');
-}
-
-function showClaimPendingNote(message) {
-  const text = String(message || '').trim();
-  if (!text) {
-    dom.claimNote.classList.remove('pending');
-    dom.claimNote.classList.add('hidden');
-    return;
-  }
-  dom.claimNote.textContent = text;
-  dom.claimNote.classList.add('pending');
-  dom.claimNote.classList.remove('hidden');
 }
 
 async function buildClaimUrl() {
@@ -1689,33 +1609,48 @@ async function prepareClaimUrl(retry) {
   }
 }
 
-dom.claimBtn.addEventListener('click', (e) => {
-  if (dom.claimBtn.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+dom.claimBtn.addEventListener('click', async () => {
   if (isZeroScore()) {
-    e.preventDefault();
     claimLocked = false;
     claimUnavailable = false;
     claimErrorMessage = '';
     startRun();
     return;
   }
-  if (claimLocked) { e.preventDefault(); return; }
-  const href = dom.claimBtn.getAttribute('href');
-  if (claimUrlReady && href === claimUrlReady) {
+  if (claimLocked) return;
+  if (claimUrlReady) {
     claimLocked = true;
-    setClaimDisabled(true);
-    showClaimPendingNote(COPY.claimOpening);
-    armClaimNavRecovery();
+    syncClaimButton();
+    window.location.assign(claimUrlReady);
     return;
   }
-  e.preventDefault();
   claimLocked = true;
   syncClaimButton();
-  prepareClaimUrl().then(() => {
-    claimLocked = false;
-    syncClaimButton();
-  });
+  await prepareClaimUrl();
+  claimLocked = false;
+  if (claimUrlReady) window.location.assign(claimUrlReady);
+  else syncClaimButton();
 });
+dom.claimBtn.addEventListener('touchstart', () => {
+  claimTouchArmed = true;
+}, { passive: true });
+dom.claimBtn.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!claimTouchArmed) {
+    const noteText = String(dom.claimNote.textContent || '').trim();
+    if (!dom.claimBtn.disabled && !isZeroScore() && dom.claimNote.classList.contains('hidden') && !noteText) {
+      dom.claimNote.textContent = COPY.claimFailed;
+      dom.claimNote.classList.remove('hidden');
+    }
+    return;
+  }
+  claimTouchArmed = false;
+  if (!dom.claimBtn.disabled) dom.claimBtn.click();
+}, { passive: false });
+dom.claimBtn.addEventListener('touchcancel', () => {
+  claimTouchArmed = false;
+}, { passive: true });
 
 // =============================================================================
 // Dev jump: ?scene=over

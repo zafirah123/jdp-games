@@ -1,12 +1,7 @@
 import { GAME, PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.2';
 import { addMuteButton } from '../muteButton.js?v=20260717.2';
-import { COPY } from '../copy.js?v=20260721.1';
-import {
-  canClaimScore,
-  commitPreparedClaim,
-  prepareClaimSubmission,
-  releaseClaimNavigation,
-} from '../claimScore.js?v=20260721.1';
+import { COPY } from '../copy.js?v=20260717.2';
+import { canClaimScore, claimScore } from '../claimScore.js?v=20260708.1';
 
 const BEST_KEY = 'flying-ruby:best';
 
@@ -33,8 +28,6 @@ export class GameOverScene extends Phaser.Scene {
     catch { /* storage unavailable */ }
     this.previousBest = prev;
     this.isNewBest = this.score > prev;
-    this.preparedClaim = null;
-    this.claimRecoveryTimer = null;
     if (this.isNewBest) {
       try { window.localStorage.setItem(BEST_KEY, String(this.score)); }
       catch { /* storage unavailable — best score just won't persist */ }
@@ -241,32 +234,33 @@ export class GameOverScene extends Phaser.Scene {
 
     this.claimButton = this._makeButton(cx, by + 32, 240, 64, this.score <= 0 ? COPY.retry : COPY.claimScore,
       PALETTE.yellow, PALETTE_CSS.darkRed, PALETTE.darkRed,
-      () => {
+      async () => {
         if (this.score <= 0) {
           this.scene.start('StartScene');
           return;
         }
-        if (!this.preparedClaim) return;
         this._setClaimButtonDisabled(true);
-        this._setClaimStatus(COPY.claimOpening);
-        const result = commitPreparedClaim(this.preparedClaim);
+        this._setClaimStatus(COPY.claimSubmitting);
+        const result = await claimScore(this.score, {
+          timeUsedMs: this.timeUsedMs,
+          cause:      this.cause,
+        });
         if (result?.status === 'redirecting') return;
-        if (result?.status === 'locked') {
-          this._setClaimStatus(COPY.claimOpening);
+        if (result?.status === 'missing_callback') {
+          this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+        } else if (result?.status === 'locked') {
+          this._setClaimStatus(COPY.claimSubmitting);
         } else {
           const detail = result?.message ? `${COPY.claimFailed}: ${result.message}` : COPY.claimFailed;
           this._setClaimStatus(detail, PALETTE_CSS.ruby);
-          releaseClaimNavigation();
-          this._setClaimButtonDisabled(false);
         }
+        this._setClaimButtonDisabled(true);
       });
 
     if (this.score > 0 && !this.claimReady) {
       this._setClaimButtonDisabled(true);
       this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
-      return;
     }
-    if (this.score > 0) this._prepareClaim();
   }
 
   _setClaimStatus(message, color = PALETTE_CSS.white) {
@@ -279,39 +273,6 @@ export class GameOverScene extends Phaser.Scene {
     if (!this.claimButton) return;
     this.claimButton.isDisabled = disabled;
     this.claimButton.setAlpha(disabled ? 0.55 : 1);
-  }
-
-  async _prepareClaim() {
-    this.preparedClaim = null;
-    this._clearClaimRecoveryTimer();
-    this._setClaimButtonDisabled(true);
-    this._setClaimStatus(COPY.claimPreparing);
-    const result = await prepareClaimSubmission(this.score, {
-      timeUsedMs: this.timeUsedMs,
-      cause: this.cause,
-    });
-    if (!this.scene.isActive()) return;
-    if (result?.status === 'prepared') {
-      this.preparedClaim = result.prepared;
-      this._setClaimStatus('');
-      this._setClaimButtonDisabled(false);
-      return;
-    }
-    if (result?.status === 'missing_callback') {
-      this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
-    } else if (result?.status === 'locked') {
-      this._setClaimStatus(COPY.claimPreparing);
-    } else {
-      const detail = result?.message ? `${COPY.claimFailed}: ${result.message}` : COPY.claimFailed;
-      this._setClaimStatus(detail, PALETTE_CSS.ruby);
-    }
-    this._setClaimButtonDisabled(true);
-  }
-
-  _clearClaimRecoveryTimer() {
-    if (!this.claimRecoveryTimer) return;
-    clearTimeout(this.claimRecoveryTimer);
-    this.claimRecoveryTimer = null;
   }
 
   _makeButton(x, y, w, h, label, fillColor, textColor, borderColor, onClick, outlined = false) {
@@ -371,20 +332,7 @@ export class GameOverScene extends Phaser.Scene {
       if (btn.isDisabled) return;
       this.tweens.add({
         targets: btn, scale: 0.94, duration: 80, yoyo: true,
-        onComplete: () => {
-          onClick();
-          if (btn === this.claimButton && this.preparedClaim) {
-            this._clearClaimRecoveryTimer();
-            this.claimRecoveryTimer = setTimeout(() => {
-              this.claimRecoveryTimer = null;
-              if (document.visibilityState === 'hidden') return;
-              if (!this.scene.isActive() || !this.preparedClaim) return;
-              releaseClaimNavigation();
-              this._setClaimButtonDisabled(false);
-              this._setClaimStatus(COPY.claimRetryHint);
-            }, 3000);
-          }
-        },
+        onComplete: onClick,
       });
     });
     return btn;

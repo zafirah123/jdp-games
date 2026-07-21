@@ -20,9 +20,6 @@ export const COPY = {
     claimScore: 'CLAIM SCORE',
     retry:      'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
-    claimPreparing:   'Preparing claim...',
-    claimOpening:     'Claiming score...',
-    claimRetryHint:   'If nothing happens, please try again.',
     claimSubmitting:  'Sending your score...',
     claimFailed:      'Unable to open the score claim. Please try again.',
     // --- StartScene -----------------------------------------------------
@@ -56,9 +53,6 @@ export const COPY = {
     claimScore: 'TUNTUT SKOR',
     retry:      'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
-    claimPreparing:   'Sedang menyediakan tuntutan...',
-    claimOpening:     'Sedang tuntut skor...',
-    claimRetryHint:   'Jika tiada apa berlaku, sila cuba lagi.',
     claimSubmitting:  'Menghantar skor anda...',
     claimFailed:      'Tidak dapat membuka tuntutan skor. Sila cuba lagi.',
     // --- StartScene -----------------------------------------------------

@@ -46,7 +46,7 @@
     width: 100%;
     max-width: 480px;
     margin: 0 auto;
-    min-height: 100%;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -195,6 +195,32 @@
   }
   /* hide only the best-score line on this screen (controls now shown above) */
   #startOverlay.jdp-start .best { display: none; }
+  @media (max-height: 860px) {
+    .jdp-frame { padding-bottom: clamp(76px, 18vh, 104px); }
+    .jdp-title { margin-top: clamp(34px, 7vh, 56px); font-size: clamp(38px, 10vw, 64px); }
+    .jdp-panel { margin-top: clamp(12px, 2.8vh, 18px); padding: 16px 18px 18px; }
+    .jdp-powered { margin: clamp(10px, 2.4vh, 18px) 0 clamp(10px, 2.8vh, 18px); }
+    .jdp-powered .lbl { margin-bottom: 10px; }
+    .jdp-mpoc { height: clamp(72px, 20vh, 96px); }
+    .jdp-mascot { height: clamp(96px, 24vh, 126px); }
+    .jdp-start .jdp-panel .hint { margin-top: 10px; padding-top: 10px; line-height: 1.65; }
+  }
+
+  @media (max-height: 720px) {
+    .jdp-frame { padding-bottom: 70px; }
+    .jdp-title { margin-top: 26px; font-size: clamp(34px, 8vw, 54px); }
+    .jdp-panel { width: min(88%, 344px); margin-top: 10px; padding: 14px 16px 16px; border-radius: 18px; }
+    .jdp-panel .jdp-panel-head { margin-bottom: 8px; font-size: clamp(14px, 3.4vw, 16px); }
+    .jdp-start .sub { font-size: clamp(12px, 2.8vw, 14px); line-height: 1.4; }
+    .jdp-powered { margin: 10px 0 12px; }
+    .jdp-powered .lbl { font-size: 14px; margin-bottom: 8px; }
+    .jdp-logos { gap: clamp(8px, 2vw, 18px); }
+    .jdp-mpoc { height: clamp(60px, 16vh, 84px); }
+    .jdp-mascot { height: clamp(80px, 20vh, 112px); }
+    .jdp-start .jdp-cta { width: min(62%, 224px); padding: 11px 18px; font-size: clamp(14px, 3.6vw, 17px); box-shadow: 0 6px 0 rgba(150,60,0,0.45), 0 10px 18px rgba(0,0,0,0.35); }
+    .jdp-blob { opacity: 0.82; }
+    .jdp-start .jdp-panel .hint { font-size: 11px; line-height: 1.5; }
+  }
 
   #startOverlay.jdp-start.hidden { display: none !important; }
   </style>

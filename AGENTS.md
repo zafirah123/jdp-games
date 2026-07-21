@@ -102,6 +102,10 @@ single-file games alike.
      encryption), resolve it before the final tap when practical and keep the
      tap handler to a synchronous `window.location.assign(...)` / `location.href`
      commit. This avoids gesture-loss issues in Safari / WKWebView.
+   - If iOS Safari / WKWebView drops script-driven redirects, prefer a real
+     anchor CTA with a pre-resolved `href`, disable it on first tap to prevent
+     duplicate claims, and only re-enable after a short timeout if the page
+     clearly did not navigate away.
    - If claim preparation fails because callback context is missing, expired,
      malformed, or invalid, leave the CTA disabled and show an explicit
      unavailable/error state instead of making it clickable again. Standard

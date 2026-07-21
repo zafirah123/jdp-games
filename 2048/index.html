@@ -184,6 +184,9 @@
     text-transform: uppercase;
   }
   .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
+  .cta,
+  a.cta { display: inline-block; text-decoration: none; }
+  a.cta[aria-disabled="true"] { opacity: 0.55; pointer-events: none; cursor: default; }
   .stats {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -198,6 +201,9 @@
     color: #ff8a8a;
     font-size: 12px;
     font-weight: 700;
+  }
+  .claim-note.pending {
+    color: #FFD633;
   }
   .new-best {
     display: inline-block;
@@ -531,7 +537,7 @@
     <h2 id="goTitle"></h2>
     <div id="goNewBest" class="hidden"><span class="new-best" id="newBestLabel">NEW BEST!</span></div>
     <div id="finalStats" class="stats"></div>
-    <button id="claimBtn" class="cta"></button>
+    <a id="claimBtn" class="cta" href="#" aria-disabled="true"></a>
     <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
@@ -555,6 +561,8 @@ const COPY = {
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
     claimPreparing: 'Preparing…',
+    claimOpening: 'Claiming score…',
+    claimRetryHint: 'If nothing happens, please try again.',
     retry: 'RETRY',
     menuSub: 'Swipe to slide tiles — two tiles with the same number merge into one. Keep one cell open or the run ends. Score as high as you can in 3 minutes.',
     hintKeys:  'Move <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> or <kbd>WASD</kbd>',
@@ -577,6 +585,8 @@ const COPY = {
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
     claimPreparing: 'Sedang bersedia…',
+    claimOpening: 'Sedang tuntut skor…',
+    claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
     retry: 'RETRY',
     menuSub: 'Leret untuk gerakkan jubin — dua jubin dengan nombor sama akan bergabung menjadi satu. Pastikan sekurang-kurangnya satu petak kosong atau permainan tamat. Dapatkan skor setinggi mungkin dalam 3 minit.',
     hintKeys:  'Gerak <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> atau <kbd>WASD</kbd>',
@@ -1319,7 +1329,6 @@ function startGame() {
   claimLocked = false;
   claimUnavailable = false;
   claimErrorMessage = '';
-  claimTouchArmed = false;
   claimUrlReady = null;
   claimPreparing = false;
   claimPrepareSeq++;
@@ -1454,10 +1463,10 @@ canvas.addEventListener('mouseup', (e) => {
 let claimLocked = false;
 let claimUnavailable = false;
 let claimErrorMessage = '';
-let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
+let claimNavRecoveryTimer = 0;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1470,48 +1479,95 @@ function getClaimErrorMessage(error) {
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 
+function setClaimDisabled(disabled) {
+  dom.claimBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+}
+
+function setClaimHref(url) {
+  dom.claimBtn.setAttribute('href', url || '#');
+}
+
+function clearClaimNavRecoveryTimer() {
+  if (!claimNavRecoveryTimer) return;
+  clearTimeout(claimNavRecoveryTimer);
+  claimNavRecoveryTimer = 0;
+}
+
+function unlockClaimAfterFailedNavigation() {
+  clearClaimNavRecoveryTimer();
+  if (!claimLocked || document.hidden) return;
+  claimLocked = false;
+  showClaimNote(COPY.claimRetryHint);
+  syncClaimButton();
+}
+
+function armClaimNavRecovery() {
+  clearClaimNavRecoveryTimer();
+  claimNavRecoveryTimer = setTimeout(() => {
+    claimNavRecoveryTimer = 0;
+    unlockClaimAfterFailedNavigation();
+  }, 3000);
+}
+
 function syncClaimButton() {
   if (isZeroScore()) {
+    clearClaimNavRecoveryTimer();
     dom.claimNote.classList.add('hidden');
-    dom.claimBtn.disabled = false;
+    setClaimDisabled(false);
+    setClaimHref(null);
     dom.claimBtn.textContent = COPY.retry;
     return;
   }
 
   if (claimPreparing) {
+    clearClaimNavRecoveryTimer();
     dom.claimNote.textContent = COPY.claimPreparing;
     dom.claimNote.classList.remove('hidden');
-    dom.claimBtn.disabled = true;
+    setClaimDisabled(true);
+    setClaimHref(null);
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
   const noteText = claimErrorMessage || (claimUnavailable ? COPY.claimUnavailable : '');
   if (noteText) {
+    clearClaimNavRecoveryTimer();
     dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
-    dom.claimBtn.disabled = true;
+    setClaimDisabled(true);
+    setClaimHref(null);
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
 
   dom.claimNote.classList.add('hidden');
-  dom.claimBtn.disabled = claimLocked;
+  setClaimDisabled(claimLocked);
+  setClaimHref(claimLocked ? null : claimUrlReady);
   dom.claimBtn.textContent = COPY.claim;
 }
 
 function showClaimNote(message) {
   const text = String(message || '').trim();
   if (!text) {
+    dom.claimNote.classList.remove('pending');
     dom.claimNote.classList.add('hidden');
     return;
   }
+  dom.claimNote.classList.remove('pending');
   dom.claimNote.textContent = text;
   dom.claimNote.classList.remove('hidden');
 }
 
-function isClaimNoteDry() {
-  return dom.claimNote.classList.contains('hidden') && !String(dom.claimNote.textContent || '').trim();
+function showClaimPendingNote(message) {
+  const text = String(message || '').trim();
+  if (!text) {
+    dom.claimNote.classList.remove('pending');
+    dom.claimNote.classList.add('hidden');
+    return;
+  }
+  dom.claimNote.textContent = text;
+  dom.claimNote.classList.add('pending');
+  dom.claimNote.classList.remove('hidden');
 }
 
 function withTimeout(promise, ms) {
@@ -1581,44 +1637,40 @@ async function prepareClaimUrl(retry) {
 
 // Buttons
 dom.startBtn.addEventListener('click', () => { ensureAudio(); showBest(); startGame(); });
-dom.claimBtn.addEventListener('click', async () => {
+
+dom.claimBtn.addEventListener('click', (e) => {
+  if (dom.claimBtn.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+
   if (isZeroScore()) {
+    e.preventDefault();
     claimLocked = false;
     claimUnavailable = false;
     claimErrorMessage = '';
     startGame();
     return;
   }
-  if (claimLocked) return;
-  if (claimUrlReady) {
+
+  if (claimLocked) { e.preventDefault(); return; }
+
+  const href = dom.claimBtn.getAttribute('href');
+  if (claimUrlReady && href === claimUrlReady) {
     claimLocked = true;
-    syncClaimButton();
-    window.location.assign(claimUrlReady);
+    setClaimDisabled(true);
+    showClaimPendingNote(COPY.claimOpening);
+    armClaimNavRecovery();
     return;
   }
+
+  // Not ready yet — shouldn't normally be reachable since the button stays disabled
+  // while unprepared, but guard defensively.
+  e.preventDefault();
   claimLocked = true;
   syncClaimButton();
-  await prepareClaimUrl();
-  claimLocked = false;
-  if (claimUrlReady) window.location.assign(claimUrlReady);
-  else syncClaimButton();
+  prepareClaimUrl().then(() => {
+    claimLocked = false;
+    syncClaimButton();
+  });
 });
-dom.claimBtn.addEventListener('touchstart', () => {
-  claimTouchArmed = true;
-}, { passive: true });
-dom.claimBtn.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (!claimTouchArmed) {
-    if (!dom.claimBtn.disabled && !isZeroScore() && isClaimNoteDry()) showClaimNote(COPY.claimFailed);
-    return;
-  }
-  claimTouchArmed = false;
-  if (!dom.claimBtn.disabled) dom.claimBtn.click();
-}, { passive: false });
-dom.claimBtn.addEventListener('touchcancel', () => {
-  claimTouchArmed = false;
-}, { passive: true });
 dom.muteBtn.addEventListener('click', () => {
   state.muted = !state.muted;
   storageSet(CONFIG.STORAGE_KEY_MUTE, state.muted ? '1' : '0');
@@ -1643,11 +1695,13 @@ function updateMuteUI() {
 // =============================================================================
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    clearClaimNavRecoveryTimer();
     if (state.phase === 'PLAYING' && !state.paused) {
       state.paused = true;
       state.pausedAt = performance.now();
     }
   } else {
+    unlockClaimAfterFailedNavigation();
     if (state.paused && state.phase === 'PLAYING') {
       state.pausedDuration += performance.now() - state.pausedAt;
       state.paused = false;

@@ -76,17 +76,20 @@
   .bestline{ font-weight:600; font-size:15px; color:rgba(255,255,255,.85); margin:0; }
   .newbest{ font-weight:800; font-size:18px; color:var(--lty); margin:0; animation:pulse-urgent .8s infinite; }
   .sub-note{ font-size:12px; color:rgba(255,255,255,.6); font-weight:600; }
+  .sub-note.pending{ color:var(--lty); }
 
   .btn{ font-family:'Poppins'; font-weight:700; font-size:18px; letter-spacing:.4px;
     cursor:pointer; border-radius:50px; padding:14px 32px; color:#DE0909;
     background:linear-gradient(#FFE258,#FFBA0A); border:1px solid var(--lty);
     box-shadow:0 6px 0 #DE9D00; transition:transform 80ms ease, box-shadow 80ms ease; }
+  a.btn{ display:inline-block; text-decoration:none; }
   .btn:active{ transform:translateY(4px); box-shadow:0 2px 0 #DE9D00; }
   .btn.secondary{ background:linear-gradient(#CF1B27,#821322); color:var(--lty);
     border-color:#fff; box-shadow:0 6px 0 #640A19; }
   .btn.secondary:active{ box-shadow:0 2px 0 #640A19; }
-  .btn:disabled{ background:linear-gradient(#A1934D,#A1812B); color:#7C2830;
+  .btn:disabled, .btn[aria-disabled="true"]{ background:linear-gradient(#A1934D,#A1812B); color:#7C2830;
     border-color:#A18D3C; box-shadow:0 6px 0 #917122; cursor:default; }
+  .btn[aria-disabled="true"]{ pointer-events:none; }
 
   /* ============================================================
      STANDARDIZED JDP START SCREEN (portable template)
@@ -348,7 +351,7 @@
       <p class="scoreline" id="overScore">0</p>
       <p class="newbest hidden" id="newBest">NEW BEST!</p>
       <p class="bestline" id="overBest">Best: 0</p>
-      <button class="btn" id="ctaBtn">CLAIM SCORE</button>
+      <a class="btn" id="ctaBtn" href="#" aria-disabled="true">CLAIM SCORE</a>
       <p class="sub-note hidden" id="claimNote"></p>
     </div>
   </div>
@@ -402,14 +405,14 @@ const ROWS = CONFIG.rows, COLS = CONFIG.cols;
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
   en:{ start:'START GAME', timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'CLAIM SCORE', submit:'CLAIM SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', claimFailed:'Unable to claim score', claimPreparing:'Preparing…',
+    claim:'CLAIM SCORE', submit:'CLAIM SCORE', score:'Score', time:'Time', best:'Best', newBest:'NEW BEST!', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', claimFailed:'Unable to claim score', claimPreparing:'Preparing...', claimOpening:'Claiming score...', claimRetryHint:'If nothing happens, please try again.',
     subtitle:'Merge three matching dice to grow the number. Chain them to score big!',
     end:'End', hintDrag:'Drag the pair onto the board · tap it to rotate',
     hintKeys:'Drag a pair onto the board · click to rotate', hintTouch:'Drag a pair onto the board · tap to rotate',
     combo:'COMBO', ruby:'RUBY BURST!', claimed:'Score sent. Thank you!',
     claimFail:'Could not reach server — score saved locally.' },
   ms:{ start:'MULA MAIN', timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'TUNTUT SKOR', submit:'TUNTUT SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', claimFailed:'Tidak dapat tuntut skor', claimPreparing:'Sedang bersedia…',
+    claim:'TUNTUT SKOR', submit:'TUNTUT SKOR', score:'Skor', time:'Masa', best:'Terbaik', newBest:'REKOD BAHARU!', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', claimFailed:'Tidak dapat tuntut skor', claimPreparing:'Sedang bersedia...', claimOpening:'Sedang tuntut skor...', claimRetryHint:'Jika tiada apa berlaku, sila cuba lagi.',
     subtitle:'Gabungkan tiga dadu sama untuk naikkan nombor. Rangkai untuk skor tinggi!',
     end:'Tamat', hintDrag:'Seret dadu ke papan · klik untuk pusing',
     hintKeys:'Seret pasangan ke papan · klik untuk pusing', hintTouch:'Seret pasangan ke papan · ketuk untuk pusing',
@@ -1086,41 +1089,76 @@ async function buildClaimUrl(payload){
 function hasClaimCallback(){
   return !!(window.ClaimCallback && window.ClaimCallback.resolveCallbackUrl(claimContext, null));
 }
-let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
-function syncEndCta(){
-  const cta=document.getElementById('ctaBtn');
+let claimNavRecoveryTimer = 0;
+function setClaimDisabled(disabled){
+  document.getElementById('ctaBtn').setAttribute('aria-disabled', disabled ? 'true' : 'false');
+}
+function setClaimHref(url){
+  document.getElementById('ctaBtn').setAttribute('href', url || '#');
+}
+function clearClaimNavRecoveryTimer(){
+  if(claimNavRecoveryTimer){
+    clearTimeout(claimNavRecoveryTimer);
+    claimNavRecoveryTimer = 0;
+  }
+}
+function showClaimNote(message, pending){
   const note=document.getElementById('claimNote');
-  if(STATE.score<=0){
+  if(!message){
     note.textContent='';
     note.classList.add('hidden');
-    cta.disabled=false;
+    note.classList.remove('pending');
+    return;
+  }
+  note.textContent=message;
+  note.classList.remove('hidden');
+  note.classList.toggle('pending', !!pending);
+}
+function unlockClaimAfterFailedNavigation(){
+  claimNavRecoveryTimer = 0;
+  if(document.visibilityState === 'hidden') return;
+  if(STATE.scene !== 'over' || STATE.score <= 0 || !claimUrlReady) return;
+  STATE.submitted=false;
+  syncEndCta();
+  showClaimNote(COPY.claimRetryHint, false);
+}
+function armClaimNavRecovery(){
+  clearClaimNavRecoveryTimer();
+  claimNavRecoveryTimer = setTimeout(unlockClaimAfterFailedNavigation, 3000);
+}
+function syncEndCta(){
+  const cta=document.getElementById('ctaBtn');
+  if(STATE.score<=0){
+    showClaimNote('', false);
+    setClaimDisabled(false);
+    setClaimHref('#');
     cta.textContent=COPY.retry;
     cta.dataset.mode='retry';
     return;
   }
   if(claimPreparing){
-    note.textContent=COPY.claimPreparing;
-    note.classList.remove('hidden');
-    cta.disabled=true;
+    showClaimNote(COPY.claimPreparing, true);
+    setClaimDisabled(true);
+    setClaimHref('#');
     cta.textContent=COPY.claim;
     cta.dataset.mode='claim';
     return;
   }
   const noteText = STATE.claimErrorMessage || (STATE.claimUnavailable ? COPY.claimUnavailable : '');
   if(noteText){
-    note.textContent = noteText;
-    note.classList.remove('hidden');
-    cta.disabled=true;
+    showClaimNote(noteText, false);
+    setClaimDisabled(true);
+    setClaimHref('#');
     cta.textContent=COPY.claim;
     cta.dataset.mode='claim';
     return;
   }
-  note.textContent='';
-  note.classList.add('hidden');
-  cta.disabled=STATE.submitted;
+  showClaimNote('', false);
+  setClaimDisabled(STATE.submitted);
+  setClaimHref(STATE.submitted ? '#' : claimUrlReady);
   cta.textContent=COPY.claim;
   cta.dataset.mode='claim';
 }
@@ -1188,45 +1226,37 @@ async function prepareClaimUrl(retry){
 }
 
 /* CTA handler */
-document.getElementById('ctaBtn').addEventListener('click',function(){
+document.getElementById('ctaBtn').addEventListener('click',function(e){
   sfx.ui();
-  if(this.dataset.mode==='retry'){ STATE.claimErrorMessage=''; startGame(); return; }
-  if(STATE.submitted) return;
-  if(claimUrlReady){
-    STATE.submitted=true;
-    syncEndCta();
-    window.location.assign(claimUrlReady);
+  if(this.getAttribute('aria-disabled') === 'true'){
+    e.preventDefault();
     return;
   }
+  if(this.dataset.mode==='retry'){
+    e.preventDefault();
+    STATE.claimErrorMessage='';
+    startGame();
+    return;
+  }
+  if(STATE.submitted){
+    e.preventDefault();
+    return;
+  }
+  if(claimUrlReady && this.getAttribute('href') === claimUrlReady){
+    STATE.submitted=true;
+    syncEndCta();
+    showClaimNote(COPY.claimOpening, true);
+    armClaimNavRecovery();
+    return;
+  }
+  e.preventDefault();
   STATE.submitted=true;
   syncEndCta();
   prepareClaimUrl().then(()=>{
     STATE.submitted=false;
-    if(claimUrlReady) window.location.assign(claimUrlReady);
-    else syncEndCta();
+    syncEndCta();
   });
 });
-document.getElementById('ctaBtn').addEventListener('touchstart',function(){
-  claimTouchArmed = true;
-},{ passive:true });
-document.getElementById('ctaBtn').addEventListener('touchend',function(e){
-  e.preventDefault();
-  e.stopPropagation();
-  if(!claimTouchArmed){
-    const note = document.getElementById('claimNote');
-    const noteText = String(note.textContent || '').trim();
-    if(!this.disabled && STATE.score > 0 && note.classList.contains('hidden') && !noteText){
-      note.textContent = COPY.claimFailed;
-      note.classList.remove('hidden');
-    }
-    return;
-  }
-  claimTouchArmed = false;
-  if(!this.disabled) this.click();
-},{ passive:false });
-document.getElementById('ctaBtn').addEventListener('touchcancel',function(){
-  claimTouchArmed = false;
-},{ passive:true });
 document.getElementById('startBtn').addEventListener('click',()=>{ sfx.ui(); startGame(); });
 document.getElementById('endBtn').addEventListener('click',()=>{ sfx.ui(); endGame('over'); });
 

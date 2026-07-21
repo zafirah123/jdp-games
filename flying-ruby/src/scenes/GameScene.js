@@ -1,8 +1,13 @@
 import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.2';
 import { addMuteButton, pointerHitsMuteButton } from '../muteButton.js?v=20260717.2';
 import { addPauseButton } from '../pauseButton.js?v=20260717.2';
-import { canClaimScore, claimScore } from '../claimScore.js?v=20260708.1';
-import { COPY } from '../copy.js?v=20260717.2';
+import {
+  canClaimScore,
+  commitPreparedClaim,
+  prepareClaimSubmission,
+  releaseClaimNavigation,
+} from '../claimScore.js?v=20260721.1';
+import { COPY } from '../copy.js?v=20260721.1';
 
 const FLOOR_HEIGHT       = 80;
 const HUD_HEIGHT         = 70;
@@ -60,6 +65,8 @@ export class GameScene extends Phaser.Scene {
     this.rushActive     = false;
     this.rushDue        = false; // a rush roll succeeded; next lane spawns it
     this.rushTrailAcc   = 0;     // throttles the speed-trail during a rush
+    this.preparedPauseClaim = null;
+    this.pauseClaimRecoveryTimer = null;
 
     this._drawBackground();
     this._createFloorAndCeiling();
@@ -412,7 +419,7 @@ export class GameScene extends Phaser.Scene {
     // End run — outlined secondary
     const endBtn = this._modalButton(cx, cy + 92, 200, 48,
       COPY.endRunBtn, PALETTE.navy, PALETTE_CSS.yellow, PALETTE.yellow,
-      async () => {
+      () => {
         const timeUsedMs = this.carriedTimeMs + this.elapsedMs;
         if (this.score <= 0) {
           this.scene.start('GameOverScene', {
@@ -422,23 +429,21 @@ export class GameScene extends Phaser.Scene {
           });
           return;
         }
+        if (!this.preparedPauseClaim) return;
         this._setPauseButtonDisabled(endBtn, true);
-        this._setPauseStatus(COPY.claimSubmitting);
-        const result = await claimScore(this.score, {
-          timeUsedMs,
-          cause: 'early',
-        });
+        this._setPauseStatus(COPY.claimOpening);
+        const result = commitPreparedClaim(this.preparedPauseClaim);
         if (result?.status === 'redirecting') return;
-        if (result?.status === 'missing_callback') {
-          this._setPauseStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
-        } else if (result?.status === 'locked') {
-          this._setPauseStatus(COPY.claimSubmitting);
+        if (result?.status === 'locked') {
+          this._setPauseStatus(COPY.claimOpening);
         } else {
           this._setPauseStatus(COPY.claimFailed, PALETTE_CSS.ruby);
+          releaseClaimNavigation();
+          this._setPauseButtonDisabled(endBtn, false);
         }
-        this._setPauseButtonDisabled(endBtn, this.score > 0 && !canClaimScore());
       },
       /* outlined */ true);
+    endBtn.isClaimButton = true;
     this.pauseOverlay.add(endBtn);
 
     this.pauseStatus = this.add.text(cx, cy + 132, '', {
@@ -453,6 +458,8 @@ export class GameScene extends Phaser.Scene {
     if (this.score > 0 && !canClaimScore()) {
       this._setPauseButtonDisabled(endBtn, true);
       this._setPauseStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+    } else if (this.score > 0) {
+      this._preparePauseClaim(endBtn);
     }
 
     // entrance pop — tweens keep running while physics/time are paused
@@ -465,6 +472,8 @@ export class GameScene extends Phaser.Scene {
 
   _hidePauseOverlay() {
     if (!this.pauseOverlay) return;
+    this._clearPauseClaimRecoveryTimer();
+    this.preparedPauseClaim = null;
     this.pauseOverlay.destroy();
     this.pauseOverlay = null;
     this.pauseStatus = null;
@@ -480,6 +489,38 @@ export class GameScene extends Phaser.Scene {
     if (!btn) return;
     btn.isDisabled = disabled;
     btn.setAlpha(disabled ? 0.55 : 1);
+  }
+
+  async _preparePauseClaim(endBtn) {
+    this.preparedPauseClaim = null;
+    this._clearPauseClaimRecoveryTimer();
+    this._setPauseButtonDisabled(endBtn, true);
+    this._setPauseStatus(COPY.claimPreparing);
+    const result = await prepareClaimSubmission(this.score, {
+      timeUsedMs: this.carriedTimeMs + this.elapsedMs,
+      cause: 'early',
+    });
+    if (!this.scene.isActive() || !this.pauseOverlay) return;
+    if (result?.status === 'prepared') {
+      this.preparedPauseClaim = result.prepared;
+      this._setPauseStatus('');
+      this._setPauseButtonDisabled(endBtn, false);
+      return;
+    }
+    if (result?.status === 'missing_callback') {
+      this._setPauseStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+    } else if (result?.status === 'locked') {
+      this._setPauseStatus(COPY.claimPreparing);
+    } else {
+      this._setPauseStatus(COPY.claimFailed, PALETTE_CSS.ruby);
+    }
+    this._setPauseButtonDisabled(endBtn, true);
+  }
+
+  _clearPauseClaimRecoveryTimer() {
+    if (!this.pauseClaimRecoveryTimer) return;
+    clearTimeout(this.pauseClaimRecoveryTimer);
+    this.pauseClaimRecoveryTimer = null;
   }
 
   // Single-purpose modal button factory for the pause overlay. Kept inline
@@ -520,7 +561,20 @@ export class GameScene extends Phaser.Scene {
       if (btn.isDisabled) return;
       this.tweens.add({
         targets: btn, scale: 0.94, duration: 80, yoyo: true,
-        onComplete: onClick,
+        onComplete: () => {
+          onClick();
+          if (btn.isClaimButton && this.preparedPauseClaim) {
+            this._clearPauseClaimRecoveryTimer();
+            this.pauseClaimRecoveryTimer = setTimeout(() => {
+              this.pauseClaimRecoveryTimer = null;
+              if (document.visibilityState === 'hidden') return;
+              if (!this.scene.isActive() || !this.pauseOverlay || !this.preparedPauseClaim) return;
+              releaseClaimNavigation();
+              this._setPauseButtonDisabled(btn, false);
+              this._setPauseStatus(COPY.claimRetryHint);
+            }, 3000);
+          }
+        },
       });
     });
     return btn;

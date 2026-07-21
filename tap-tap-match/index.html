@@ -164,19 +164,22 @@
     box-shadow: 0 4px 0 #DE9D00;
     cursor: pointer;
   }
+  a.cta { text-decoration: none; }
   .cta:active { transform: translateY(2px); box-shadow: 0 2px 0 #DE9D00; }
-  .cta:disabled {
+  .cta:disabled, .cta[aria-disabled="true"] {
     opacity: 0.7;
     cursor: default;
     box-shadow: none;
     transform: none;
   }
+  .cta[aria-disabled="true"] { pointer-events: none; }
   .claim-note {
     margin: 12px 0 0;
     color: #ff8a8a;
     font-size: 12px;
     font-weight: 700;
   }
+  .claim-note.pending { color: #FFD633; }
 
   /* ===== Standardized JDP start screen (DOM overlay over the canvas) ===== */
   #startOverlay.jdp-start {
@@ -390,7 +393,7 @@
     <p id="goFinalLabel" class="card-subtitle"></p>
     <div id="goScore" class="card-score">0</div>
     <p id="goBest" class="card-best"></p>
-    <button id="claimBtn" class="cta" type="button"></button>
+    <a id="claimBtn" class="cta" href="#" aria-disabled="true"></a>
     <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
@@ -518,7 +521,9 @@ const COPY = {
     claim:    'CLAIM SCORE',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
-    claimPreparing: 'Preparing…',
+    claimPreparing: 'Preparing...',
+    claimOpening: 'Claiming score...',
+    claimRetryHint: 'If nothing happens, please try again.',
     retry:    'RETRY',
     // game-specific
     title:           'TAP TAP MATCH',
@@ -544,7 +549,9 @@ const COPY = {
     claim:    'TUNTUT SKOR',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
-    claimPreparing: 'Sedang bersedia…',
+    claimPreparing: 'Sedang bersedia...',
+    claimOpening: 'Sedang tuntut skor...',
+    claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
     retry:    'RETRY',
     title:           'TAP TAP MATCH',
     tagline1:        'Perhati urutan. Ketuk semula.',
@@ -733,6 +740,7 @@ let claimLocked = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
+let claimNavRecoveryTimer = 0;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'goTitle');
 if (claimContext.pageTitle && claimContext.pageTitle.trim()) {
@@ -756,25 +764,44 @@ function getClaimErrorMessage(error) {
   const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
   return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
+function setClaimDisabled(disabled) {
+  claimBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+}
+function setClaimHref(url) {
+  claimBtn.setAttribute('href', url || '#');
+}
+function showClaimNote(message, pending) {
+  if (!message) {
+    claimNote.textContent = '';
+    claimNote.classList.add('hidden');
+    claimNote.classList.remove('pending');
+    return;
+  }
+  claimNote.textContent = message;
+  claimNote.classList.remove('hidden');
+  claimNote.classList.toggle('pending', !!pending);
+}
 
 function syncClaimButton() {
   if (state.scene !== 'gameover') {
-    claimBtn.disabled = true;
+    setClaimDisabled(true);
+    setClaimHref('#');
     return;
   }
 
   if (isZeroScore()) {
-    claimNote.classList.add('hidden');
-    claimBtn.disabled = false;
+    showClaimNote('', false);
+    setClaimDisabled(false);
+    setClaimHref('#');
     claimBtn.textContent = COPY.retry;
     claimBtn.setAttribute('aria-label', COPY.retry);
     return;
   }
 
   if (claimPreparing) {
-    claimNote.textContent = COPY.claimPreparing;
-    claimNote.classList.remove('hidden');
-    claimBtn.disabled = true;
+    showClaimNote(COPY.claimPreparing, true);
+    setClaimDisabled(true);
+    setClaimHref('#');
     claimBtn.textContent = COPY.claim;
     claimBtn.setAttribute('aria-label', COPY.claim);
     return;
@@ -782,16 +809,17 @@ function syncClaimButton() {
 
   const noteText = state.claimErrorMessage || (state.claimUnavailable ? COPY.claimUnavailable : '');
   if (noteText) {
-    claimNote.textContent = noteText;
-    claimNote.classList.remove('hidden');
-    claimBtn.disabled = true;
+    showClaimNote(noteText, false);
+    setClaimDisabled(true);
+    setClaimHref('#');
     claimBtn.textContent = COPY.claim;
     claimBtn.setAttribute('aria-label', COPY.claim);
     return;
   }
 
-  claimNote.classList.add('hidden');
-  claimBtn.disabled = claimLocked;
+  showClaimNote('', false);
+  setClaimDisabled(claimLocked);
+  setClaimHref(claimLocked ? '#' : claimUrlReady);
   claimBtn.textContent = COPY.claim;
   claimBtn.setAttribute('aria-label', COPY.claim);
 }
@@ -1248,7 +1276,6 @@ function startGame() {
   claimUrlReady = null;
   claimPreparing = false;
   claimPrepareSeq++;
-  claimTouchArmed = false;
   lastTickSec = -1;
   startRound();
 }
@@ -1381,20 +1408,27 @@ async function handleClaimTap() {
     return;
   }
   if (claimLocked) return;
-  if (claimUrlReady) {
+  if (claimUrlReady && claimBtn.getAttribute('href') === claimUrlReady) {
     claimLocked = true;
     syncClaimButton();
-    window.location.assign(claimUrlReady);
+    showClaimNote(COPY.claimOpening, true);
+    clearTimeout(claimNavRecoveryTimer);
+    claimNavRecoveryTimer = setTimeout(() => {
+      claimNavRecoveryTimer = 0;
+      if (document.visibilityState === 'hidden') return;
+      if (state.scene !== 'gameover' || state.score <= 0 || !claimUrlReady) return;
+      claimLocked = false;
+      syncClaimButton();
+      showClaimNote(COPY.claimRetryHint, false);
+    }, 3000);
     return;
   }
   claimLocked = true;
   syncClaimButton();
   await prepareClaimUrl();
   claimLocked = false;
-  if (claimUrlReady) window.location.assign(claimUrlReady);
-  else syncGameOverUi();
+  syncGameOverUi();
 }
-let claimTouchArmed = false;
 
 canvas.addEventListener('pointerdown', (e) => {
   e.preventDefault();
@@ -1415,33 +1449,16 @@ canvas.addEventListener('pointerdown', (e) => {
 }, { passive: false });
 
 claimBtn.addEventListener('click', async (e) => {
-  e.preventDefault();
+  if (claimBtn.getAttribute('aria-disabled') === 'true') {
+    e.preventDefault();
+    return;
+  }
+  if (!isZeroScore() && !(claimUrlReady && claimBtn.getAttribute('href') === claimUrlReady)) {
+    e.preventDefault();
+  }
   ensureAudio();
   await handleClaimTap();
 });
-claimBtn.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  claimTouchArmed = true;
-  ensureAudio();
-}, { passive: false });
-claimBtn.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (!claimTouchArmed) {
-    const noteText = String(claimNote.textContent || '').trim();
-    if (!claimBtn.disabled && state.score > 0 && claimNote.classList.contains('hidden') && !noteText) {
-      claimNote.textContent = COPY.claimFailed;
-      claimNote.classList.remove('hidden');
-    }
-    return;
-  }
-  claimTouchArmed = false;
-  ensureAudio();
-  if (!claimBtn.disabled) claimBtn.click();
-}, { passive: false });
-claimBtn.addEventListener('touchcancel', () => {
-  claimTouchArmed = false;
-}, { passive: true });
 
 // ============================================================
 // MUTE BUTTON

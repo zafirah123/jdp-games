@@ -394,8 +394,8 @@
   </div>
 </div>
 
-<div class="chev l hidden" id="chevL">â€¹</div>
-<div class="chev r hidden" id="chevR">â€º</div>
+<div class="chev l hidden" id="chevL">&#x2039;</div>
+<div class="chev r hidden" id="chevR">&#x203A;</div>
 <div class="seq-bar hidden" id="seqBar"><div class="seq-wrap" id="seqWrap"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -474,16 +474,16 @@ const COPY = {
   en: {
     start: 'START GAME', timeUp: "TIME'S UP!", gameOver: 'GAME OVER',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', end: 'End',
-    menuSub: 'Steer the ball to collect the number that continues the pattern â€” and dodge the holes!',
-    hintKeys:  'Hold <kbd>â—„</kbd> <kbd>â–º</kbd> or <kbd>A</kbd>/<kbd>D</kbd> to steer',
+    menuSub: 'Steer the ball to collect the number that continues the pattern \u2014 and dodge the holes!',
+    hintKeys:  'Hold <kbd>&#x25C0;</kbd> <kbd>&#x25B6;</kbd> or <kbd>A</kbd>/<kbd>D</kbd> to steer',
     hintTouch: 'Tap & hold the left / right of the screen',
     claim: 'CLAIM SCORE', retry: 'RETRY', newBest: 'NEW BEST!',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
-    claimPreparing: 'Preparingâ€¦',
-    claimOpening: 'Claiming score…',
+    claimPreparing: 'Preparing\u2026',
+    claimOpening: 'Claiming score\u2026',
     claimRetryHint: 'If nothing happens, please try again.',
-    contTitle: 'CRASHED!', contSub: 'Jump back in â€” your time is still running.',
+    contTitle: 'CRASHED!', contSub: 'Jump back in \u2014 your time is still running.',
     contBtn: 'CONTINUE', slowmo: 'SLOW-MO!', dbl: 'DOUBLE SCORE!', combo: 'COMBO!',
     contTier: 'Tier', contLevel: 'Lv', contTimeLeft: 'Time left',
     statScore: 'Score', statLevel: 'Level reached', statSeq: 'Patterns cleared', statBest: 'Best',
@@ -492,16 +492,16 @@ const COPY = {
   ms: {
     start: 'MULA MAIN', timeUp: 'MASA TAMAT!', gameOver: 'PERMAINAN TAMAT',
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', end: 'Tamat',
-    menuSub: 'Kawal bola untuk kutip nombor yang menyambung corak â€” dan elak lubang!',
-    hintKeys:  'Tahan <kbd>â—„</kbd> <kbd>â–º</kbd> atau <kbd>A</kbd>/<kbd>D</kbd>',
+    menuSub: 'Kawal bola untuk kutip nombor yang menyambung corak \u2014 dan elak lubang!',
+    hintKeys:  'Tahan <kbd>&#x25C0;</kbd> <kbd>&#x25B6;</kbd> atau <kbd>A</kbd>/<kbd>D</kbd>',
     hintTouch: 'Tahan bahagian kiri / kanan skrin',
     claim: 'TUNTUT SKOR', retry: 'RETRY', newBest: 'REKOD BAHARU!',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
-    claimPreparing: 'Sedang bersediaâ€¦',
-    claimOpening: 'Sedang tuntut skor…',
+    claimPreparing: 'Sedang bersedia\u2026',
+    claimOpening: 'Sedang tuntut skor\u2026',
     claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
-    contTitle: 'TERLANGGAR!', contSub: 'Sambung semula â€” masa anda masih berjalan.',
+    contTitle: 'TERLANGGAR!', contSub: 'Sambung semula \u2014 masa anda masih berjalan.',
     contBtn: 'SAMBUNG', slowmo: 'PERLAHAN!', dbl: 'SKOR DUA KALI!', combo: 'KOMBO!',
     contTier: 'Tahap', contLevel: 'Lv', contTimeLeft: 'Masa tinggal',
     statScore: 'Skor', statLevel: 'Tahap dicapai', statSeq: 'Corak selesai', statBest: 'Terbaik',
@@ -1246,9 +1246,9 @@ function drawPower(f) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `800 ${rad * 0.88}px Poppins, sans-serif`;
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.fillText('Ã—2', px, py + rad * 0.07);
+    ctx.fillText('\u00d72', px, py + rad * 0.07);
     ctx.fillStyle = '#031034';
-    ctx.fillText('Ã—2', px, py);
+    ctx.fillText('\u00d72', px, py);
   }
   powerSparkles(px, py, rad, f.ang, true);
   ctx.restore();

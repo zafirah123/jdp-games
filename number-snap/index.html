@@ -511,10 +511,10 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
-    claimPreparing: 'Preparingâ€¦',
-    claimOpening: 'Claiming score…',
+    claimPreparing: 'Preparing\u2026',
+    claimOpening: 'Claiming score\u2026',
     claimRetryHint: 'If nothing happens, please try again.',
-    menuSub: 'Drag tiles to the grid. Build a connected path of 3â€“5 consecutive numbers to clear it. Chain clears for combos.',
+    menuSub: 'Drag tiles to the grid. Build a connected path of 3\u20135 consecutive numbers to clear it. Chain clears for combos.',
     hintKeys:  'Click &amp; drag tiles onto the grid',
     hintTouch: 'Drag tiles onto the grid',
     bestPrefix: 'Best',
@@ -529,10 +529,10 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
-    claimPreparing: 'Sedang bersediaâ€¦',
-    claimOpening: 'Sedang tuntut skor…',
+    claimPreparing: 'Sedang bersedia\u2026',
+    claimOpening: 'Sedang tuntut skor\u2026',
     claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
-    menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3â€“5 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
+    menuSub: 'Seret jubin ke grid. Bina laluan bersambung 3\u20135 nombor berturutan untuk membersihkannya. Rentet pembersihan untuk kombo.',
     hintKeys:  'Klik &amp; seret jubin ke grid',
     hintTouch: 'Seret jubin ke grid',
     bestPrefix: 'Terbaik',
@@ -674,7 +674,7 @@ dom.newBestLabel.textContent = COPY.newBest;
 function isZeroScore() { return (state.score | 0) <= 0; }
 
 function refreshBestText() {
-  dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : 'Â ';
+  dom.bestText.textContent = state.best > 0 ? `${COPY.bestPrefix}: ${state.best}` : '\u00a0';
 }
 refreshBestText();
 

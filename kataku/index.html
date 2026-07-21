@@ -554,7 +554,7 @@
     </button>
   </header>
   <div id="multRow" class="hidden">
-    <div class="mult-badge" id="multBadge">Ã—1.0</div>
+    <div class="mult-badge" id="multBadge">&times;1.0</div>
   </div>
 
   <div id="board-wrap" class="hidden">
@@ -661,10 +661,10 @@ const CONFIG = {
   // Time multiplier zones: applied based on time REMAINING at solve
   // (time elapsed from start: 0..90 -> x1, 90..120 -> x1.2, 120..150 -> x1.5, 150..180 -> x2)
   MULT_ZONES: [
-    { fromRemMs: 180000, toRemMs: 90000, mult: 1.0, label: 'Ã—1.0', cls: '' },
-    { fromRemMs: 90000,  toRemMs: 60000, mult: 1.2, label: 'Ã—1.2', cls: 'x12' },
-    { fromRemMs: 60000,  toRemMs: 30000, mult: 1.5, label: 'Ã—1.5', cls: 'x15' },
-    { fromRemMs: 30000,  toRemMs: 0,     mult: 2.0, label: 'Ã—2.0', cls: 'x20' },
+    { fromRemMs: 180000, toRemMs: 90000, mult: 1.0, label: '\u00d71.0', cls: '' },
+    { fromRemMs: 90000,  toRemMs: 60000, mult: 1.2, label: '\u00d71.2', cls: 'x12' },
+    { fromRemMs: 60000,  toRemMs: 30000, mult: 1.5, label: '\u00d71.5', cls: 'x15' },
+    { fromRemMs: 30000,  toRemMs: 0,     mult: 2.0, label: '\u00d72.0', cls: 'x20' },
   ],
   // Difficulty ramp â€” question pool selected by time ELAPSED at puzzle load.
   // Only easy/medium/hard are asked as questions; super/ultra stay in DICT so
@@ -692,12 +692,12 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'CLAIM SCORE', retry: 'RETRY',
     claimUnavailable: 'CALLBACK UNAVAILABLE',
     claimFailed: 'Unable to claim score',
-    claimPreparing: 'Preparingâ€¦',
-    claimOpening: 'Claiming score…',
+    claimPreparing: 'Preparing\u2026',
+    claimOpening: 'Claiming score\u2026',
     claimRetryHint: 'If nothing happens, please try again.',
-    skip: 'SKIP (âˆ’15)',
+    skip: 'SKIP (\u221215)',
     menuSub: 'Guess as many 5-letter Bahasa Melayu words as you can in 3 minutes. The later you solve, the more each puzzle is worth.',
-    hintKeys:  'Type letters Â· <kbd>Enter</kbd> submit Â· <kbd>âŒ«</kbd> delete',
+    hintKeys:  'Type letters &bull; <kbd>&#x23CE;</kbd> submit &bull; <kbd>&#x232B;</kbd> delete',
     hintTouch: 'Tap the on-screen keyboard to guess',
     best: 'Best',
     final: 'Final score',
@@ -719,12 +719,12 @@ const COPY = {
     audioOn: 'AUDIO ON', audioOff: 'AUDIO OFF', claim: 'TUNTUT SKOR', retry: 'RETRY',
     claimUnavailable: 'PANGGIL BALIK TIADA',
     claimFailed: 'Tidak dapat tuntut skor',
-    claimPreparing: 'Sedang bersediaâ€¦',
-    claimOpening: 'Sedang tuntut skor…',
+    claimPreparing: 'Sedang bersedia\u2026',
+    claimOpening: 'Sedang tuntut skor\u2026',
     claimRetryHint: 'Jika tiada apa berlaku, sila cuba lagi.',
-    skip: 'LANGKAU (âˆ’15)',
+    skip: 'LANGKAU (\u221215)',
     menuSub: 'Teka seberapa banyak perkataan 5 huruf Bahasa Melayu dalam 3 minit. Semakin lewat anda selesai, semakin tinggi mata setiap teka.',
-    hintKeys:  'Taip huruf Â· <kbd>Enter</kbd> hantar Â· <kbd>âŒ«</kbd> padam',
+    hintKeys:  'Taip huruf &bull; <kbd>&#x23CE;</kbd> hantar &bull; <kbd>&#x232B;</kbd> padam',
     hintTouch: 'Ketuk papan kekunci pada skrin',
     best: 'Terbaik',
     final: 'Skor akhir',
@@ -777,6 +777,16 @@ const POOLS = {
   super:  _dec(_W.s).split(','),
   ultra:  _dec(_W.u).split(','),
 };
+const BLOCKED_WORDS = new Set([
+  'BUNUH',
+  'GANJA',
+  'PELIR',
+  'ROGOL',
+  'SELIR',
+]);
+for (const poolName of Object.keys(POOLS)) {
+  POOLS[poolName] = POOLS[poolName].filter((word) => !BLOCKED_WORDS.has(word));
+}
 // Combined dictionary for guess validation â€” any word in any pool is acceptable
 const DICT = new Set([...POOLS.easy, ...POOLS.medium, ...POOLS.hard, ...POOLS.super, ...POOLS.ultra]);
 
@@ -835,7 +845,7 @@ const state = {
   bestPuzzle: 0,
   skipped: 0,
   zoneStats: { x10: 0, x12: 0, x15: 0, x20: 0 },
-  curMultLabel: 'Ã—1.0',
+  curMultLabel: '\u00d71.0',
   prevZoneIdx: 0,
   puzzleIndex: 0,   // 0-based counter of puzzles loaded this run (drives the clue table)
   solvedThisPuzzle: false,  // true once the current target has been guessed correctly
@@ -920,7 +930,7 @@ updateMuteUI();
 // Menu
 // =============================================================================
 function showMenuBest() {
-  dom.bestText.textContent = state.best > 0 ? `${COPY.best}: ${state.best}` : 'Â ';
+  dom.bestText.textContent = state.best > 0 ? `${COPY.best}: ${state.best}` : '\u00a0';
 }
 showMenuBest();
 
@@ -963,7 +973,7 @@ function buildKeyboard() {
       const b = document.createElement('button');
       b.className = 'key';
       if (k === 'ENTER' || k === 'BACK') b.classList.add('wide');
-      b.textContent = k === 'ENTER' ? 'âŽ' : k === 'BACK' ? 'âŒ«' : k;
+      b.textContent = k === 'ENTER' ? '\u23ce' : k === 'BACK' ? '\u232b' : k;
       b.dataset.key = k;
       b.addEventListener('click', (e) => { e.preventDefault(); ensureAudio(); handleKey(k); });
       div.appendChild(b);
@@ -1120,7 +1130,7 @@ function loop() {
   if (z.idx !== state.prevZoneIdx) {
     state.prevZoneIdx = z.idx;
     sfx.zoneUp();
-    flashMessage('Ã—' + z.mult.toFixed(1).replace('.0','') + (lang==='ms' ? ' zon!' : ' zone!'));
+    flashMessage('\u00d7' + z.mult.toFixed(1).replace('.0','') + (lang==='ms' ? ' zon!' : ' zone!'));
   }
   updateMultBadge(z);
   updateTimerCls(state.remainingMs, z);
@@ -1406,7 +1416,7 @@ dom.skipBtn.addEventListener('click', () => {
   state.streak = 0;
   updateScore();
   sfx.skip();
-  flashMessage(`âˆ’${CONFIG.SKIP_COST}  ${COPY.answerWas} ${state.target}`);
+  flashMessage(`\u2212${CONFIG.SKIP_COST}  ${COPY.answerWas} ${state.target}`);
   lockAndAdvance();
 });
 
@@ -1471,7 +1481,7 @@ function showGameOver(reason) {
 
   const avg = state.solvedCount > 0
     ? (state.totalGuesses / state.solvedCount).toFixed(1)
-    : 'â€”';
+    : '\u2014';
 
   const zs = state.zoneStats;
   const zoneRow = (label, val) =>
@@ -1483,10 +1493,10 @@ function showGameOver(reason) {
     zoneRow(COPY.bestPuzzle, state.bestPuzzle),
     zoneRow(COPY.streak, state.longestStreak),
     zoneRow(COPY.skipped, state.skipped),
-    zoneRow('Ã—1.0', zs.x10),
-    zoneRow('Ã—1.2', zs.x12),
-    zoneRow('Ã—1.5', zs.x15),
-    zoneRow('Ã—2.0', zs.x20),
+    zoneRow('\u00d71.0', zs.x10),
+    zoneRow('\u00d71.2', zs.x12),
+    zoneRow('\u00d71.5', zs.x15),
+    zoneRow('\u00d72.0', zs.x20),
   ].join('');
 
   syncClaimButton();

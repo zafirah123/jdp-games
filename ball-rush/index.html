@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#020d26">
-<title>Ball Rush â€” JDP Games</title>
+<title>Ball Rush  -  JDP Games</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
   canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   .hidden { display: none !important; }
 
-  /* Top HUD bar â€” DESIGN.md Â§5.12 */
+  /* Top HUD bar  -  DESIGN.md Sec.5.12 */
   .hud-bar {
     position: fixed; left: 0; right: 0; top: 0;
     display: flex; flex-direction: column; align-items: center;
@@ -69,7 +69,7 @@
   .mute:active { transform: scale(0.92); }
   .mute svg { width: 22px; height: 22px; fill: currentColor; }
 
-  /* Sequence strip â€” fixed near the bottom, in easy view while steering */
+  /* Sequence strip  -  fixed near the bottom, in easy view while steering */
   .seq-bar {
     position: fixed; left: 0; right: 0;
     bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px));
@@ -225,7 +225,7 @@
   .jdp-bk2 { width: clamp(130px, 38vw, 200px); top: 70%;  left: -11%; }  /* bottom-left blur */
   .jdp-gem { position: absolute; z-index: 4; pointer-events: none; }  /* in front of logos/mascot, behind title+panel */
   .jdp-gem img { display: block; width: 100%; height: auto; }
-  /* two faceted rubies â€” top corners of the red band */
+  /* two faceted rubies  -  top corners of the red band */
   .jdp-g1 { width: clamp(56px, 15vw, 74px);  top: 4.5%;  left: 1.5%;  transform: rotate(-8deg); }
   .jdp-g2 { width: clamp(58px, 15.5vw, 76px);top: 4.5%;  right: 1.5%; transform: rotate(10deg); }
   /* eight kelapa-sawit pebbles */
@@ -237,7 +237,7 @@
   .jdp-g8 { width: clamp(26px, 7.5vw, 36px); top: 53.5%; left: 4%;   }  /* far left, by MPOC */
   .jdp-g9 { width: clamp(22px, 6.5vw, 30px); top: 66.5%; left: 43%;  }  /* below MPOC, centre */
   .jdp-g10{ width: clamp(28px, 8vw, 38px);   top: 72.5%; right: 8%;  }  /* bottom right, by mascot */
-  /* title â€” Bebas Neue, gold gradient fill (180Â°: #ffb000â†’#ffd80b) */
+  /* title  -  Bebas Neue, gold gradient fill (180deg: #ffb000->#ffd80b) */
   .jdp-title {
     position: relative; z-index: 5; isolation: isolate;
     margin: clamp(58px, 14vw, 92px) 0 0;
@@ -254,11 +254,11 @@
        carries layout + the neon glow (background-clip:text only paints on the pseudo here) */
     color: #ffd23f;   /* solid fallback if background-clip:text unsupported */
     -webkit-text-fill-color: transparent;
-    /* faint cool glow only â€” the dark drop shadow is the separate ::before layer below,
+    /* faint cool glow only  -  the dark drop shadow is the separate ::before layer below,
        kept OFF the gold face so the letters keep their bright colour */
     text-shadow: 0 0 12px rgba(120,180,255,0.22);
   }
-  /* dark letter-shaped shadow BEHIND the gold â€” offset copy, doesn't tint the face */
+  /* dark letter-shaped shadow BEHIND the gold  -  offset copy, doesn't tint the face */
   .jdp-title::before {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -268,7 +268,7 @@
     transform: translate(3px, 5px);
     filter: blur(0.6px);
   }
-  /* golden linear-gradient face â€” 180Â°: #ffb000 â†’ #ffd80b (per reference) */
+  /* golden linear-gradient face  -  180deg: #ffb000 -> #ffd80b (per reference) */
   .jdp-title::after {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -304,10 +304,10 @@
   /* bottom margin guarantees a minimum gap between the logos and the CTA below */
   .jdp-powered { position: relative; z-index: 3; margin: clamp(12px, 4vw, 24px) 0 clamp(14px, 4.5vw, 26px); text-align: center; }
   .jdp-powered .lbl { color: #fff; font-size: 15px; font-weight: 600; margin: 0 0 14px; }
-  /* bare logos on the background â€” no shared panel */
+  /* bare logos on the background  -  no shared panel */
   .jdp-logos { display: inline-flex; align-items: center; justify-content: center; gap: clamp(10px, 4vw, 26px); }
   .jdp-logos img { width: auto; object-fit: contain; }
-  /* MPOC mark sits directly on the background â€” no circle frame */
+  /* MPOC mark sits directly on the background  -  no circle frame */
   .jdp-mpoc-ring { display: inline-flex; align-items: center; justify-content: center; }
   .jdp-mpoc   { height: clamp(84px, 26vw, 118px); }
   .jdp-mascot { height: clamp(108px, 34vw, 152px); }
@@ -399,7 +399,7 @@
 <div class="seq-bar hidden" id="seqBar"><div class="seq-wrap" id="seqWrap"></div></div>
 <div class="toast" id="toast"></div>
 
-<!-- Start menu â€” standardized JDP template (see .jdp-* CSS above) -->
+<!-- Start menu  -  standardized JDP template (see .jdp-* CSS above) -->
 <div id="menu" class="overlay jdp-start">
   <div class="jdp-frame">
     <span class="jdp-bokeh jdp-bk1"><img src="assets/start/gem-bokeh.webp?v=20260720.1" alt=""></span>
@@ -467,7 +467,7 @@
 'use strict';
 
 // =============================================================================
-// i18n â€” ?lang=ms switches copy to Bahasa Melayu, English otherwise.
+// i18n  -  ?lang=ms switches copy to Bahasa Melayu, English otherwise.
 // =============================================================================
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
@@ -510,7 +510,7 @@ const COPY = {
 }[LANG];
 
 // =============================================================================
-// CONFIG â€” all tunables here
+// CONFIG  -  all tunables here
 // =============================================================================
 const CONFIG = {
   GAME_DURATION_SEC: 180,
@@ -687,7 +687,7 @@ function resize() {
   // center biased upward so the ball (which rides the bottom of the ring) stays
   // fully visible and clears the bottom sequence strip.
   view.cx = view.w / 2; view.cy = view.h * 0.42;
-  // base must keep the gameplay ring (ball orbits at ~0.74Â·base) inside the
+  // base must keep the gameplay ring (ball orbits at ~0.74?base) inside the
   // smaller viewport dimension, or the ball falls off the bottom on desktop.
   view.base = Math.min(view.w, view.h) * 0.58;
 }
@@ -696,7 +696,7 @@ resize();
 
 // perspective: ring radius for a given depth z
 function radiusAt(z) { return view.base / (1 + Math.max(0, z) * CONFIG.RADIUS_K); }
-// raw perspective â€” valid past the ball plane (z < 0) so the checker grid and
+// raw perspective  -  valid past the ball plane (z < 0) so the checker grid and
 // features can slide off toward the screen edges instead of freezing at the rim.
 // Capped so near-singular depths stay drawable.
 function radiusRaw(z) {
@@ -706,7 +706,7 @@ function radiusRaw(z) {
 }
 
 // =============================================================================
-// Sequence generation (procedural â€” fresh every sequence, never hardcoded)
+// Sequence generation (procedural  -  fresh every sequence, never hardcoded)
 // =============================================================================
 function tierFor(level) { return level <= 2 ? 1 : level <= 4 ? 2 : 3; }
 
@@ -906,8 +906,8 @@ function update(dt) {
   const hueDiff = ((currentHue() - state.hue + 540) % 360) - 180;
   state.hue += hueDiff * Math.min(1, dt * CONFIG.HUE_EASE);
 
-  // The round clock keeps ticking through the crash + continue prompt â€”
-  // time is a shared budget (Â§1.2), so pausing here would be a free break.
+  // The round clock keeps ticking through the crash + continue prompt  - 
+  // time is a shared budget (Sec.1.2), so pausing here would be a free break.
   if (state.phase === 'CRASHED') {
     state.crashT += dt;
     if (advanceClock(dt)) { endGame('time'); return; }
@@ -927,7 +927,7 @@ function update(dt) {
 
   if (advanceClock(dt)) { endGame('time'); return; }
 
-  // steer â€” eased angular velocity so starts/stops feel smooth, not snapped
+  // steer  -  eased angular velocity so starts/stops feel smooth, not snapped
   state.angVel += (state.holdDir * CONFIG.ROT_SPEED - state.angVel) * Math.min(1, dt * CONFIG.STEER_RESPONSE);
   state.theta = norm(state.theta + state.angVel * dt);
   const steer = Math.abs(state.angVel) / CONFIG.ROT_SPEED;
@@ -947,8 +947,8 @@ function update(dt) {
     if (!f.resolved) {
       if (f.type === 'hole') {
         // checked every frame while the one-row gap is under the ball (at
-        // BALL_Z, its visual depth) â€” steering in or out mid-crossing counts
-        if (f.z + ringStep < BALL_Z) f.resolved = true; // slipped past â€” dodged
+        // BALL_Z, its visual depth)  -  steering in or out mid-crossing counts
+        if (f.z + ringStep < BALL_Z) f.resolved = true; // slipped past  -  dodged
         else if (f.z <= BALL_Z && ballOverHole(f)) { f.resolved = true; crash(f); }
       } else if (f.prevZ > 0 && f.z <= 0) resolveFeature(f);
     }
@@ -1060,7 +1060,7 @@ function drawTunnel() {
   const shift = state.scrollDist % ringStep;
   const wraps = Math.floor(state.scrollDist / ringStep);
   const seg = CONFIG.SEGMENTS;
-  const eps = 0.006; // tiny angular overlap â€” kills hairline seams between tiles
+  const eps = 0.006; // tiny angular overlap  -  kills hairline seams between tiles
   // overscan rings continue the checker past the ball plane to the screen edges
   for (let k = CONFIG.RINGS; k >= 1 - CONFIG.OVERSCAN_RINGS; k--) {
     const zf = k * ringStep - shift;
@@ -1087,12 +1087,12 @@ function drawTunnel() {
 }
 
 function drawHole(f) {
-  // exactly one checker row deep, spawn-snapped to the grid â€” the gap sits flush
+  // exactly one checker row deep, spawn-snapped to the grid  -  the gap sits flush
   // on tile boundaries for its whole life, so it reads as missing tiles
   const ringStep = CONFIG.Z_VIEW / CONFIG.RINGS;
   const z = f.z;
-  const rO = radiusRaw(z);                // near lip â€” on a grid row boundary
-  const rI = radiusRaw(z + ringStep);     // far edge â€” the next row boundary
+  const rO = radiusRaw(z);                // near lip  -  on a grid row boundary
+  const rI = radiusRaw(z + ringStep);     // far edge  -  the next row boundary
   const a = holeArc(f), a0 = a.start, a1 = a.start + a.len;
   const hue = state.hue;
   const fade = clamp(1 - z / CONFIG.Z_VIEW, 0.12, 1);
@@ -1117,7 +1117,7 @@ function drawHole(f) {
   ctx.restore();
 }
 
-// glossy 3D orb â€” layered shading: drop shadow, 4-stop sphere gradient with a
+// glossy 3D orb  -  layered shading: drop shadow, 4-stop sphere gradient with a
 // dark rim, bottom bounce-light, and twin specular glints
 function glossyBall(x, y, rad, c1, c2, c3, c4) {
   const amb = ctx.globalAlpha;
@@ -1128,7 +1128,7 @@ function glossyBall(x, y, rad, c1, c2, c3, c4) {
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
   ctx.restore();
   ctx.save();
-  // bounce light reflected up from below â€” lifts the sphere off its shadow
+  // bounce light reflected up from below  -  lifts the sphere off its shadow
   ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.clip();
   const bl = ctx.createRadialGradient(x, y + rad * 0.6, rad * 0.15, x, y + rad * 0.6, rad * 0.8);
   bl.addColorStop(0, 'rgba(255,255,255,0.16)'); bl.addColorStop(1, 'rgba(255,255,255,0)');
@@ -1172,7 +1172,7 @@ function drawGate(f) {
     }
     // yellow collectible orb, distinct from the red running ball
     glossyBall(px, py, oR, '#fff7c4', '#fdd83d', '#ffb800', '#8a5400');
-    // embossed number â€” light catch below, ink on top
+    // embossed number  -  light catch below, ink on top
     ctx.font = `800 ${oR * 0.9}px 'Roboto Mono', monospace`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -1208,7 +1208,7 @@ function drawPower(f) {
   const px = Math.cos(f.ang) * r * 0.62;
   const py = Math.sin(f.ang) * r * 0.62 + Math.sin(state.elapsed * 3.6 + f.ang * 5) * r * 0.015;
   const rad = clamp(r * 0.16, 10, 100) * (1 + 0.05 * Math.sin(state.elapsed * 4.5 + f.ang));
-  const glow = slow ? '#46c8ff' : '#5dff9f'; // green Ã—2 â€” distinct from gold gates and blue slow-mo
+  const glow = slow ? '#46c8ff' : '#5dff9f'; // green x2  -  distinct from gold gates and blue slow-mo
   ctx.save();
   ctx.globalAlpha = alpha;
   powerSparkles(px, py, rad, f.ang, false);
@@ -1222,8 +1222,8 @@ function drawPower(f) {
   if (slow) glossyBall(px, py, rad, '#d9f5ff', '#49c9ff', '#1535a8', '#081543');
   else glossyBall(px, py, rad, '#dcffe9', '#5fe896', '#17a854', '#07522a');
   if (slow) {
-    // hand-drawn clock with spinning hands â€” reads "time" on every platform,
-    // unlike the â± emoji it replaces
+    // hand-drawn clock with spinning hands  -  reads "time" on every platform,
+    // unlike the timer emoji it replaces
     ctx.strokeStyle = '#fff'; ctx.lineCap = 'round';
     ctx.lineWidth = rad * 0.11;
     ctx.beginPath(); ctx.arc(px, py, rad * 0.52, 0, TAU); ctx.stroke();
@@ -1242,7 +1242,7 @@ function drawPower(f) {
     ctx.lineWidth = rad * 0.12;
     ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + Math.cos(ho) * rad * 0.24, py + Math.sin(ho) * rad * 0.24); ctx.stroke();
   } else {
-    // embossed Ã—2, same treatment as the gate numbers
+    // embossed x2, same treatment as the gate numbers
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `800 ${rad * 0.88}px Poppins, sans-serif`;
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
@@ -1256,12 +1256,12 @@ function drawPower(f) {
 
 function drawBall() {
   // crash = tumble into the gap: slide to its center, sink outward through the
-  // floor, shrink and go dark â€” reads as falling in, not popping out of existence
+  // floor, shrink and go dark  -  reads as falling in, not popping out of existence
   let theta = state.theta, sink = 0;
   if (state.crashT > 0) {
     theta = lerpAngle(state.crashTheta0, state.crashTheta, clamp(state.crashT / 0.3, 0, 1));
     const p = clamp(state.crashT / 0.7, 0, 1);
-    sink = p * p; // ease-in â€” the drop accelerates like gravity
+    sink = p * p; // ease-in  -  the drop accelerates like gravity
   }
   const r = radiusAt(0) * 0.74 * (1 + sink * 0.10);
   const bx = Math.cos(theta) * r, by = Math.sin(theta) * r;
@@ -1271,7 +1271,7 @@ function drawBall() {
     ctx.save();
     ctx.globalAlpha = 1 - sink * 0.6;
     ctx.translate(bx, by);
-    ctx.rotate(theta + Math.PI);         // local +x points into the tunnel â€” the roll direction
+    ctx.rotate(theta + Math.PI);         // local +x points into the tunnel  -  the roll direction
     // soft contact shadow cast outward onto the tunnel wall
     ctx.fillStyle = 'rgba(0,0,0,0.30)';
     ctx.beginPath(); ctx.ellipse(-rad * 0.72, 0, rad * 0.45, rad * 1.02, 0, 0, TAU); ctx.fill();
@@ -1283,7 +1283,7 @@ function drawBall() {
     ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.fill();
     ctx.shadowBlur = 0;
     ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.clip();
-    // fixed light source â€” the shading stays put while the surface texture rolls,
+    // fixed light source  -  the shading stays put while the surface texture rolls,
     // which is what sells the rolling (a moving highlight reads as orbiting instead)
     const lightA = -2.1 - (theta + Math.PI + state.rollTilt);
     const lx = Math.cos(lightA) * rad * 0.36, ly = Math.sin(lightA) * rad * 0.36;
@@ -1293,7 +1293,7 @@ function drawBall() {
     g.addColorStop(0.75, '#9c141d');
     g.addColorStop(1, '#2a0609');
     ctx.fillStyle = g; ctx.fillRect(-rad * 1.1, -rad * 1.1, rad * 2.2, rad * 2.2);
-    // rolling meridian stripes â€” half-ellipses sweeping along the travel direction,
+    // rolling meridian stripes  -  half-ellipses sweeping along the travel direction,
     // fading at the silhouette so they never pop in or out at the edges
     for (let i = 0; i < CONFIG.ROLL_STRIPES; i++) {
       const p = (state.rollPhase + i / CONFIG.ROLL_STRIPES) % 1;
@@ -1351,7 +1351,7 @@ function drawFloater(f) {
 }
 
 // =============================================================================
-// Audio â€” Web Audio synthesis
+// Audio  -  Web Audio synthesis
 // =============================================================================
 let audioCtx = null;
 function ensureAudio() {
@@ -1386,7 +1386,7 @@ function playContTick(count) {
   playTone({ freq: urgent ? 900 : 620, freqEnd: urgent ? 640 : 460,
              type: 'triangle', dur: 0.08, gain: urgent ? 0.16 : 0.11 });
 }
-// end-of-round celebration â€” rising arpeggio into a warm closing chord
+// end-of-round celebration  -  rising arpeggio into a warm closing chord
 function playFanfare(newBest) {
   const arp = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
   arp.forEach((f, i) => playTone({ freq: f, type: 'triangle', dur: 0.16, gain: 0.16, delay: i * 0.1 }));
@@ -1395,7 +1395,7 @@ function playFanfare(newBest) {
 }
 
 // =============================================================================
-// BGM â€” synthesized lofi loop, no asset files. Everything routes through one
+// BGM  -  synthesized lofi loop, no asset files. Everything routes through one
 // gain node so the mute button silences already-scheduled notes instantly.
 // =============================================================================
 const NOTE = n => 440 * Math.pow(2, (n - 69) / 12); // midi -> Hz
@@ -1443,7 +1443,7 @@ function bgmHat(t) {
 function bgmBar(t, bar) {
   const beat = 60 / CONFIG.MUSIC_TEMPO;
   const ch = BGM_CHORDS[bar % BGM_CHORDS.length];
-  // warm pad â€” staggered chord tones with a slow swell
+  // warm pad  -  staggered chord tones with a slow swell
   ch.pad.forEach((f, i) => bgmNote({ freq: f, t: t + i * 0.03, dur: beat * 3.7, gain: 0.045, attack: 0.5, cut: 850 }));
   // laid-back bass on beats 1 and 3
   bgmNote({ freq: ch.bass, t, dur: beat * 1.7, type: 'sine', gain: 0.1, attack: 0.03, cut: 400 });
@@ -1527,7 +1527,7 @@ function openContinue() {
   state.phase = 'CONTINUE';
   state.contCountdown = CONFIG.CONTINUE_COUNT;
   dom.contCount.textContent = state.contCountdown;
-  dom.contTier.textContent = COPY.contTier + ' ' + tierFor(state.level) + ' Â· ' + COPY.contLevel + ' ' + state.level;
+  dom.contTier.textContent = COPY.contTier + ' ' + tierFor(state.level) + ' \u00b7 ' + COPY.contLevel + ' ' + state.level;
   dom.contClock.textContent = COPY.contTimeLeft + ' ' + fmtClock(state.timer);
   dom.cont.classList.remove('hidden');
   playContTick(state.contCountdown);
@@ -1607,7 +1607,7 @@ dom.contBtn.addEventListener('click', () => doContinue());
 dom.contEndBtn.addEventListener('click', () => endGame('crash'));
 
 // =============================================================================
-// CLAIM SCORE â€” Â§6.5 callback + Â§6.6 Genet encrypted flow via claim-callback.js
+// CLAIM SCORE  -  Sec.6.5 callback + Sec.6.6 Genet encrypted flow via claim-callback.js
 // =============================================================================
 let claimLocked = false;
 let claimUnavailable = false;
@@ -1827,7 +1827,7 @@ function showBest() { dom.bestText.innerHTML = state.best > 0 ? `${COPY.bestPref
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (state.phase === 'PLAYING' && !state.paused) { state.paused = true; }
-    if (audioCtx) audioCtx.suspend(); // freezes the music clock too â€” no catch-up burst
+    if (audioCtx) audioCtx.suspend(); // freezes the music clock too  -  no catch-up burst
   } else {
     if (state.paused) { state.paused = false; lastT = 0; }
     if (audioCtx) audioCtx.resume();

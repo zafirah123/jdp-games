@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#020d26">
-<title>Ruby Rush â€” JDP Games</title>
+<title>Ruby Rush  -  JDP Games</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
@@ -31,7 +31,7 @@
   }
   .hidden { display: none !important; }
 
-  /* Top HUD bar â€” DESIGN.md Â§5.12 (Score Â· Time Â· Audio in one row) */
+  /* Top HUD bar  -  DESIGN.md Sec.5.12 (Score ? Time ? Audio in one row) */
   .hud-bar {
     position: fixed; left: 0; right: 0; top: 0;
     display: flex; flex-direction: column; align-items: center;
@@ -81,7 +81,7 @@
   @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
   .pill-value.bump { animation: pop 0.18s ease-out; }
 
-  /* Square control buttons â€” DESIGN.md Â§5.11 */
+  /* Square control buttons  -  DESIGN.md Sec.5.11 */
   .icon-btn {
     flex-shrink: 0;
     width: 44px; height: 44px;
@@ -144,7 +144,7 @@
     display: block;
     /* Scale up and overflow above the card top so the wordmark fills the hero.
        Centred with a transform (margin:auto can't centre an element wider than
-       its container â€” it would collapse and shove the logo to the right). */
+       its container  -  it would collapse and shove the logo to the right). */
     position: relative;
     left: 50%;
     transform: translateX(-50%);
@@ -249,7 +249,7 @@
     }
   }
 
-  /* On-screen jump / duck pads â€” shown on touch devices during play. */
+  /* On-screen jump / duck pads  -  shown on touch devices during play. */
   .touch-controls { display: none; }
   .touch-controls.active { display: block; }
   .tc-btn {
@@ -275,10 +275,10 @@
   #shootBtn { left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: linear-gradient(180deg,#5cf07a,#1fb84a); color: #04210d; border-color: #2bd655; }
   #shootBtn:active { transform: translateX(-50%) translateY(3px); }
 
-  /* Lives â€” pixel hearts under the HUD row */
+  /* Lives  -  pixel hearts under the HUD row */
   .lives { display: flex; gap: 5px; margin: 8px auto 0; justify-content: center; pointer-events: none; }
   .lives svg { filter: drop-shadow(0 2px 0 rgba(0,0,0,0.35)); }
-  /* Ammo â€” green pixel pips */
+  /* Ammo  -  green pixel pips */
   .ammo { display: flex; gap: 3px; margin: 6px auto 0; justify-content: center; align-items: center; pointer-events: none; }
   .ammo i { width: 9px; height: 13px; border-radius: 2px; display: block; }
   .ammo i.on  { background: #36e25e; box-shadow: 0 0 6px rgba(54,226,94,0.85), inset 0 0 2px rgba(255,255,255,0.6); }
@@ -330,7 +330,7 @@
   .jdp-bk2 { width: clamp(130px, 38vw, 200px); top: 70%;  left: -11%; }  /* bottom-left blur */
   .jdp-gem { position: absolute; z-index: 4; pointer-events: none; }  /* in front of logos/mascot, behind title+panel */
   .jdp-gem img { display: block; width: 100%; height: auto; }
-  /* two faceted rubies â€” top corners of the red band */
+  /* two faceted rubies  -  top corners of the red band */
   .jdp-g1 { width: clamp(56px, 15vw, 74px);  top: 4.5%;  left: 1.5%;  transform: rotate(-8deg); }
   .jdp-g2 { width: clamp(58px, 15.5vw, 76px);top: 4.5%;  right: 1.5%; transform: rotate(10deg); }
   /* eight kelapa-sawit pebbles */
@@ -342,7 +342,7 @@
   .jdp-g8 { width: clamp(26px, 7.5vw, 36px); top: 53.5%; left: 4%;   }  /* far left, by MPOC */
   .jdp-g9 { width: clamp(22px, 6.5vw, 30px); top: 66.5%; left: 43%;  }  /* below MPOC, centre */
   .jdp-g10{ width: clamp(28px, 8vw, 38px);   top: 72.5%; right: 8%;  }  /* bottom right, by mascot */
-  /* title â€” Bebas Neue, gold gradient fill (180Â°: #ffb000â†’#ffd80b) */
+  /* title  -  Bebas Neue, gold gradient fill (180deg: #ffb000->#ffd80b) */
   .jdp-title {
     position: relative; z-index: 5; isolation: isolate;
     margin: clamp(58px, 14vw, 92px) 0 0;
@@ -359,11 +359,11 @@
        carries layout + the neon glow (background-clip:text only paints on the pseudo here) */
     color: #ffd23f;   /* solid fallback if background-clip:text unsupported */
     -webkit-text-fill-color: transparent;
-    /* faint cool glow only â€” the dark drop shadow is the separate ::before layer below,
+    /* faint cool glow only  -  the dark drop shadow is the separate ::before layer below,
        kept OFF the gold face so the letters keep their bright colour */
     text-shadow: 0 0 12px rgba(120,180,255,0.22);
   }
-  /* dark letter-shaped shadow BEHIND the gold â€” offset copy, doesn't tint the face */
+  /* dark letter-shaped shadow BEHIND the gold  -  offset copy, doesn't tint the face */
   .jdp-title::before {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -373,7 +373,7 @@
     transform: translate(3px, 5px);
     filter: blur(0.6px);
   }
-  /* golden linear-gradient face â€” 180Â°: #ffb000 â†’ #ffd80b (per reference) */
+  /* golden linear-gradient face  -  180deg: #ffb000 -> #ffd80b (per reference) */
   .jdp-title::after {
     content: attr(data-text);
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
@@ -409,10 +409,10 @@
   /* bottom margin guarantees a minimum gap between the logos and the CTA below */
   .jdp-powered { position: relative; z-index: 3; margin: clamp(12px, 4vw, 24px) 0 clamp(14px, 4.5vw, 26px); text-align: center; }
   .jdp-powered .lbl { color: #fff; font-size: 15px; font-weight: 600; margin: 0 0 14px; }
-  /* bare logos on the background â€” no shared panel */
+  /* bare logos on the background  -  no shared panel */
   .jdp-logos { display: inline-flex; align-items: center; justify-content: center; gap: clamp(10px, 4vw, 26px); }
   .jdp-logos img { width: auto; object-fit: contain; }
-  /* MPOC mark sits directly on the background â€” no circle frame */
+  /* MPOC mark sits directly on the background  -  no circle frame */
   .jdp-mpoc-ring { display: inline-flex; align-items: center; justify-content: center; }
   .jdp-mpoc   { height: clamp(84px, 26vw, 118px); }
   .jdp-mascot { height: clamp(108px, 34vw, 152px); }
@@ -505,12 +505,12 @@
 
 <!-- On-screen controls (touch) -->
 <div id="touchControls" class="touch-controls">
-  <button id="duckBtn" class="tc-btn" aria-label="Duck"><span class="ic">â–¼</span><span id="duckLbl">DUCK</span></button>
-  <button id="shootBtn" class="tc-btn" aria-label="Shoot"><span class="ic">â—</span><span id="shootLbl">SHOOT</span></button>
-  <button id="jumpBtn" class="tc-btn" aria-label="Jump"><span class="ic">â–²</span><span id="jumpLbl">JUMP</span></button>
+  <button id="duckBtn" class="tc-btn" aria-label="Duck"><span class="ic">&#x25BC;</span><span id="duckLbl">DUCK</span></button>
+  <button id="shootBtn" class="tc-btn" aria-label="Shoot"><span class="ic">&#x25CF;</span><span id="shootLbl">SHOOT</span></button>
+  <button id="jumpBtn" class="tc-btn" aria-label="Jump"><span class="ic">&#x25B2;</span><span id="jumpLbl">JUMP</span></button>
 </div>
 
-<!-- Start menu â€” standardized JDP template (see .jdp-* CSS above) -->
+<!-- Start menu  -  standardized JDP template (see .jdp-* CSS above) -->
 <div id="menu" class="overlay jdp-start">
   <div class="jdp-frame">
     <!-- soft background bokeh gems -->
@@ -552,7 +552,7 @@
   </div>
 </div>
 
-<!-- Pause / early-end (Â§6.5) -->
+<!-- Pause / early-end (Sec.6.5) -->
 <div id="pause" class="overlay hidden">
   <div class="card">
     <h2 id="pauseTitle"></h2>
@@ -562,7 +562,7 @@
   </div>
 </div>
 
-<!-- Crash â†’ Continue (Â§1.2 / Â§6.5) -->
+<!-- Crash -> Continue (Sec.1.2 / Sec.6.5) -->
 <div id="continue" class="overlay hidden">
   <div class="card">
     <h2 id="crashTitle"></h2>
@@ -588,8 +588,8 @@
 'use strict';
 
 // =============================================================================
-// i18n â€” ?lang=ms switches the game's copy to Bahasa Melayu, English otherwise.
-// (CLAUDE.md Â§6.4 â€” canonical keys aligned across every JDP game.)
+// i18n  -  ?lang=ms switches the game's copy to Bahasa Melayu, English otherwise.
+// (CLAUDE.md Sec.6.4  -  canonical keys aligned across every JDP game.)
 // =============================================================================
 const LANG = new URLSearchParams(location.search).get('lang') === 'ms' ? 'ms' : 'en';
 const COPY = {
@@ -650,37 +650,37 @@ const COPY = {
 const claimContext = (window.ClaimCallback && window.ClaimCallback.getClaimContext()) || {};
 
 // =============================================================================
-// CONFIG â€” all tunables live here (CLAUDE.md pattern #1)
+// CONFIG  -  all tunables live here (CLAUDE.md pattern #1)
 // =============================================================================
 const CONFIG = {
   GAME_NAME: 'ruby-rush',
   GAME_DURATION_SEC: 180,
   RUBY_CAP: 500,
 
-  // Vertical layout â€” world units, multiplied by view.scale at draw time.
+  // Vertical layout  -  world units, multiplied by view.scale at draw time.
   PB_H: 150, PB_W: 120,
   PB_X_FRAC: 0.24,            // pbot's fixed horizontal position
   GROUND_FRAC: 0.82,         // groundY as a fraction of viewport height (on the sidewalk)
   BG_PARALLAX: 0.85,         // background scroll speed vs. gameplay
   BG_DIM: 0.34,              // dark scrim over the background art (calmer, less dizzying)
-  FLYER_BAND_FRAC: 0.66,     // flyer NEUTRAL bottom â€” standing collides, crouch clears (allows a 15px rise)
+  FLYER_BAND_FRAC: 0.66,     // flyer NEUTRAL bottom  -  standing collides, crouch clears (allows a 15px rise)
   WALK_STEP_PX: 26,          // world px between walk-frame swaps
 
-  // Jump arc â€” a touch higher + snappier so it reads well even zoomed out.
+  // Jump arc  -  a touch higher + snappier so it reads well even zoomed out.
   GRAVITY: 2950,
   JUMP_V: 1260,
-  JUMP_V2: 920,              // double jump â€” weaker than the first
+  JUMP_V2: 920,              // double jump  -  weaker than the first
   DUCK_GRAVITY_MULT: 2.4,    // fast-fall when ducking mid-air
   COYOTE_SEC: 0.09,
 
-  // World speed â€” stepped up every 30s (per request), capped at 5 steps.
+  // World speed  -  stepped up every 30s (per request), capped at 5 steps.
   // (Dialled down ~20% from the original pace for comfort.)
   SPEED_BASE: 240,
   SPEED_STEP: 37,
   SPEED_STEP_SEC: 30,
   SPEED_STEP_MAX: 5,
 
-  // Obstacle spacing â€” measured in seconds-of-reaction, ramps tighter to 85%.
+  // Obstacle spacing  -  measured in seconds-of-reaction, ramps tighter to 85%.
   // Wider gaps so the ground tanks read clearly and arrive less frantically.
   GAP_SEC: { start: 1.95, end: 1.20 },
   RAMP_COMPLETE_AT: 0.85,
@@ -696,8 +696,8 @@ const CONFIG = {
   ENEMY_SHOOT_SEC: 2.0,      // ground tank fires a bullet this often
   ENEMY_BULLET_EXTRA: 300,   // bullet px/s on top of the world scroll speed
 
-  // Lives â€” 3 per life-stretch; a hit costs one and respawns. Reset to 3 on a
-  // Continue (resume). Out of lives â†’ the crash/continue flow.
+  // Lives  -  3 per life-stretch; a hit costs one and respawns. Reset to 3 on a
+  // Continue (resume). Out of lives -> the crash/continue flow.
   LIVES: 3,
   RESPAWN_SEC: 0.7,          // death-burst pause before pbot pops back in
 
@@ -707,13 +707,13 @@ const CONFIG = {
   PB_AMMO_MAX: 10,           // bullet magazine
   PB_AMMO_REGEN_SEC: 1,      // restore one bullet this often
 
-  // Ruby supply â€” taper as score nears the cap (CLAUDE.md Â§1.4), never clamp.
+  // Ruby supply  -  taper as score nears the cap (CLAUDE.md Sec.1.4), never clamp.
   // Spacing widened a lot (sparse rubies) and the taper keeps a floor so the
   // world never goes empty past the cap.
   RUBY_GAP_SEC: 3.2,
   RUBY_TAPER_START: 420,
   RUBY_TAPER_END: 520,
-  RUBY_SPAWN_FLOOR: 0.2,     // minimum spawn chance â€” keeps a trickle past 500
+  RUBY_SPAWN_FLOOR: 0.2,     // minimum spawn chance  -  keeps a trickle past 500
 
   // Magnet (aid) power-up
   MAGNET_EVERY_MS: 9000, MAGNET_CHANCE: 0.6, MAGNET_DUR: 5, MAGNET_PULL: 640,
@@ -729,7 +729,7 @@ const CONFIG = {
   CLAIM_PREPARE_TIMEOUT_MS: 8000,
 };
 
-// Touch devices get a gentler combat balance â€” enemies fall in 2 orbs and the
+// Touch devices get a gentler combat balance  -  enemies fall in 2 orbs and the
 // magazine is smaller (6) so the on-screen SHOOT pad stays comfortable.
 const IS_TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
   || ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
@@ -783,7 +783,7 @@ dom.duckLbl.textContent = COPY.duck;
 dom.shootLbl.textContent = COPY.shoot;
 
 // =============================================================================
-// Image assets â€” pbot frames, logo. Each gets an {img, ok} entry; the game
+// Image assets  -  pbot frames, logo. Each gets an {img, ok} entry; the game
 // renders a placeholder until the bitmap loads (CLAUDE.md pattern #8).
 // =============================================================================
 const IMG = {};
@@ -872,7 +872,7 @@ function resize() {
   // Scale gameplay to vertical space so jump height feels consistent.
   view.scale = Math.max(0.62, Math.min(1.35, view.h / 760));
   // Pull the camera back on phones (touch OR a narrow viewport) so the
-  // playfield reads more zoomed out â€” smaller sprites, more scene visible.
+  // playfield reads more zoomed out  -  smaller sprites, more scene visible.
   // Width-based fallback covers webviews where pointer/touch detection is flaky.
   if (IS_TOUCH || view.w < 620) view.scale = Math.max(0.45, view.scale * CONFIG.MOBILE_ZOOM);
   view.groundY = Math.round(view.h * CONFIG.GROUND_FRAC);
@@ -882,7 +882,7 @@ window.addEventListener('resize', resize);
 resize();
 
 const S = () => view.scale;
-// Pixel-snapped fill rect â€” keeps the chunky pixel look crisp.
+// Pixel-snapped fill rect  -  keeps the chunky pixel look crisp.
 function R(x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(Math.round(x), Math.round(y), Math.max(1, Math.ceil(w)), Math.max(1, Math.ceil(h))); }
 
 // =============================================================================
@@ -900,8 +900,8 @@ function worldSpeed() {
   return s;
 }
 function rubySpawnChance() {
-  // 1 âˆ’ smoothstep(taperStart, taperEnd, score): supply calms near the cap, but
-  // never below a floor so the world keeps a ruby trickle past 500 (Â§1.4 â€” an
+  // 1 - smoothstep(taperStart, taperEnd, score): supply calms near the cap, but
+  // never below a floor so the world keeps a ruby trickle past 500 (Sec.1.4  -  an
   // empty world reads as a bug).
   const a = CONFIG.RUBY_TAPER_START, b = CONFIG.RUBY_TAPER_END;
   const t = Math.min(1, Math.max(0, (state.score - a) / (b - a)));
@@ -910,7 +910,7 @@ function rubySpawnChance() {
 }
 
 // =============================================================================
-// Procedural pixel enemies â€” a tiny LCG seeds a symmetric, friendly creature.
+// Procedural pixel enemies  -  a tiny LCG seeds a symmetric, friendly creature.
 // (CLAUDE.md pattern #8: generated content, #6: variants for free.)
 // =============================================================================
 function lcg(seed) { let s = (seed >>> 0) || 1; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
@@ -994,7 +994,7 @@ function drawEnemySprite(sp, x, y, w, h, t) {
       else if (v === 4) { R(px, py, cw + 0.5, ch + 0.5, sp.pal.eye); R(px + cw * 0.28, py + ch * 0.28, cw * 0.45, ch * 0.45, sp.pal.pupil); }
     }
   }
-  // Flapping wings for flyers â€” two accent triangles that beat with time.
+  // Flapping wings for flyers  -  two accent triangles that beat with time.
   if (sp.kind === 'flyer') {
     const beat = Math.sin(t * 12 + sp.flap);
     const wy = y + h * 0.35 + beat * h * 0.18;
@@ -1008,7 +1008,7 @@ function drawEnemySprite(sp, x, y, w, h, t) {
 }
 
 // =============================================================================
-// pbot â€” rendered from the four sprite-sheet frames. Legs animate (walk1/walk2)
+// pbot  -  rendered from the four sprite-sheet frames. Legs animate (walk1/walk2)
 // while running, the jump frame plays airborne, the duck frame while crouching.
 // =============================================================================
 function pbFrameKey() {
@@ -1032,7 +1032,7 @@ function drawPbot(t) {
   const baseY = view.groundY - state.pbY * S();
   const x = view.pbX - f.dw / 2, y = baseY - f.dh;
 
-  // Contact shadow â€” tightens as pbot lifts off.
+  // Contact shadow  -  tightens as pbot lifts off.
   const lift = Math.max(0.18, 1 - state.pbY / 230);
   ctx.save();
   ctx.globalAlpha = 0.30 * lift; ctx.fillStyle = '#000';
@@ -1046,8 +1046,8 @@ function drawPbot(t) {
   ctx.restore();
 }
 
-// pbot hitbox â€” derived from the drawn frame; legs splay so inset the sides,
-// and the head pokes the top. Duck frame is naturally short â†’ clears flyers.
+// pbot hitbox  -  derived from the drawn frame; legs splay so inset the sides,
+// and the head pokes the top. Duck frame is naturally short -> clears flyers.
 function pbotBox() {
   const f = getPbFrame();
   const baseY = view.groundY - state.pbY * S();
@@ -1068,7 +1068,7 @@ function spawnObstacle() {
     const h = CONFIG.FLYER_H * s;
     const aspect = (IMG.flyer3 && IMG.flyer3.ok) ? (IMG.flyer3.img.naturalWidth / IMG.flyer3.img.naturalHeight) : 1.25;
     const w = h * aspect;
-    // Band sits where a standing pbot's head pokes in â€” must DUCK (and not jump).
+    // Band sits where a standing pbot's head pokes in  -  must DUCK (and not jump).
     // The float bob is small enough that ducking always clears and standing
     // always collides (checked against FLYER_BAND_FRAC).
     const bottomGap = CONFIG.PB_H * s * CONFIG.FLYER_BAND_FRAC;
@@ -1183,7 +1183,7 @@ function update(dt) {
     const o = state.obstacles[i];
     o.x -= dx;
     // Flyers float UP from neutral (baseY) by up to FLYER_RISE px and back down
-    // to neutral â€” never lower, so they never dip toward the ground monsters.
+    // to neutral  -  never lower, so they never dip toward the ground monsters.
     if (o.kind === 'flyer') o.y = o.baseY - (0.5 - 0.5 * Math.cos((state._t + o.bobPhase) * 2.4)) * CONFIG.FLYER_RISE * S();
     if (!o.scored && o.x + o.w < view.pbX) { o.scored = true; state.dodged++; }
     if (o.x + o.w < -20) { state.obstacles.splice(i, 1); continue; }
@@ -1196,7 +1196,7 @@ function update(dt) {
     if (state.invuln <= 0 && !state.pbDead) {
       const ob = { x: o.x + o.w * 0.16, y: o.y + o.h * 0.12, w: o.w * 0.68, h: o.h * 0.78 };
       if (hit(pbotBox(), ob)) {
-        if (state.rushT > 0) { // frenzy plows through â€” explode it, no crash
+        if (state.rushT > 0) { // frenzy plows through  -  explode it, no crash
           explode(o.x + o.w / 2, o.y + o.h / 2); state.obstacles.splice(i, 1);
         } else { takeHit(); return; }
       }
@@ -1206,7 +1206,7 @@ function update(dt) {
   // scroll rubies + magnet pull + collection
   const pb = pbotBox(); const pbc = { x: pb.x + pb.w / 2, y: pb.y + pb.h / 2 };
   // Collect against pbot's FULL sprite footprint (tall + narrow), so a ruby
-  // overlapping the head or feet still counts â€” a center-radius check missed those.
+  // overlapping the head or feet still counts  -  a center-radius check missed those.
   const pf = getPbFrame();
   const pfBaseY = view.groundY - state.pbY * S();
   const grab = { x: view.pbX - pf.dw / 2, y: pfBaseY - pf.dh, w: pf.dw, h: pf.dh };
@@ -1224,7 +1224,7 @@ function update(dt) {
     if (hit(grab, rb)) { state.rubies.splice(i, 1); collectRuby(ru); }
   }
 
-  // Power Rush stream â€” spaced out (no tight clumps), capped at 30 rubies for
+  // Power Rush stream  -  spaced out (no tight clumps), capped at 30 rubies for
   // the whole frenzy. Heights vary and never land within 50px of the last one.
   if (state.rushT > 0) {
     state.rushSpawnT += dt;
@@ -1248,7 +1248,7 @@ function update(dt) {
     if (hit(grab, bb)) { state.bubbles.splice(i, 1); activatePower(bu.kind); }
   }
 
-  // enemy bullets (yellow) â€” travel left; hit pbot costs a life unless safe.
+  // enemy bullets (yellow)  -  travel left; hit pbot costs a life unless safe.
   for (let i = state.enemyBullets.length - 1; i >= 0; i--) {
     const eb = state.enemyBullets[i];
     eb.x += eb.vx * dt;
@@ -1259,7 +1259,7 @@ function update(dt) {
     }
   }
 
-  // pbot orbs (green) â€” travel right; 6 hits destroy an enemy. They do NOT
+  // pbot orbs (green)  -  travel right; 6 hits destroy an enemy. They do NOT
   // affect enemy bullets (the player can't shoot those down).
   for (let i = state.pbBullets.length - 1; i >= 0; i--) {
     const pbu = state.pbBullets[i];
@@ -1294,7 +1294,7 @@ function update(dt) {
     state.sinceMagnetRoll = 0;
     if (state.magnetT <= 0 && Math.random() < CONFIG.MAGNET_CHANCE) spawnBubble('magnet');
   }
-  // rush roll â€” suppressed near the cap so heavy payouts don't blow past 500
+  // rush roll  -  suppressed near the cap so heavy payouts don't blow past 500
   state.sinceRushRoll += dt * 1000;
   if (state.sinceRushRoll >= CONFIG.RUSH_EVERY_MS) {
     state.sinceRushRoll = 0;
@@ -1357,7 +1357,7 @@ function fireEnemyBullet(o) {
   playEnemyShoot();
 }
 
-// pbot's standard green-orb cannon â€” fires rightward at oncoming enemies.
+// pbot's standard green-orb cannon  -  fires rightward at oncoming enemies.
 function shoot() {
   if (state.phase !== 'PLAYING' || state.pbDead) return;
   if (state.shootCd > 0 || state.ammo <= 0) return;
@@ -1369,7 +1369,7 @@ function shoot() {
   playShoot();
 }
 
-// A hit costs a life. Lives left â†’ death burst + respawn. Out of lives â†’ crash.
+// A hit costs a life. Lives left -> death burst + respawn. Out of lives -> crash.
 function takeHit() {
   state.lives -= 1;
   updateHearts();
@@ -1390,7 +1390,7 @@ function doJump() {
     state.pbV = CONFIG.JUMP_V * S();
     state.grounded = false; state.coyote = 0; state.jumpsUsed = 1; state.jumps++;
     playJump();
-  } else if (state.jumpsUsed < 2) {               // double jump â€” weaker
+  } else if (state.jumpsUsed < 2) {               // double jump  -  weaker
     state.pbV = CONFIG.JUMP_V2 * S();
     state.jumpsUsed = 2; state.jumps++;
     // little air puff at pbot's feet
@@ -1404,7 +1404,7 @@ function setDuck(on) {
 }
 
 // =============================================================================
-// Crash â†’ Continue (CLAUDE.md Â§1.2 â€” time is a shared budget)
+// Crash -> Continue (CLAUDE.md Sec.1.2  -  time is a shared budget)
 // =============================================================================
 function crash() {
   state.phase = 'CRASHED';
@@ -1413,7 +1413,7 @@ function crash() {
   state.shake = 0.8;
   megaDeath(view.pbX, view.groundY - CONFIG.PB_H * S() * 0.5);
   const left = CONFIG.GAME_DURATION_SEC - state.elapsed;
-  if (left <= 0.4) { endGame('crash'); return; }   // no time â†’ final GAME OVER
+  if (left <= 0.4) { endGame('crash'); return; }   // no time -> final GAME OVER
   dom.crashSub.textContent = COPY.crashSub(fmtTime(left));
   setTimeout(() => {
     if (state.phase !== 'CRASHED') return;
@@ -1451,7 +1451,7 @@ function updatePowerBadge() {
   else if (state.magnetT > 0) { dom.powerBadge.className = 'badge magnet'; dom.powerBadge.textContent = COPY.magnet; }
   else { dom.powerBadge.className = 'badge hidden'; }
 }
-// Pixel-heart lives indicator â€” filled red for remaining, dark for spent.
+// Pixel-heart lives indicator  -  filled red for remaining, dark for spent.
 const HEART_GRID = [
   [0, 1, 1, 0, 1, 1, 0],
   [1, 1, 1, 1, 1, 1, 1],
@@ -1496,11 +1496,11 @@ function draw() {
   // obstacles
   for (const o of state.obstacles) drawObstacle(o, t);
 
-  // bullets â€” yellow (enemy) and green (pbot), both glowing/sparkling orbs
+  // bullets  -  yellow (enemy) and green (pbot), both glowing/sparkling orbs
   for (const eb of state.enemyBullets) drawGlowOrb(eb.x, eb.y, eb.r, '#FFE258', '#ff8a1e', t * 9 + eb.x * 0.05);
   for (const pbu of state.pbBullets) drawGlowOrb(pbu.x, pbu.y, pbu.r, '#c9ffce', '#27d651', t * 9 + pbu.x * 0.05);
 
-  // power-up glow â€” pulsing edge vignette that fades in/out (yellow Rush / green Magnet)
+  // power-up glow  -  pulsing edge vignette that fades in/out (yellow Rush / green Magnet)
   if (state.rushT > 0 || state.magnetT > 0) {
     const col = state.rushT > 0 ? '255,214,51' : '54,226,94';
     const pulse = 0.5 + 0.5 * Math.sin(t * 6);
@@ -1513,7 +1513,7 @@ function draw() {
 
   if (state.phase !== 'OVER' && !state.pbDead) drawPbot(t);
 
-  // Mega Man-style death pellets â€” bright energy bursts radiating out.
+  // Mega Man-style death pellets  -  bright energy bursts radiating out.
   for (const d of state.deathBolts) {
     const p = d.t / d.life;
     ctx.globalAlpha = Math.max(0, 1 - p * 0.5);
@@ -1548,8 +1548,8 @@ function draw() {
   ctx.restore();
 }
 
-// Retro-city background â€” one image scrolled and mirror-tiled for a seamless
-// endless loop (CLAUDE.md Â§5.4 "mirror to tile", same trick as flying-ruby).
+// Retro-city background  -  one image scrolled and mirror-tiled for a seamless
+// endless loop (CLAUDE.md Sec.5.4 "mirror to tile", same trick as flying-ruby).
 function drawBackground() {
   const bg = IMG.bg;
   if (!bg || !bg.ok) { ctx.fillStyle = '#1a0f33'; ctx.fillRect(0, 0, view.w, view.h); return; }
@@ -1570,7 +1570,7 @@ function drawBackground() {
       ctx.drawImage(img, x, 0, tw, view.h);
     }
   }
-  // Dim scrim â€” calms the bright neon so the fast scroll is easier on the eyes.
+  // Dim scrim  -  calms the bright neon so the fast scroll is easier on the eyes.
   ctx.fillStyle = `rgba(6,8,26,${CONFIG.BG_DIM})`;
   ctx.fillRect(0, 0, view.w, view.h);
 }
@@ -1585,7 +1585,7 @@ function drawGround() {
   for (let x = -off; x < view.w; x += step) ctx.fillRect(Math.round(x), Math.round(view.groundY + 14 * S()), Math.round(20 * S()), Math.round(3 * S()));
   ctx.restore();
 }
-// Glowing energy orb (bullets) â€” heavy additive glow + twinkling sparkle.
+// Glowing energy orb (bullets)  -  heavy additive glow + twinkling sparkle.
 function drawGlowOrb(x, y, r, core, glow, phase) {
   const tw = 0.65 + 0.35 * Math.sin(phase);   // twinkle
   ctx.save();
@@ -1650,7 +1650,7 @@ function drawBubble(bu, t) {
 }
 
 // =============================================================================
-// Audio â€” Web Audio synthesis, zero asset bytes (CLAUDE.md Â§4 / Â§0.4)
+// Audio  -  Web Audio synthesis, zero asset bytes (CLAUDE.md Sec.4 / Sec.0.4)
 // =============================================================================
 let audioCtx = null;
 function ensureAudio() {
@@ -1683,7 +1683,7 @@ function playDeath() {
 function playShoot()      { tone({ freq: 680, freqEnd: 1020, type: 'square', dur: 0.08, gain: 0.07 }); }
 function playOrbHit()     { tone({ freq: 520, freqEnd: 240, type: 'triangle', dur: 0.08, gain: 0.07 }); }
 function playEnemyShoot() { tone({ freq: 320, freqEnd: 180, type: 'sawtooth', dur: 0.10, gain: 0.06 }); }
-// Game-over jingle â€” short descending motif, friendly not foreboding.
+// Game-over jingle  -  short descending motif, friendly not foreboding.
 function playGameOver() {
   tone({ freq: 523, type: 'square', dur: 0.16, gain: 0.15 });
   tone({ freq: 392, type: 'square', dur: 0.16, gain: 0.14, delay: 0.15 });
@@ -1691,9 +1691,9 @@ function playGameOver() {
 }
 
 // -----------------------------------------------------------------------------
-// BGM â€” a tiny synth sequencer. Each run rolls a fresh 80s-vibe chiptune loop
+// BGM  -  a tiny synth sequencer. Each run rolls a fresh 80s-vibe chiptune loop
 // (random root + arpeggio); the game-over screen gets a slower, softer loop.
-// All synthesized â†’ zero asset bytes, and it honours the mute toggle.
+// All synthesized -> zero asset bytes, and it honours the mute toggle.
 // -----------------------------------------------------------------------------
 const music = { playing: false, timer: null, next: 0, step: 0, seq: null, kind: null, spb: 0 };
 function noteFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
@@ -1723,7 +1723,7 @@ function makeOverSeq() {
   for (let i = 0; i < len; i++) { if (i % 4 === 0) bass[i] = root; if (i % 2 === 0) lead[i] = root + fall[(i / 2) % fall.length]; }
   return { len, bass, lead };
 }
-// Title-screen theme â€” driving Amâ€“Fâ€“Câ€“G arpeggio (the quintessential 80s
+// Title-screen theme  -  driving Am-F-C-G arpeggio (the quintessential 80s
 // progression), continuous 16th-note lead so it feels energetic and exciting.
 function makeMenuSeq() {
   const chords = [[57, 60, 64, 69], [53, 57, 60, 65], [60, 64, 67, 72], [55, 59, 62, 67]];
@@ -1834,7 +1834,7 @@ function endGame(cause) {            // cause: 'time' | 'crash' | 'early'
 }
 
 // =============================================================================
-// CLAIM SCORE â€” Â§6.5 callback contract (game, score, token + suspicious)
+// CLAIM SCORE  -  Sec.6.5 callback contract (game, score, token + suspicious)
 // =============================================================================
 let claimLocked = false;
 let claimUnavailable = false;
@@ -2023,7 +2023,7 @@ async function prepareClaimUrl(retry) {
 // Input
 // =============================================================================
 // Tapping / clicking the play area jumps. Ducking is held via the on-screen
-// DUCK pad (touch) or the â†“ key â€” keeps the tap unambiguous.
+// DUCK pad (touch) or the down key  -  keeps the tap unambiguous.
 function tapJump(e) { if (state.phase !== 'PLAYING') return; e.preventDefault(); doJump(); }
 canvas.addEventListener('touchstart', tapJump, { passive: false });
 canvas.addEventListener('mousedown', tapJump);
@@ -2132,7 +2132,7 @@ function loop(t) {
 }
 
 // =============================================================================
-// Boot â€” ?phase=play dev jump (CLAUDE.md pattern #10) + persisted prefs
+// Boot  -  ?phase=play dev jump (CLAUDE.md pattern #10) + persisted prefs
 // =============================================================================
 if (window.ClaimCallback) {
   window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');

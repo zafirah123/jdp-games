@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#031034">
-<title>Tap Tap Match â€” JDP</title>
+<title>Tap Tap Match  -  JDP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Poppins:wght@500;600;700;800&family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
   }
   .hidden { display: none !important; }
 
-  /* ===== Top HUD bar â€” DESIGN.md Â§5.12 ===== */
+  /* ===== Top HUD bar  -  DESIGN.md Sec.5.12 ===== */
   .hud-bar {
     position: fixed; left: 0; right: 0; top: 0;
     display: flex; justify-content: center;
@@ -83,7 +83,7 @@
   }
   .pulse-urgent { animation: pulse-urgent 0.8s infinite; display: inline-block; }
 
-  /* Audio toggle â€” DESIGN.md Â§5.11 */
+  /* Audio toggle  -  DESIGN.md Sec.5.11 */
   .mute {
     flex-shrink: 0;
     width: 44px; height: 44px;
@@ -402,7 +402,7 @@
 'use strict';
 
 // ============================================================
-// CONFIG â€” all tuning lives here
+// CONFIG  -  all tuning lives here
 // ============================================================
 const CONFIG = {
   width: 480,
@@ -416,7 +416,7 @@ const CONFIG = {
     yOffset: 220,                 // top of grid block
   },
 
-  // JDP palette â€” DESIGN.md Â§1
+  // JDP palette  -  DESIGN.md Sec.1
   palette: {
     bg:        '#031034',         // Black
     chrome:    '#9E131F',         // Brick Red
@@ -428,22 +428,22 @@ const CONFIG = {
     danger:    '#AF1726',         // Light Red
   },
 
-  // 3Ã—3 cells â€” gem SVG inside a dark navy tile (grid.svg reference).
+  // 3x3 cells  -  gem SVG inside a dark navy tile (grid.svg reference).
   // Rainbow with JDP main colors at 0 (red), 2 (yellow), 5 (blue).
-  // Pentatonic-major over 2 octaves (C D E G A C D E G) â€” cheerful, kid-friendly.
+  // Pentatonic-major over 2 octaves (C D E G A C D E G)  -  cheerful, kid-friendly.
   cells: [
-    { gem: 'red',    glow: '#FF4A57', freq: 261.63 }, // 0 JDP Brick Red Â· C4
-    { gem: 'orange', glow: '#FF8A1E', freq: 293.66 }, // 1 Orange         Â· D4
-    { gem: 'yellow', glow: '#FFD633', freq: 329.63 }, // 2 JDP Dark YellowÂ· E4
-    { gem: 'green',  glow: '#22C55E', freq: 392.00 }, // 3 Green          Â· G4
-    { gem: 'teal',   glow: '#2DD4BF', freq: 440.00 }, // 4 Teal           Â· A4
-    { gem: 'blue',   glow: '#3B82F6', freq: 523.25 }, // 5 JDP Blue       Â· C5
-    { gem: 'indigo', glow: '#818CF8', freq: 587.33 }, // 6 Indigo         Â· D5
-    { gem: 'purple', glow: '#C084FC', freq: 659.25 }, // 7 Purple         Â· E5
-    { gem: 'pink',   glow: '#F472B6', freq: 783.99 }, // 8 Pink           Â· G5
+    { gem: 'red',    glow: '#FF4A57', freq: 261.63 }, // 0 JDP Brick Red \u00b7 C4
+    { gem: 'orange', glow: '#FF8A1E', freq: 293.66 }, // 1 Orange         \u00b7 D4
+    { gem: 'yellow', glow: '#FFD633', freq: 329.63 }, // 2 JDP Dark Yellow\u00b7 E4
+    { gem: 'green',  glow: '#22C55E', freq: 392.00 }, // 3 Green          \u00b7 G4
+    { gem: 'teal',   glow: '#2DD4BF', freq: 440.00 }, // 4 Teal           \u00b7 A4
+    { gem: 'blue',   glow: '#3B82F6', freq: 523.25 }, // 5 JDP Blue       \u00b7 C5
+    { gem: 'indigo', glow: '#818CF8', freq: 587.33 }, // 6 Indigo         \u00b7 D5
+    { gem: 'purple', glow: '#C084FC', freq: 659.25 }, // 7 Purple         \u00b7 E5
+    { gem: 'pink',   glow: '#F472B6', freq: 783.99 }, // 8 Pink           \u00b7 G5
   ],
 
-  // Tile palette â€” matches assets/grid.svg
+  // Tile palette  -  matches assets/grid.svg
   tile: {
     fillTop:    '#1F2D5C',
     fillBottom: '#152045',
@@ -451,10 +451,10 @@ const CONFIG = {
     edgeBottom: 'rgba(12, 20, 48, 0.9)',
     radius:     18,
     gemPad:     0.12, // fraction of cell each side
-    idleAlpha:  0.32, // gem opacity when not lit â€” preserves spatial-color cue
+    idleAlpha:  0.32, // gem opacity when not lit  -  preserves spatial-color cue
   },
 
-  // Round timing table â€” sequence length 3..9, flash & gap shrinking
+  // Round timing table  -  sequence length 3..9, flash & gap shrinking
   rounds: [
     { len: 3, flash: 600, gap: 250 }, // round 1
     { len: 4, flash: 550, gap: 220 }, // round 2
@@ -462,11 +462,11 @@ const CONFIG = {
     { len: 6, flash: 450, gap: 180 }, // round 4
     { len: 7, flash: 400, gap: 160 }, // round 5
     { len: 8, flash: 350, gap: 140 }, // round 6
-    { len: 9, flash: 300, gap: 120 }, // round 7 â€” length cap
+    { len: 9, flash: 300, gap: 120 }, // round 7  -  length cap
   ],
   postCap: { flashStep: 30, gapStep: 10, flashFloor: 150, gapFloor: 70 },
 
-  // Scoring â€” each cell carries a number 1..9 (shuffled per round).
+  // Scoring  -  each cell carries a number 1..9 (shuffled per round).
   // Round payout = sum of numbers on tapped cells, + speedBonus if fast.
   speedBonus: 2,
 
@@ -478,7 +478,7 @@ const CONFIG = {
     padY:    8,                   // from cell top
   },
 
-  // Soft cap â€” taper per-round payout (BEST-PRACTICES.md Â§05).
+  // Soft cap  -  taper per-round payout (BEST-PRACTICES.md Sec.05).
   // Per-round payout because Tap Tap Grid has no spawn rate to taper.
   economy: {
     softCap:    500,
@@ -532,7 +532,7 @@ const COPY = {
     bestPrefix:      'Best',
     scoreLabel:      'Score',
     timeLabel:       'Time',
-    roundFormat:     (round, len) => `Round ${round}  Â·  Length ${len}`,
+    roundFormat:     (round, len) => `Round ${round}  \u00b7  Length ${len}`,
     watchSequence:   'Watch the sequence',
     tapMoreFormat:   (n) => `Tap ${n} more`,
     nice:            'NICE!',
@@ -559,7 +559,7 @@ const COPY = {
     bestPrefix:      'Terbaik',
     scoreLabel:      'Skor',
     timeLabel:       'Masa',
-    roundFormat:     (round, len) => `Pusingan ${round}  Â·  Panjang ${len}`,
+    roundFormat:     (round, len) => `Pusingan ${round}  \u00b7  Panjang ${len}`,
     watchSequence:   'Perhati urutan',
     tapMoreFormat:   (n) => `Ketuk ${n} lagi`,
     nice:            'BAGUS!',
@@ -601,7 +601,7 @@ function shuffleNumbers() {
   return arr;
 }
 
-// Â§05 soft taper â€” multiply the per-round payout, never clamp the counter.
+// Sec.05 soft taper  -  multiply the per-round payout, never clamp the counter.
 function payoutMultiplier(score) {
   const { taperStart, taperEnd } = CONFIG.economy;
   if (score <= taperStart) return 1;
@@ -659,7 +659,7 @@ const state = {
 };
 
 // ============================================================
-// AUDIO â€” Web Audio synthesis, zero asset bytes
+// AUDIO  -  Web Audio synthesis, zero asset bytes
 // ============================================================
 let audioCtx = null;
 
@@ -992,7 +992,7 @@ function drawCell(idx, lit, scale = 1) {
   ctx.save();
   ctx.translate(cx, cy);
 
-  // Glow halo under the tile when lit â€” the tile itself stays navy.
+  // Glow halo under the tile when lit  -  the tile itself stays navy.
   if (lit) {
     ctx.shadowColor = c.glow;
     ctx.shadowBlur = 38;
@@ -1007,13 +1007,13 @@ function drawCell(idx, lit, scale = 1) {
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Gem inside â€” visible always (dim at rest, full when lit).
+  // Gem inside  -  visible always (dim at rest, full when lit).
   const gemImg = gemImages[c.gem];
   if (gemImg && gemImg.complete && gemImg.naturalWidth > 0) {
     const pad = w * t.gemPad;
     const boxW = w - pad * 2;
     const boxH = h - pad * 2;
-    // Gem viewBox is 1000Ã—900; fit inside the padded box, preserving ratio.
+    // Gem viewBox is 1000x900; fit inside the padded box, preserving ratio.
     const ratio = gemImg.naturalWidth / gemImg.naturalHeight;
     let gemW = boxW;
     let gemH = boxW / ratio;
@@ -1034,7 +1034,7 @@ function drawCell(idx, lit, scale = 1) {
   roundRect(-w / 2, -h / 2, w, h, t.radius);
   ctx.stroke();
 
-  // Number badge â€” top-left corner of the cell, payout multiplier for this tap.
+  // Number badge  -  top-left corner of the cell, payout multiplier for this tap.
   const b = CONFIG.numBadge;
   ctx.fillStyle = b.color;
   ctx.font = b.font;
@@ -1076,7 +1076,7 @@ function drawGrid(time) {
 function drawHUD(time) {
   const live = state.scene !== 'start' && state.scene !== 'gameover';
 
-  // Round indicator â€” sits above the grid (DOM HUD owns Score/Time per DESIGN.md Â§5.12)
+  // Round indicator  -  sits above the grid (DOM HUD owns Score/Time per DESIGN.md Sec.5.12)
   if (live) {
     const len = timingForRound(state.round).len;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
@@ -1086,7 +1086,7 @@ function drawHUD(time) {
     ctx.fillText(COPY.roundFormat(state.round, len), CONFIG.width / 2, 180);
   }
 
-  // Floating "+N" award â€” centered above the grid
+  // Floating "+N" award  -  centered above the grid
   if (time < state.lastAwardUntil && state.lastAward > 0) {
     const t = (state.lastAwardUntil - time) / 900;
     const y = 140 - (1 - t) * 20;
@@ -1144,7 +1144,7 @@ function drawStatusText(time) {
 }
 
 function drawButton(x, y, w, h, label) {
-  // Shadow plate (DESIGN.md Â§5.1)
+  // Shadow plate (DESIGN.md Sec.5.1)
   ctx.fillStyle = '#DE9D00';
   roundRect(x, y + 8, w, h, h / 2);
   ctx.fill();
@@ -1167,7 +1167,7 @@ function drawButton(x, y, w, h, label) {
   ctx.fillText(label, x + w / 2, y + h / 2);
 }
 
-// Button hit-boxes (logical coords) â€” keep in sync with draw calls.
+// Button hit-boxes (logical coords)  -  keep in sync with draw calls.
 const BTN_START = { x: CONFIG.width / 2 - 120, y: 560, w: 240, h: 70 };
 const BTN_CLAIM = { x: CONFIG.width / 2 - 140, y: 600, w: 280, h: 70 };
 
@@ -1382,7 +1382,7 @@ function handleInputTap(cellIdx) {
     state.wrongUntil = time + CONFIG.wrongFlashMs;
     playWrong();
     // Demote: drop two rounds (floor 1), keep score and timer. Time is the
-    // shared budget per CLAUDE.md Â§1.2 â€” only the clock ends the run.
+    // shared budget per CLAUDE.md Sec.1.2  -  only the clock ends the run.
     state.round = Math.max(1, state.round - 2);
     startRound();
     // Delay the new round's first flash until the red overlay clears.

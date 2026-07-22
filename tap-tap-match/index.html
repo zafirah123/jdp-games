@@ -879,7 +879,10 @@ async function prepareClaimUrl(retry) {
     }
     claimUrlReady = claimUrl;
     claimPreparing = false;
+    claimLocked = true;
     syncClaimButton();
+    window.location.assign(claimUrlReady);
+    return;
   } catch (err) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[tap-tap-match] claim prepare failed:', err);

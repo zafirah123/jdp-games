@@ -1175,6 +1175,8 @@ async function prepareClaimUrl(retry){
     claimUrlReady=url;
     claimPreparing=false;
     syncEndCta();
+    window.location.assign(claimUrlReady);
+    return;
   }catch(err){
     if(seq!==claimPrepareSeq) return;
     console.warn('[dadu-didik] claim prepare failed:', err);

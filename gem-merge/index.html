@@ -1754,7 +1754,10 @@ async function prepareClaimUrl(retry) {
     if (url) {
       claimUrlReady = url;
       claimPreparing = false;
+      claimLocked = true;
       syncClaimButton();
+      window.location.assign(claimUrlReady);
+      return;
     } else {
       console.log('[gem-merge] claim prepare unavailable: invalid or missing callback context', extra);
       claimPreparing = false;

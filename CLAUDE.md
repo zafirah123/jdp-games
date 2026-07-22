@@ -470,8 +470,11 @@ modal has **one CTA** on the end-of-game modal, with score-dependent behavior:
 | End-of-game CTA (`score > 0`) | `CLAIM SCORE` | `TUNTUT SKOR` |
 | End-of-game CTA (`score = 0`) | `RETRY` | `RETRY` |
 
-For score `> 0`, tapping the CTA attempts callback submission.
-For score `= 0`, tapping `RETRY` restarts locally and does not submit callback.
+For score `> 0`, the game should attempt callback submission immediately when
+the final end-of-game state is shown, keep the CTA disabled while that attempt
+is in progress, redirect immediately on success, and re-enable the CTA for
+manual retry on recoverable failure. For score `= 0`, tapping `RETRY` restarts
+locally and does not submit callback.
 
 Callback target resolution order:
 
@@ -540,26 +543,23 @@ For the final handoff, prefer building a callback URL and redirecting with
 with `fetch`-first score submission, especially when the host app expects a
 navigation-based callback.
 
-Claim CTAs must be single-submit safe. Disable the CTA on the first tap
-before resolving or navigating to the callback URL, keep it disabled while
-the handoff is in progress, and only re-enable it on a recoverable local
-failure. If callback preparation fails because launch/callback context is
+Claim CTAs must be single-submit safe. Disable the CTA as soon as the run
+ends and the automatic submission attempt begins, keep it disabled while the
+handoff is in progress, and only re-enable it on a recoverable local
+failure so the player can retry manually. If callback preparation fails because launch/callback context is
 missing, expired, malformed, or invalid, keep the CTA disabled and show the
 standard unavailable copy instead of leaving the CTA apparently tappable:
 `CALLBACK UNAVAILABLE` (en) / `PANGGIL BALIK TIADA` (ms).
 
-If claim URL generation depends on async work, prefer a two-step handoff:
-prepare the final URL as soon as the end-of-game state is shown, cache it,
-and then perform a synchronous `window.location.assign(...)` /
-`location.href = ...` inside the final tap handler. This is especially
-important for Safari / WKWebView, where awaiting WebCrypto or other async
-work inside the tap handler can cause the later navigation to be dropped as a
-stale user gesture with no visible error.
+If claim URL generation depends on async work, start that work as soon as the
+end-of-game state is shown and let both the automatic attempt and any manual
+retry use that same submission path. This keeps the UX consistent and avoids
+leaving the player on a dead CTA while work is still pending.
 
-Timeout handling follows the same rule: if a player times out and then taps
-`CLAIM SCORE`, either the callback still resolves and the page redirects, or
-the CTA transitions into the unavailable state above. It must never remain a
-dead clickable button.
+Timeout handling follows the same rule: if a player times out, the game should
+auto-attempt the callback immediately. Either the callback resolves and the
+page redirects, or the CTA settles into a retryable error state or the
+unavailable state above. It must never remain a dead clickable button.
 
 Recommended helper shape for copied claim code:
 
@@ -620,10 +620,10 @@ single-CTA claim flow and do not offer in-page restart.
   accept only valid `https` URLs.
 - Make claim-preparation helpers fail closed and return `null` / unavailable
   instead of throwing where possible.
-- If claim URL generation is async, prepare it before the final tap and keep
-  the tap handler to a synchronous navigation commit.
-- Disable the CTA immediately on tap and keep it disabled during preparation
-  and redirect.
+- If claim URL generation is async, start it automatically when the run ends
+  and let manual retry reuse the same path.
+- Disable the CTA immediately when the automatic submission attempt starts and
+  keep it disabled during preparation and redirect.
 - On missing, expired, malformed, or invalid callback context, keep the CTA
   disabled and show `CALLBACK UNAVAILABLE` / `PANGGIL BALIK TIADA`.
 - Support the same claim contract for player-triggered early-end and final

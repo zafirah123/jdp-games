@@ -220,6 +220,28 @@ export class GameOverScene extends Phaser.Scene {
   _showClaimCta(width, height) {
     const cx = width / 2;
     const by = height * 0.78;
+    const attemptClaim = async () => {
+      this._setClaimButtonDisabled(true);
+      this._setClaimStatus(COPY.claimSubmitting);
+      const result = await claimScore(this.score, {
+        timeUsedMs: this.timeUsedMs,
+        cause:      this.cause,
+      });
+      if (result?.status === 'redirecting') return;
+      if (result?.status === 'missing_callback') {
+        this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+        this._setClaimButtonDisabled(true);
+        return;
+      }
+      if (result?.status === 'locked') {
+        this._setClaimStatus(COPY.claimSubmitting);
+        this._setClaimButtonDisabled(true);
+        return;
+      }
+      const detail = result?.message ? `${COPY.claimFailed}: ${result.message}` : COPY.claimFailed;
+      this._setClaimStatus(detail, PALETTE_CSS.ruby);
+      this._setClaimButtonDisabled(false);
+    };
 
     this.buttonLayer.destroy();
     this.buttonLayer = this.add.container(0, 0);
@@ -239,27 +261,14 @@ export class GameOverScene extends Phaser.Scene {
           this.scene.start('StartScene');
           return;
         }
-        this._setClaimButtonDisabled(true);
-        this._setClaimStatus(COPY.claimSubmitting);
-        const result = await claimScore(this.score, {
-          timeUsedMs: this.timeUsedMs,
-          cause:      this.cause,
-        });
-        if (result?.status === 'redirecting') return;
-        if (result?.status === 'missing_callback') {
-          this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
-        } else if (result?.status === 'locked') {
-          this._setClaimStatus(COPY.claimSubmitting);
-        } else {
-          const detail = result?.message ? `${COPY.claimFailed}: ${result.message}` : COPY.claimFailed;
-          this._setClaimStatus(detail, PALETTE_CSS.ruby);
-        }
-        this._setClaimButtonDisabled(true);
+        await attemptClaim();
       });
 
     if (this.score > 0 && !this.claimReady) {
       this._setClaimButtonDisabled(true);
       this._setClaimStatus(COPY.claimUnavailable, PALETTE_CSS.ruby);
+    } else if (this.score > 0) {
+      void attemptClaim();
     }
   }
 

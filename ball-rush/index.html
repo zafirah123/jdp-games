@@ -1694,7 +1694,10 @@ async function prepareClaimUrl(retry) {
     }
     claimUrlReady = claimUrl;
     claimPreparing = false;
+    claimLocked = true;
     syncClaimButton();
+    window.location.assign(claimUrlReady);
+    return;
   } catch (e) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[ball-rush] claim prepare failed:', e);

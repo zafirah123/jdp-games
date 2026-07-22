@@ -83,8 +83,10 @@ single-file games alike.
    end-of-game modal (after `TIME'S UP!` or `GAME OVER`) must have
    **exactly one** CTA with score-dependent behavior:
 
-   - Score `> 0`: `CLAIM SCORE` (en) / `TUNTUT SKOR` (ms). Tapping it
-     attempts callback submission.
+   - Score `> 0`: `CLAIM SCORE` (en) / `TUNTUT SKOR` (ms). When the run
+     ends, the game should immediately attempt callback submission, keep
+     the CTA disabled while that attempt is in progress, redirect on
+     success, and re-enable the CTA on retryable failure.
    - Score `= 0`: `RETRY`. Restart locally and **do not** submit a callback.
 
    - Read `callback_url` from URL query params when present.
@@ -95,13 +97,12 @@ single-file games alike.
      allow valid `https` targets. If callback preparation cannot be completed,
      helper functions should return `null` / unavailable instead of throwing
      where possible.
-   - Guard the submit handler when building the callback URL. On tap, disable
-     the claim CTA immediately and keep it disabled while preparation /
+   - Guard the submit flow when building the callback URL. When the run ends,
+     disable the claim CTA immediately and keep it disabled while preparation /
      submission is in progress. If redirect succeeds, the page navigates away.
    - If claim URL generation depends on async work (for example WebCrypto
-     encryption), resolve it before the final tap when practical and keep the
-     tap handler to a synchronous `window.location.assign(...)` / `location.href`
-     commit. This avoids gesture-loss issues in Safari / WKWebView.
+     encryption), start it as soon as the end-of-game state is shown so the
+     automatic submission path and any manual retry both reuse the same flow.
    - If claim preparation fails because callback context is missing, expired,
      malformed, or invalid, leave the CTA disabled and show an explicit
      unavailable/error state instead of making it clickable again. Standard
@@ -289,8 +290,10 @@ for the design-side checklist; the items below cover the harness/repo side.
 - [ ] Claim-submit path is guarded when callback resolution fails: no
       `location.href = null` / dead-click state, and the player gets an
       explicit disabled/error outcome instead.
-- [ ] Claim CTA disables on first tap, stays disabled during preparation /
-      redirect, and remains disabled with `CALLBACK UNAVAILABLE` /
+- [ ] Score `> 0` endings auto-attempt callback submission as soon as the
+      run ends, keep the CTA disabled during that attempt, redirect on
+      success, and re-enable the CTA on retryable failure.
+- [ ] Claim CTA remains disabled with `CALLBACK UNAVAILABLE` /
       `PANGGIL BALIK TIADA` if callback context is missing, expired,
       malformed, or invalid.
 - [ ] Game supports early-end callback (player can finish early and submit

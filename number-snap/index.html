@@ -1216,7 +1216,10 @@ async function prepareClaimUrl(retry) {
 
     claimUrlReady = url;
     claimPreparing = false;
-    syncClaimButton(); // enables the button now that the URL is ready
+    claimLocked = true;
+    syncClaimButton();
+    window.location.assign(claimUrlReady);
+    return;
   } catch (e) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[number-snap] claim prepare failed:', e);

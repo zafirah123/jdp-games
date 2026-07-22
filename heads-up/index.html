@@ -393,14 +393,14 @@ const COPY = {
   en: {
     score:'Score', time:'Time', best:'Best', start:'START GAME',
     timeUp:"TIME'S UP!", gameOver:'GAME OVER', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'CLAIM SCORE', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', claimPreparing:'Preparing…', endRun:'END RUN',
+    claim:'CLAIM SCORE', retry:'RETRY', claimUnavailable:'CALLBACK UNAVAILABLE', claimFailed:'Unable to claim score', claimPreparing:'Preparing…', endRun:'END RUN',
     sub:'Watch the road without tripping — while playing the dino game on your phone. Both at once.',
     hint:'◀ ▶ switch lane · TAP phone / Space to jump',
   },
   ms: {
     score:'Skor', time:'Masa', best:'Terbaik', start:'MULA MAIN',
     timeUp:'MASA TAMAT!', gameOver:'PERMAINAN TAMAT', audioOn:'AUDIO ON', audioOff:'AUDIO OFF',
-    claim:'TUNTUT SKOR', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', claimPreparing:'Sedang bersedia…', endRun:'TAMAT',
+    claim:'TUNTUT SKOR', retry:'RETRY', claimUnavailable:'PANGGIL BALIK TIADA', claimFailed:'Tidak dapat tuntut skor', claimPreparing:'Sedang bersedia…', endRun:'TAMAT',
     sub:'Rentas jalan tanpa tersadung — sambil main permainan dino di telefon. Serentak.',
     hint:'◀ ▶ tukar lorong · KETIK telefon / Space untuk lompat',
   },
@@ -524,7 +524,7 @@ function freshState(){
     scrollFloor:0, scrollRunner:0,
     shield:false, focusUntil:0, invulnUntil:0,
     crashTimer:0, shake:0,
-    overReason:'timeup', claimed:false, claimUnavailable:false, suspicious:false,
+    overReason:'timeup', claimed:false, claimUnavailable:false, claimErrorMessage:'', suspicious:false,
   };
 }
 
@@ -1302,7 +1302,7 @@ function endGame(reason){
   if(isBest&&state.score>0) Audio_.sfx.best();
 
   const claimBtn=document.getElementById('claimBtn'), status=document.getElementById('claimStatus');
-  status.textContent=''; state.claimed=false; state.claimUnavailable=false;
+  status.textContent=''; state.claimed=false; state.claimUnavailable=false; state.claimErrorMessage='';
   if(state.score>0){ claimBtn.dataset.mode='claim'; }
   else { claimBtn.dataset.mode='retry'; }
   syncClaimButton();
@@ -1349,20 +1349,25 @@ function syncClaimButton(){
     claimBtn.disabled=true;
     return;
   }
-  status.textContent=state.claimUnavailable?COPY.claimUnavailable:'';
-  status.classList.toggle('alert', !!state.claimUnavailable);
+  const noteText = state.claimErrorMessage || (state.claimUnavailable ? COPY.claimUnavailable : '');
+  status.textContent=noteText;
+  status.classList.toggle('alert', !!noteText);
   if((state.score|0)<=0){
     claimBtn.textContent=COPY.retry;
     claimBtn.disabled=false;
     return;
   }
-  if(state.claimUnavailable){
+  if(noteText){
     claimBtn.textContent=COPY.claim;
-    claimBtn.disabled=true;
+    claimBtn.disabled=state.claimUnavailable;
     return;
   }
   claimBtn.textContent=COPY.claim;
   claimBtn.disabled=state.claimed;
+}
+function getClaimErrorMessage(error){
+  const detail = error && typeof error.message === 'string' ? error.message.trim() : '';
+  return detail ? `${COPY.claimFailed}: ${detail}` : COPY.claimFailed;
 }
 async function buildClaimUrl(){
   const score=Math.max(0,state.score|0);
@@ -1375,10 +1380,33 @@ async function buildClaimUrl(){
       is_suspicious: !!state.suspicious,
       data:{ duration_ms:Math.round(state.elapsed) },
     });
-    tokenCallbackUrl.searchParams.set('token',claimContext.launchToken);
-    tokenCallbackUrl.searchParams.set('dd',encrypted.dd);
-    tokenCallbackUrl.searchParams.set('dv',encrypted.dv);
-    return tokenCallbackUrl.toString();
+    const response = await fetch(tokenCallbackUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        token: claimContext.launchToken,
+        dd: encrypted.dd,
+        dv: encrypted.dv,
+      }),
+    });
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (_) {
+      data = null;
+    }
+    if (!response.ok) {
+      const message = data && typeof data.message === 'string' ? data.message : 'Unable to claim score';
+      throw new Error(message);
+    }
+    if (!data || data.success !== true || typeof data.redirect_url !== 'string' || !data.redirect_url.trim()) {
+      throw new Error('Unable to claim score');
+    }
+    return data.redirect_url.trim();
   }
   const callbackUrl=resolveCallbackUrl();
   const target=toHttpsUrl(callbackUrl);
@@ -1408,6 +1436,7 @@ async function prepareClaimUrl(retry){
   if(!hasClaimCallback()){
     claimPreparing=false;
     state.claimUnavailable=true;
+    state.claimErrorMessage='';
     syncClaimButton();
     return;
   }
@@ -1415,15 +1444,16 @@ async function prepareClaimUrl(retry){
   const seq=++claimPrepareSeq;
   claimPreparing=true;
   state.claimUnavailable=false;
+  state.claimErrorMessage='';
   syncClaimButton();
 
   try{
     const claimUrl=await withTimeout(buildClaimUrl(), CLAIM_PREPARE_TIMEOUT_MS);
     if(seq!==claimPrepareSeq) return;
     if(!claimUrl){
-      if(!retry) { setTimeout(()=>prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
       claimPreparing=false;
       state.claimUnavailable=true;
+      state.claimErrorMessage='';
       syncClaimButton();
       return;
     }
@@ -1433,9 +1463,9 @@ async function prepareClaimUrl(retry){
   }catch(err){
     if(seq!==claimPrepareSeq) return;
     console.warn('[heads-up] claim prepare failed:', err);
-    if(!retry) { setTimeout(()=>prepareClaimUrl(true), CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     claimPreparing=false;
-    state.claimUnavailable=true;
+    state.claimUnavailable=false;
+    state.claimErrorMessage=getClaimErrorMessage(err);
     syncClaimButton();
   }
 }
@@ -1444,18 +1474,15 @@ async function prepareClaimUrl(retry){
 document.getElementById('startBtn').addEventListener('click',()=>{ Audio_.init(); Audio_.resume(); Audio_.sfx.button(); startGame(); });
 document.getElementById('endRunBtn').addEventListener('click',()=>{ Audio_.sfx.button(); endGame('over'); });
 document.getElementById('claimBtn').addEventListener('click',async function(){ Audio_.sfx.button();
-  if(this.dataset.mode==='retry'){ state.claimUnavailable=false; startGame(); return; }
+  if(this.dataset.mode==='retry'){ state.claimUnavailable=false; state.claimErrorMessage=''; startGame(); return; }
   if(state.claimed) return;
   if(claimUrlReady){
     state.claimed=true; syncClaimButton();
     location.href=claimUrlReady;
     return;
   }
-  state.claimed=true; syncClaimButton();
-  await prepareClaimUrl();
-  state.claimed=false;
-  if(claimUrlReady) location.href=claimUrlReady;
-  else syncClaimButton();
+  if(claimPreparing || state.claimUnavailable) return;
+  await prepareClaimUrl(false);
 });
 
 /* ---------- Copy ---------- */

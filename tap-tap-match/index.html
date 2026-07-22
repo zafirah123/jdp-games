@@ -394,7 +394,7 @@
     <p id="claimNote" class="claim-note hidden"></p>
   </div>
 </div>
-<script src="./claim-callback.js?v=20260720.1"></script>
+<script src="./claim-callback.js?v=20260722.1"></script>
 <script>
 'use strict';
 
@@ -784,7 +784,7 @@ function syncClaimButton() {
   if (noteText) {
     claimNote.textContent = noteText;
     claimNote.classList.remove('hidden');
-    claimBtn.disabled = true;
+    claimBtn.disabled = state.claimUnavailable;
     claimBtn.textContent = COPY.claim;
     claimBtn.setAttribute('aria-label', COPY.claim);
     return;
@@ -871,9 +871,9 @@ async function prepareClaimUrl(retry) {
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[tap-tap-match] claim prepare unavailable: invalid or missing callback context');
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
       claimPreparing = false;
       state.claimUnavailable = true;
+      state.claimErrorMessage = '';
       syncGameOverUi();
       return;
     }
@@ -883,9 +883,8 @@ async function prepareClaimUrl(retry) {
   } catch (err) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[tap-tap-match] claim prepare failed:', err);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
     claimPreparing = false;
-    state.claimUnavailable = true;
+    state.claimUnavailable = false;
     state.claimErrorMessage = getClaimErrorMessage(err);
     syncGameOverUi();
   }
@@ -1387,12 +1386,8 @@ async function handleClaimTap() {
     window.location.assign(claimUrlReady);
     return;
   }
-  claimLocked = true;
-  syncClaimButton();
-  await prepareClaimUrl();
-  claimLocked = false;
-  if (claimUrlReady) window.location.assign(claimUrlReady);
-  else syncGameOverUi();
+  if (claimPreparing || state.claimUnavailable) return;
+  await prepareClaimUrl(false);
 }
 let claimTouchArmed = false;
 

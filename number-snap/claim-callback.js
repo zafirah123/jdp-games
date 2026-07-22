@@ -124,10 +124,37 @@
           is_suspicious: false,
           ...(extraData ? { data: extraData } : {}),
         });
-        tokenCallbackUrl.searchParams.set('token', ctx.launchToken);
-        tokenCallbackUrl.searchParams.set('dd', encrypted.dd);
-        tokenCallbackUrl.searchParams.set('dv', encrypted.dv);
-        return tokenCallbackUrl.toString();
+        const response = await fetch(tokenCallbackUrl.toString(), {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            token: ctx.launchToken,
+            dd: encrypted.dd,
+            dv: encrypted.dv,
+          }),
+        });
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (_) {
+          data = null;
+        }
+
+        if (!response.ok) {
+          const message = data && typeof data.message === 'string' ? data.message : 'Unable to claim score';
+          throw new Error(message);
+        }
+
+        if (!data || data.success !== true || typeof data.redirect_url !== 'string' || !data.redirect_url.trim()) {
+          throw new Error('Unable to claim score');
+        }
+
+        return data.redirect_url.trim();
       }
 
       const callbackUrl = resolveCallbackUrl(ctx, options.fallbackUrl);

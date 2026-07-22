@@ -580,7 +580,7 @@
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260720.1"></script>
+<script src="./claim-callback.js?v=20260722.1"></script>
 <script>
 'use strict';
 
@@ -1877,7 +1877,7 @@ function syncClaimButton() {
     dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
     dom.claimBtn.textContent = COPY.claim;
-    dom.claimBtn.disabled = true;
+    dom.claimBtn.disabled = claimUnavailable;
     return;
   }
 
@@ -1928,7 +1928,6 @@ async function prepareClaimUrl(retry) {
     const claimUrl = await withTimeout(buildClaimUrl(), CONFIG.CLAIM_PREPARE_TIMEOUT_MS);
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
       claimPreparing = false;
       claimUnavailable = true;
       claimErrorMessage = '';
@@ -1941,9 +1940,8 @@ async function prepareClaimUrl(retry) {
   } catch (err) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[ruby-rush] claim prepare failed:', err);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     claimPreparing = false;
-    claimUnavailable = true;
+    claimUnavailable = false;
     claimErrorMessage = getClaimErrorMessage(err);
     syncClaimButton();
   }
@@ -1992,12 +1990,8 @@ dom.claimBtn.addEventListener('click', async () => {
     window.location.assign(claimUrlReady);
     return;
   }
-  claimLocked = true;
-  syncClaimButton();
-  await prepareClaimUrl();
-  claimLocked = false;
-  if (claimUrlReady) window.location.assign(claimUrlReady);
-  else syncClaimButton();
+  if (claimPreparing || claimUnavailable) return;
+  await prepareClaimUrl(false);
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;

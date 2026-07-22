@@ -177,10 +177,37 @@ export async function claimScore(score, { timeUsedMs, cause } = {}) {
           claimed_at: payload.claimedAt,
         },
       });
-      tokenCallbackUrl.searchParams.set('token', claimContext.launchToken);
-      tokenCallbackUrl.searchParams.set('dd', encrypted.dd);
-      tokenCallbackUrl.searchParams.set('dv', encrypted.dv);
-      window.location.assign(tokenCallbackUrl.toString());
+      const response = await fetch(tokenCallbackUrl.toString(), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          token: claimContext.launchToken,
+          dd: encrypted.dd,
+          dv: encrypted.dv,
+        }),
+      });
+
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (_) {
+        data = null;
+      }
+
+      if (!response.ok) {
+        const message = data && typeof data.message === 'string' ? data.message : 'Unable to claim score';
+        throw new Error(message);
+      }
+
+      if (!data || data.success !== true || typeof data.redirect_url !== 'string' || !data.redirect_url.trim()) {
+        throw new Error('Unable to claim score');
+      }
+
+      window.location.assign(data.redirect_url.trim());
       return { status: 'redirecting', payload };
     }
 

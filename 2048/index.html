@@ -536,7 +536,7 @@
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260720.1"></script>
+<script src="./claim-callback.js?v=20260722.1"></script>
 <script>
 'use strict';
 
@@ -590,6 +590,9 @@ const COPY = {
     statBest: 'Terbaik',
   },
 }[LANG];
+COPY.claimRetrying = LANG === 'ms'
+  ? 'Sedang bersedia… mencuba semula…'
+  : 'Preparing… retrying…';
 
 // =============================================================================
 // CONFIG — all tunables live here
@@ -1458,6 +1461,7 @@ let claimTouchArmed = false;
 let claimUrlReady = null;
 let claimPrepareSeq = 0;
 let claimPreparing = false;
+let claimRetrying = false;
 const claimContext = window.ClaimCallback.getClaimContext();
 window.ClaimCallback.applyPageTitleToHeading(claimContext.pageTitle, 'menuTitle');
 
@@ -1479,7 +1483,7 @@ function syncClaimButton() {
   }
 
   if (claimPreparing) {
-    dom.claimNote.textContent = COPY.claimPreparing;
+    dom.claimNote.textContent = claimRetrying ? COPY.claimRetrying : COPY.claimPreparing;
     dom.claimNote.classList.remove('hidden');
     dom.claimBtn.disabled = true;
     dom.claimBtn.textContent = COPY.claim;
@@ -1490,7 +1494,7 @@ function syncClaimButton() {
   if (noteText) {
     dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
-    dom.claimBtn.disabled = true;
+    dom.claimBtn.disabled = claimUnavailable;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
@@ -1538,10 +1542,12 @@ async function prepareClaimUrl(retry) {
 
   if (isZeroScore()) {
     claimPreparing = false;
+    claimRetrying = false;
     return;
   }
   if (!hasClaimCallback()) {
     claimPreparing = false;
+    claimRetrying = false;
     claimUnavailable = true;
     claimErrorMessage = '';
     syncClaimButton();
@@ -1550,6 +1556,7 @@ async function prepareClaimUrl(retry) {
 
   const seq = ++claimPrepareSeq;
   claimPreparing = true;
+  claimRetrying = !!retry;
   claimUnavailable = false;
   claimErrorMessage = '';
   syncClaimButton();
@@ -1559,21 +1566,23 @@ async function prepareClaimUrl(retry) {
     if (seq !== claimPrepareSeq) return;
     if (!claimUrl) {
       console.warn('[2048] claim prepare unavailable: invalid or missing callback context');
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
       claimPreparing = false;
+      claimRetrying = false;
       claimUnavailable = true;
+      claimErrorMessage = '';
       syncClaimButton();
       return;
     }
     claimUrlReady = claimUrl;
     claimPreparing = false;
+    claimRetrying = false;
     syncClaimButton();
   } catch (e) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[2048] claim prepare failed:', e);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     claimPreparing = false;
-    claimUnavailable = true;
+    claimRetrying = false;
+    claimUnavailable = false;
     claimErrorMessage = getClaimErrorMessage(e);
     syncClaimButton();
   }
@@ -1586,6 +1595,7 @@ dom.claimBtn.addEventListener('click', async () => {
     claimLocked = false;
     claimUnavailable = false;
     claimErrorMessage = '';
+    claimRetrying = false;
     startGame();
     return;
   }
@@ -1596,12 +1606,8 @@ dom.claimBtn.addEventListener('click', async () => {
     window.location.assign(claimUrlReady);
     return;
   }
-  claimLocked = true;
-  syncClaimButton();
-  await prepareClaimUrl();
-  claimLocked = false;
-  if (claimUrlReady) window.location.assign(claimUrlReady);
-  else syncClaimButton();
+  if (claimPreparing || claimUnavailable) return;
+  await prepareClaimUrl(false);
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;

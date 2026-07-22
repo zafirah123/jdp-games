@@ -494,7 +494,7 @@
     </div>
   </div>
 
-<script src="./claim-callback.js?v=20260720.1"></script>
+<script src="./claim-callback.js?v=20260722.1"></script>
 <script>
 'use strict';
 
@@ -1160,7 +1160,7 @@ function syncClaimButton() {
   if (noteText) {
     dom.claimNote.textContent = noteText;
     dom.claimNote.classList.remove('hidden');
-    dom.claimBtn.disabled = true;
+    dom.claimBtn.disabled = claimUnavailable;
     dom.claimBtn.textContent = COPY.claim;
     return;
   }
@@ -1207,9 +1207,9 @@ async function prepareClaimUrl(retry) {
 
     if (!url) {
       console.warn('[number-snap] claim prepare returned no url');
-      if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; } // one retry, e.g. transient WebCrypto/context issue
       claimPreparing = false;
       claimUnavailable = true;
+      claimErrorMessage = '';
       syncClaimButton();
       return;
     }
@@ -1220,9 +1220,8 @@ async function prepareClaimUrl(retry) {
   } catch (e) {
     if (seq !== claimPrepareSeq) return;
     console.warn('[number-snap] claim prepare failed:', e);
-    if (!retry) { setTimeout(() => prepareClaimUrl(true), CONFIG.CLAIM_PREPARE_RETRY_DELAY_MS); return; }
     claimPreparing = false;
-    claimUnavailable = true;
+    claimUnavailable = false;
     claimErrorMessage = getClaimErrorMessage(e);
     syncClaimButton();
   }
@@ -1251,12 +1250,8 @@ dom.claimBtn.addEventListener('click', async () => {
   // claimUrlReady is null, so this shouldn't normally be reachable. If state
   // somehow got out of sync, re-run the one prepare flow (rather than
   // duplicating its build/error handling here) and commit if it resolves.
-  claimLocked = true;
-  syncClaimButton();
-  await prepareClaimUrl();
-  claimLocked = false;
-  if (claimUrlReady) window.location.assign(claimUrlReady);
-  else syncClaimButton();
+  if (claimPreparing || claimUnavailable) return;
+  await prepareClaimUrl(false);
 });
 dom.claimBtn.addEventListener('touchstart', () => {
   claimTouchArmed = true;

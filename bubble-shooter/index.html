@@ -453,7 +453,7 @@
         </button>
     </div>
 
-    <script src="./claim-callback.js?v=20260720.1"></script>
+    <script src="./claim-callback.js?v=20260722.1"></script>
 
     <!-- Web Audio & Core Game Engine Code -->
     <script>
@@ -584,7 +584,7 @@
             if (noteText) {
                 if (claimNote) { claimNote.textContent = noteText; claimNote.classList.remove('hidden'); }
                 restartBtn.textContent = COPY.claimScore;
-                restartBtn.disabled = true;
+                restartBtn.disabled = claimUnavailable;
                 return;
             }
             if (claimNote) { claimNote.textContent = ''; claimNote.classList.add('hidden'); }
@@ -630,9 +630,9 @@
                 const claimUrl = await withTimeout(buildClaimUrl(score), CLAIM_PREPARE_TIMEOUT_MS);
                 if (seq !== claimPrepareSeq) return;
                 if (!claimUrl) {
-                    if (!retry) { setTimeout(() => prepareClaimUrl(score, true), Game.claimPrepareRetryDelayMs); return; }
                     claimPreparing = false;
                     claimUnavailable = true;
+                    claimErrorMessage = '';
                     syncRestartButton();
                     return;
                 }
@@ -642,9 +642,8 @@
             } catch (e) {
                 if (seq !== claimPrepareSeq) return;
                 console.warn('[bubble-shooter] claim prepare failed:', e);
-                if (!retry) { setTimeout(() => prepareClaimUrl(score, true), Game.claimPrepareRetryDelayMs); return; }
                 claimPreparing = false;
-                claimUnavailable = true;
+                claimUnavailable = false;
                 claimErrorMessage = getClaimErrorMessage(e);
                 syncRestartButton();
             }
@@ -1112,10 +1111,8 @@
                         window.location.assign(claimUrlReady);
                         return;
                     }
-                    document.getElementById('restart-btn').disabled = true;
-                    await prepareClaimUrl(this.score);
-                    if (claimUrlReady) window.location.assign(claimUrlReady);
-                    else syncRestartButton();
+                    if (claimPreparing || claimUnavailable) return;
+                    await prepareClaimUrl(this.score, false);
                 });
                 document.getElementById('restart-btn').addEventListener('touchstart', () => {
                     claimTouchArmed = true;

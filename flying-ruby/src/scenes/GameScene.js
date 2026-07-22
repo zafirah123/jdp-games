@@ -1,7 +1,7 @@
 import { GAME, DIFFICULTY, MAGNET, RUSH, PALETTE, PALETTE_CSS, FONTS } from '../config.js?v=20260717.2';
 import { addMuteButton, pointerHitsMuteButton } from '../muteButton.js?v=20260717.2';
 import { addPauseButton } from '../pauseButton.js?v=20260717.2';
-import { canClaimScore, claimScore } from '../claimScore.js?v=20260708.1';
+import { canClaimScore, claimScore } from '../claimScore.js?v=20260722.1';
 import { COPY } from '../copy.js?v=20260717.2';
 
 const FLOOR_HEIGHT       = 80;

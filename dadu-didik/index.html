@@ -354,7 +354,7 @@
   </div>
 </div>
 
-<script src="./claim-callback.js?v=20260720.1"></script>
+<script src="./claim-callback.js?v=20260722.1"></script>
 <script>
 /* ============================================================================
    DADU DIDIK — vanilla JS + Canvas 2D, single file.
@@ -1113,7 +1113,7 @@ function syncEndCta(){
   if(noteText){
     note.textContent = noteText;
     note.classList.remove('hidden');
-    cta.disabled=true;
+    cta.disabled=STATE.claimUnavailable;
     cta.textContent=COPY.claim;
     cta.dataset.mode='claim';
     return;
@@ -1166,7 +1166,6 @@ async function prepareClaimUrl(retry){
     const url=await withTimeout(buildClaimUrl(payload), CONFIG.claimPrepareTimeoutMs);
     if(seq!==claimPrepareSeq) return;
     if(!url){
-      if(!retry) { setTimeout(()=>prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
       STATE.claimUnavailable=true;
       STATE.claimErrorMessage='';
       claimPreparing=false;
@@ -1179,8 +1178,7 @@ async function prepareClaimUrl(retry){
   }catch(err){
     if(seq!==claimPrepareSeq) return;
     console.warn('[dadu-didik] claim prepare failed:', err);
-    if(!retry) { setTimeout(()=>prepareClaimUrl(true), CONFIG.claimPrepareRetryDelayMs); return; }
-    STATE.claimUnavailable=true;
+    STATE.claimUnavailable=false;
     STATE.claimErrorMessage=getClaimErrorMessage(err);
     claimPreparing=false;
     syncEndCta();
@@ -1198,13 +1196,8 @@ document.getElementById('ctaBtn').addEventListener('click',function(){
     window.location.assign(claimUrlReady);
     return;
   }
-  STATE.submitted=true;
-  syncEndCta();
-  prepareClaimUrl().then(()=>{
-    STATE.submitted=false;
-    if(claimUrlReady) window.location.assign(claimUrlReady);
-    else syncEndCta();
-  });
+  if(claimPreparing || STATE.claimUnavailable) return;
+  prepareClaimUrl(false);
 });
 document.getElementById('ctaBtn').addEventListener('touchstart',function(){
   claimTouchArmed = true;
